@@ -157,6 +157,15 @@ class Multied(BaseModuleClass):
         loss = torch.mean(reconst_loss + kl_divergence_z)
         return LossRecorder(loss=loss, reconstruction_loss=reconst_loss, kl_local=kl_divergence_z)
 
+    def sample_expression(self, x_m, x_v):
+        """
+        Draw expression samples from mean and variance in generative outputs.
+        :param x_m: Expression mean
+        :param x_v: Expression variance
+        :return: samples
+        """
+        return Normal(x_m, x_v.sqrt()).sample()
+
     def expression_mixup_map(self, species_ratio):
         """
         Mixup map for expression.
@@ -229,7 +238,8 @@ class Multied(BaseModuleClass):
         # Genes to eval in each sample based on orthologues/not
         eval_genes = torch.matmul(
             torch.logical_not(eval_o).to(FLOAT_NN),
-            torch.logical_not(self.gene_maps.orthologue_map).to(FLOAT_NN).unsqueeze(0)  # Eval species specific genes or not
+            torch.logical_not(self.gene_maps.orthologue_map).to(FLOAT_NN).unsqueeze(0)
+            # Eval species specific genes or not
         ) + self.gene_maps.orthologue_map  # Orthologues - always evaluated
         # Genes to eval in each sample based on mixup species and orthologue/not
         eval_map = torch.matmul(eval_genes.unsqueeze(1), mixup_map.sum(axis=1).to(FLOAT_NN)).squeeze(1)

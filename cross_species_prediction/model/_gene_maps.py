@@ -34,7 +34,7 @@ class GeneMap:
         :param adata:
         :return:
         """
-        self._species_order = adata.uns['species_order'].copy()
+        self._species_order = adata.uns['orders']['species'].copy()
 
     def _build_species_maps(self, adata):
         """
@@ -48,7 +48,7 @@ class GeneMap:
         - uns['orthologues'] - df specifying 1-to-1 orthologues in rows with species in columns,
             filled with gene names used in var
         - var['species'] - which species the gene comes from
-        - uns['species_order'] - order in which species should be used, list of species
+        - uns['orders']['species'] - order in which species should be used, list of species
         :return:
         """
 
