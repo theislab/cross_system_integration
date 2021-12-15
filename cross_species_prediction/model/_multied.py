@@ -304,8 +304,8 @@ class Model(UnsupervisedTrainingMixin, BaseModelClass):
         adatas = []
 
         # Prepare original data
-        # Make dense
-        adata_pp = sc.AnnData(adata.X.todense(), var=adata.var)
+        # Make X a dense np array
+        adata_pp = sc.AnnData(np.array(adata.X.todense()), var=adata.var)
 
         # Prepare species and covariates metadata
         species_parsed, cov_data_parsed, orders_dict, cov_dict = _prepare_metadata(
@@ -457,9 +457,9 @@ def _create_mixup(indices, adata, species: list, species_order: list, obs_prefix
         species_i = species[i]
         species_j = species[j]
         # Get expression, expression of unused species genes will be set to 0
-        x_i = adata[i, :].X.copy().ravel()
+        x_i = adata[i, :].X.ravel()
         x_i[adata.var['species'] != species_i] = 0
-        x_j = adata[j, :].X.copy().ravel()
+        x_j = adata[j, :].X.ravel()
         x_j[adata.var['species'] != species_j] = 0
         xs.append(x_i + x_j)
         cov_i = adata.obsm['cov_species'][i, 0]
