@@ -4,5 +4,10 @@
 
 import setuptools
 
+
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 if __name__ == "__main__":
-    setuptools.setup(name="cross_species_prediction")
+    setuptools.setup(name="cross_species_prediction",
+                     install_requires=requirements)
