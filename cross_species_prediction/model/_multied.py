@@ -305,12 +305,14 @@ class Model(UnsupervisedTrainingMixin, BaseModelClass):
         adatas = []
 
         # Prepare original data
-        x = adata.X
         # Make X a dense np array
-        if isinstance(adata.X, sparse.csr_matrix):
-            x = np.array(x.todense())
-        adata_pp = sc.AnnData(x, var=adata.var)
-        del x
+        if sparse.issparse(adata.X):
+            adata = sc.AnnData(X=adata.X.A,
+                               obs=adata.obs.copy(deep=True),
+                               var=adata.var.copy(deep=True),
+                               uns=adata.uns.copy()
+                               )
+        adata_pp = sc.AnnData(adata.X, var=adata.var)
 
         # Prepare species and covariates metadata
         species_parsed, cov_data_parsed, orders_dict, cov_dict = _prepare_metadata(
@@ -647,7 +649,8 @@ def _similar_crosspecies_mixup(similar_mixup_ratio: float, adata,
     if seed is not None:
         np.random.seed(seed)
     pairs_all = np.array(pairs_all)
-    pairs_idx = np.random.choice(range(pairs_all.shape[0]), size=desired_n, replace=False)
+    print('Found %i similar cell pairs across species' % pairs_all.shape[0])
+    pairs_idx = np.random.choice(range(pairs_all.shape[0]), size=desired_n, replace=True)
     pairs_all = pairs_all[pairs_idx]
 
     # Create adata
