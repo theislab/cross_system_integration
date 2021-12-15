@@ -304,7 +304,8 @@ class Model(UnsupervisedTrainingMixin, BaseModelClass):
         adatas = []
 
         # Prepare original data
-        adata_pp = sc.AnnData(adata.X, var=adata.var)
+        # Make dense
+        adata_pp = sc.AnnData(adata.X.todense(), var=adata.var)
 
         # Prepare species and covariates metadata
         species_parsed, cov_data_parsed, orders_dict, cov_dict = _prepare_metadata(
