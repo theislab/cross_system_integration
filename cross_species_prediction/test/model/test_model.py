@@ -2,6 +2,8 @@ import scanpy as sc
 import numpy as np
 import pandas as pd
 
+from scipy import sparse
+
 from cross_species_prediction.model._multied import Model
 
 
@@ -23,7 +25,7 @@ def mock_adata_processed():
 
 def mock_adata():
     # Make large random data with different gene distns so that hvg selection and knn search works
-    adata = sc.AnnData(np.exp(np.concatenate([
+    adata = sc.AnnData(sparse.csr_matrix(np.exp(np.concatenate([
         np.random.normal(1, 0.5, (200, 5)),
         np.random.normal(1.1, 0.00237, (200, 5)),
         np.random.normal(1.3, 0.35, (200, 5)),
@@ -43,7 +45,7 @@ def mock_adata():
         np.random.normal(1.5, 0.05, (200, 5)),
         np.random.normal(2, 0.009, (200, 5)),
         np.random.normal(1, 0.0001, (200, 5)),
-    ], axis=1)),
+    ], axis=1))),
         obs={'species': ['K'] * 100 + ['L', 'M'] * 50,  # Species
              'cov_c': ['a', 'b'] * 100,  # Covariates - categorical example
              'cov_n': [0, 1] * 100},  # Covariates - continous (numerical) example

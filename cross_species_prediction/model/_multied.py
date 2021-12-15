@@ -9,6 +9,7 @@ import torch
 
 from anndata import AnnData
 from pynndescent import NNDescent
+from scipy import sparse
 from scvi.data import register_tensor_from_anndata
 from scvi.data._anndata import _setup_anndata, transfer_anndata_setup, _register_anndata
 from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin
@@ -304,8 +305,12 @@ class Model(UnsupervisedTrainingMixin, BaseModelClass):
         adatas = []
 
         # Prepare original data
+        x = adata.X
         # Make X a dense np array
-        adata_pp = sc.AnnData(np.array(adata.X.todense()), var=adata.var)
+        if isinstance(adata.X, sparse.csr_matrix):
+            x = np.array(x.todense())
+        adata_pp = sc.AnnData(x, var=adata.var)
+        del x
 
         # Prepare species and covariates metadata
         species_parsed, cov_data_parsed, orders_dict, cov_dict = _prepare_metadata(
@@ -451,16 +456,17 @@ def _create_mixup(indices, adata, species: list, species_order: list, obs_prefix
     obs_names = []
     if seed is not None:
         np.random.seed(seed)
+    species_genes = adata.var['species'].values.ravel()
     for i, j in indices:
         mixup_ratio_i = np.random.beta(alpha, alpha)
         mixup_ratio_j = 1 - mixup_ratio_i
         species_i = species[i]
         species_j = species[j]
         # Get expression, expression of unused species genes will be set to 0
-        x_i = adata[i, :].X.ravel()
-        x_i[adata.var['species'] != species_i] = 0
-        x_j = adata[j, :].X.ravel()
-        x_j[adata.var['species'] != species_j] = 0
+        x_i = adata[i, :].X.copy().ravel()
+        x_i[species_genes != species_i] = 0
+        x_j = adata[j, :].X.copy().ravel()
+        x_j[species_genes != species_j] = 0
         xs.append(x_i + x_j)
         cov_i = adata.obsm['cov_species'][i, 0]
         cov_j = adata.obsm['cov_species'][j, 0]
