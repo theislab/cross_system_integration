@@ -456,7 +456,7 @@ def _create_mixup(indices, adata, species: list, species_order: list, obs_prefix
     obs_names = []
     if seed is not None:
         np.random.seed(seed)
-    species_genes = adata.var['species'].values.ravel()
+    species_genes = adata.var['species'].values
     for i, j in indices:
         mixup_ratio_i = np.random.beta(alpha, alpha)
         mixup_ratio_j = 1 - mixup_ratio_i
