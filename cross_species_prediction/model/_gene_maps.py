@@ -105,12 +105,11 @@ class GeneMap:
         species_maps = np.array(species_maps, dtype=FLOAT_NP)
         self._species_maps = species_maps
 
-    @property
-    def species_maps(self):
+    def species_maps(self, device):
         """
         :return:  Species maps as tensor
         """
-        return nn.tensor(self._species_maps, device=self.device, dtype=FLOAT_NN)
+        return nn.tensor(self._species_maps, device=device, dtype=FLOAT_NN)
 
     @property
     def n_species(self):
@@ -146,12 +145,8 @@ class GeneMap:
         orthologue_map = np.array([g in self._orthologues for g in adata.var.index], dtype=FLOAT_NP)
         self._orthologue_map = orthologue_map
 
-    @property
-    def orthologue_map(self):
+    def orthologue_map(self, device):
         """
         :return: Orthologue map as tensor
         """
-        return nn.tensor(self._orthologue_map, device=self.device, dtype=FLOAT_NN)
-
-    def add_device(self, device):
-        self.device = device
+        return nn.tensor(self._orthologue_map, device=device, dtype=FLOAT_NN)

@@ -351,6 +351,7 @@ class Model(UnsupervisedTrainingMixin, BaseModelClass):
 
         # Combine adatas
         adata_combined = sc.concat(adatas)
+        adata_combined.obs_names_make_unique()
         # Add extra info from processed adata
         adata_combined.var = adata_pp.var
         adata_combined.uns = adata_pp.uns
