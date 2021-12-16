@@ -1,13 +1,13 @@
 import numpy as np
-import pandas as pd
 import torch as nn
 
-from cross_species_prediction.constants import FLOAT_NP
+from cross_species_prediction.constants import FLOAT_NP, FLOAT_NN
 
 
 class GeneMap:
     ORTHOLOGUES = 'orthologues'
     SPECIES_SPECIFIC = 'species_specific'
+    device = None
 
     """
     Maps of genes across species
@@ -110,7 +110,7 @@ class GeneMap:
         """
         :return:  Species maps as tensor
         """
-        return nn.tensor(self._species_maps)
+        return nn.tensor(self._species_maps, device=self.device, dtype=FLOAT_NN)
 
     @property
     def n_species(self):
@@ -151,4 +151,7 @@ class GeneMap:
         """
         :return: Orthologue map as tensor
         """
-        return nn.tensor(self._orthologue_map)
+        return nn.tensor(self._orthologue_map, device=self.device, dtype=FLOAT_NN)
+
+    def add_device(self, device):
+        self.device = device

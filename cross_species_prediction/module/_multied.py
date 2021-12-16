@@ -54,7 +54,7 @@ class Multied(BaseModuleClass):
         """
         super().__init__()
         self.n_species = n_species
-        self.gene_maps = gene_maps
+        self.gene_maps=gene_maps
 
         # z encoder goes from the n_input-dimensional data to an n_latent-d
         # latent space representation
@@ -75,6 +75,9 @@ class Multied(BaseModuleClass):
             shared_first=self.gene_maps.orthologues_first,
             **decoder_params
         )
+
+        # Add device after initialising params
+        self.gene_maps.add_device(self.device)
 
     def _get_inference_input(self, tensors, **kwargs):
         """Parse the dictionary to get appropriate args"""
@@ -177,7 +180,7 @@ class Multied(BaseModuleClass):
         """
         # Mixup orthologues, dim = samples*species*genes
         orthologue_mixup = species_ratio.unsqueeze(2) * \
-                           (self.gene_maps.orthologue_map.expand(species_ratio.shape[0], 1, -1)).to(FLOAT_NN)
+                           (self.gene_maps.orthologue_map.expand(species_ratio.shape[0], 1, -1))
         # Use species specific genes if species is present in mixup, dim = samples*species*genes
         non_orthologue_mixup = (species_ratio.unsqueeze(2) > 0).to(FLOAT_NN) * \
                                (torch.logical_not(self.gene_maps.orthologue_map.expand(species_ratio.shape[0], 1, -1))
@@ -242,5 +245,5 @@ class Multied(BaseModuleClass):
             # Eval species specific genes or not
         ) + self.gene_maps.orthologue_map  # Orthologues - always evaluated
         # Genes to eval in each sample based on mixup species and orthologue/not
-        eval_map = torch.matmul(eval_genes.unsqueeze(1), mixup_map.sum(axis=1).to(FLOAT_NN)).squeeze(1)
+        eval_map = torch.matmul(eval_genes.unsqueeze(1), mixup_map.sum(axis=1)).squeeze(1)
         return eval_map

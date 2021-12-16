@@ -285,6 +285,7 @@ class Model(UnsupervisedTrainingMixin, BaseModelClass):
         :param cov_cont_keys: List of continuous covariates in obs.
         :param orthologues_map_key: Key in uns of orthologue map of one-to-one orthologues of all species.
         A dataframe with n_cols=species and each row specifying one orthologue with values being var names.
+        Should only contain genes present in adata.
         :param orders: Defined orders for species or categorical covariates. Dict with keys being
         'species' or categorical covariates names and values being lists of categories. May contain more/less
         categories than data.
