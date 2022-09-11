@@ -3,3 +3,4 @@ import torch
 
 FLOAT_NP = np.float32
 FLOAT_NN = torch.float32
+INT_NN = torch.long

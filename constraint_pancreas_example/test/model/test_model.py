@@ -33,6 +33,9 @@ def mock_adata():
         var=pd.DataFrame({'xy': ['y'] * 45 + ['x'] * 50},
                          index=[str(i) for i in range(95)]),  # Make var names str to enable orthologue mapping
     )
+
+    adata.uns['y_corr'] = pd.DataFrame({'gx': ['43', '44'], 'gy': ['42', '43'], 'intercept': [0, 1], 'coef': [-1, 1]})
+
     return adata
 
 
@@ -41,7 +44,8 @@ def test_model():
     adata = mock_adata()
     adata_training = XYModel.setup_anndata(
         adata,
-        xy_key='xy')
+        xy_key='xy',
+        y_corr_key='y_corr')
     model = XYModel(adata=adata_training)
     model.train(max_epochs=2)
     adata_translation = XYModel.setup_anndata(

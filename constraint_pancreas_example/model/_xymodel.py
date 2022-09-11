@@ -47,8 +47,6 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
     def __init__(
             self,
             adata: AnnData,
-            n_hidden: int = 256,
-            n_layers: int = 3,
             **model_kwargs,
     ):
         super(XYModel, self).__init__(adata)
@@ -58,8 +56,6 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
         self.module = XYModule(
             n_input=adata.uns['xsplit'],
             n_output=adata.shape[1] - adata.uns['xsplit'],
-            n_hidden=n_hidden,
-            n_layers=n_layers,
             gene_map=GeneMap(adata=adata),
             **model_kwargs,
         )
@@ -125,6 +121,7 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
             cls,
             adata: AnnData,
             xy_key,
+            y_corr_key: Optional[str] = None,
             batch_key: Optional[str] = None,
             labels_key: Optional[str] = None,
             layer: Optional[str] = None,
@@ -154,6 +151,13 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
                                                   ), index=adata.var_names).sort_values().index].copy()
         adata.var['xy'] = adata.var[xy_key]
         adata.uns['xsplit'] = adata.var[xy_key].tolist().index('y')
+
+        if y_corr_key is None:
+            adata.uns['y_corr'] = pd.DataFrame(columns=['gx', 'gy', 'intercept', 'coef'])
+        else:
+            if set(adata.uns[y_corr_key].columns) != {'gx', 'gy', 'intercept', 'coef'}:
+                raise ValueError('y corr columns must be gx, gy, intercept, coef')
+            adata.uns['y_corr'] = adata.uns[y_corr_key]
 
         setup_method_args = cls._get_setup_method_args(**locals())
         anndata_fields = [

@@ -53,10 +53,12 @@ class XYModule(BaseModuleClass):
             n_hidden: int = 256,
             n_layers: int = 3,
             dropout_rate: float = 0.1,
+            constraint_weight: float = 1,
     ):
         super().__init__()
 
         self.gene_map = gene_map
+        self.constraint_weight = constraint_weight
 
         # setup the parameters of your generative model, as well as your inference model
         # z encoder goes from the n_input-dimensional data to an n_latent-d
@@ -91,17 +93,17 @@ class XYModule(BaseModuleClass):
 
     @auto_move_data
     def forward(
-        self,
-        tensors,
-        get_inference_input_kwargs: Optional[dict] = None,
-        get_generative_input_kwargs: Optional[dict] = None,
-        inference_kwargs: Optional[dict] = None,
-        generative_kwargs: Optional[dict] = None,
-        loss_kwargs: Optional[dict] = None,
-        compute_loss=True,
+            self,
+            tensors,
+            get_inference_input_kwargs: Optional[dict] = None,
+            get_generative_input_kwargs: Optional[dict] = None,
+            inference_kwargs: Optional[dict] = None,
+            generative_kwargs: Optional[dict] = None,
+            loss_kwargs: Optional[dict] = None,
+            compute_loss=True,
     ) -> Union[
-        Tuple[ torch.Tensor,torch.Tensor],
-        Tuple[ torch.Tensor, torch.Tensor, LossRecorder],
+        Tuple[torch.Tensor, torch.Tensor],
+        Tuple[torch.Tensor, torch.Tensor, LossRecorder],
     ]:
         """
         Forward pass through the network.
@@ -153,13 +155,17 @@ class XYModule(BaseModuleClass):
         y = tensors[REGISTRY_KEYS.X_KEY][:, self.gene_map.xsplit:]
         y_m = fwd_outputs["y_m"]
         y_v = fwd_outputs["y_v"]
-
+        constraints = self.gene_map.constraints(device=self.device)
 
         #  TODO get in detail trhough this, sums etc
 
         # Reconstruction loss
         reconst_loss = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1)
 
-        loss = reconst_loss
+        # Constraint loss
+        loss_constraint = torch.abs(y_m[:, constraints['gx']] * constraints['coef'] + constraints['intercept'] -
+                                    y_m[:, constraints['gx']]).sum(dim=1)
 
-        return LossRecorder(loss=loss.sum(),reconstruction_loss=reconst_loss)
+        loss = (reconst_loss + self.constraint_weight * loss_constraint).sum()
+
+        return LossRecorder(loss=loss, reconstruction_loss=reconst_loss)
