@@ -10,8 +10,8 @@ import torch
 from anndata import AnnData
 from pynndescent import NNDescent
 from scipy import sparse
-from scvi.data import register_tensor_from_anndata
-from scvi.data._anndata import _setup_anndata, transfer_anndata_setup, _register_anndata
+#from scvi.data import register_tensor_from_anndata
+#from scvi.data._anndata import _setup_anndata, transfer_anndata_setup, _register_anndata
 from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin
 from scvi.utils import setup_anndata_dsp
 

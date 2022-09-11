@@ -3,7 +3,7 @@ import torch
 
 from torch.distributions import kl_divergence, Normal
 
-from scvi import _CONSTANTS
+#from scvi import _CONSTANTS
 from scvi.module.base import BaseModuleClass, LossRecorder, auto_move_data
 
 from cross_species_prediction.nn._base_components import MultiDecoder, MultiEncoder

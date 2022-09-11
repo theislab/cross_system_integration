@@ -2,7 +2,7 @@ import logging
 
 from rich.console import Console
 from rich.logging import RichHandler
-from scvi.data import setup_anndata
+#from scvi.data import setup_anndata
 
 from .model._multied import Model
 
@@ -32,4 +32,6 @@ logger.addHandler(ch)
 # this prevents double outputs
 logger.propagate = False
 
-__all__ = ["setup_anndata", "Model"]
+__all__ = [
+    #"setup_anndata",
+    "Model"]

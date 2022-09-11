@@ -1,7 +1,7 @@
 from typing import Union
 
 from anndata import AnnData
-from scvi.data._anndata import _check_anndata_setup_equivalence as _check_anndata_setup_equivalence_scvi
+#from scvi.data._anndata import _check_anndata_setup_equivalence as _check_anndata_setup_equivalence_scvi
 
 
 def _check_anndata_setup_equivalence(
