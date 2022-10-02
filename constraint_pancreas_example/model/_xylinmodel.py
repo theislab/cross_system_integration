@@ -77,8 +77,8 @@ class XYLinModel(XYModel):
             adata: AnnData,
             xy_key,
             gene_embed_key,
-            gene_mean_key,
-            gene_std_key,
+            gene_mean_key: str = None,
+            gene_std_key: str = None,
             batch_key: Optional[str] = None,
             labels_key: Optional[str] = None,
             layer: Optional[str] = None,
@@ -105,8 +105,14 @@ class XYLinModel(XYModel):
 
         # Set up constraints
         adata.varm['embed'] = adata.varm[gene_embed_key]
-        adata.var['mean'] = adata.var[gene_mean_key]
-        adata.var['std'] = adata.var[gene_std_key]
+        if gene_mean_key is not None:
+            adata.var['mean'] = adata.var[gene_mean_key]
+        else:
+            adata.var['mean'] = 0.0
+        if gene_std_key is not None:
+            adata.var['std'] = adata.var[gene_std_key]
+        else:
+            adata.var['std'] = 1.0
 
         cls._setup_adata(adata=adata,
                          layer=layer,

@@ -78,9 +78,10 @@ class GeneMapEmbedding(GeneMap):
     def _build_constraints(self, adata):
         self._constraints = dict()
         # TODO Could be already transposed here
-        self._constraints['embed'] = adata.varm['embed'][adata.uns['xsplit']:, :].copy()
-        self._constraints['mean'] = adata.var['mean'].values[adata.uns['xsplit']:]
-        self._constraints['std'] = adata.var['std'].values[adata.uns['xsplit']:]
+        is_y = (adata.var['xy'] == 'y').values
+        self._constraints['embed'] = adata.varm['embed'][is_y].copy()
+        self._constraints['mean'] = adata.var['mean'].values[is_y]
+        self._constraints['std'] = adata.var['std'].values[is_y]
 
     @property
     def n_embed(self):
