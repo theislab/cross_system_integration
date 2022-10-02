@@ -10,13 +10,13 @@ from scvi.nn import DecoderSCVI, Encoder, one_hot
 from torch.distributions import Normal
 from torch.distributions import kl_divergence as kl
 
-from constraint_pancreas_example.model._gene_maps import GeneMap
-from constraint_pancreas_example.nn._base_components import EncoderDecoder
+from constraint_pancreas_example.model._gene_maps import GeneMapEmbedding
+from constraint_pancreas_example.nn._base_components import EncoderDecoderLin
 
 torch.backends.cudnn.benchmark = True
 
 
-class XYModule(BaseModuleClass):
+class XYLinModule(BaseModuleClass):
     """
     Skeleton Variational auto-encoder model.
 
@@ -49,24 +49,21 @@ class XYModule(BaseModuleClass):
             self,
             n_input: int,
             n_output: int,
-            gene_map: GeneMap,
+            gene_map: GeneMapEmbedding,
             n_hidden: int = 256,
             n_layers: int = 3,
             dropout_rate: float = 0.1,
-            constraint_weight: float = 1,
-            constraint_regression_loss: bool = False
     ):
         super().__init__()
 
         self.gene_map = gene_map
-        self.constraint_weight = constraint_weight
-        self.constraint_regression_loss = constraint_regression_loss
 
         # setup the parameters of your generative model, as well as your inference model
         # z encoder goes from the n_input-dimensional data to an n_latent-d
         # latent space representation
-        self.fwd_nn = EncoderDecoder(
+        self.fwd_nn = EncoderDecoderLin(
             n_input=n_input,
+            n_latent=self.gene_map.n_embed,
             n_output=n_output,
             n_layers=n_layers,
             n_hidden=n_hidden,
@@ -76,19 +73,20 @@ class XYModule(BaseModuleClass):
     def _get_fwd_input(self, tensors):
         """Parse the dictionary to get appropriate args"""
         x = tensors[REGISTRY_KEYS.X_KEY][:, :self.gene_map.xsplit]
+        constraints = self.gene_map.constraints(device=self.device)
 
-        input_dict = dict(x=x)
+        input_dict = dict(x=x, embed=constraints['embed'], mean=constraints['mean'], std=constraints['std'])
         return input_dict
 
     @auto_move_data
-    def fwd(self, x):
+    def fwd(self, x, embed, mean, std):
         """
         High level inference method.
 
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        y_m, y_v = self.fwd_nn(x)
+        y_m, y_v = self.fwd_nn(x=x, embed=embed, mean=mean, std=std)
 
         outputs = dict(y_m=y_m, y_v=y_v)
         return outputs
@@ -157,20 +155,10 @@ class XYModule(BaseModuleClass):
         y = tensors[REGISTRY_KEYS.X_KEY][:, self.gene_map.xsplit:]
         y_m = fwd_outputs["y_m"]
         y_v = fwd_outputs["y_v"]
-        constraints = self.gene_map.constraints(device=self.device)
-
-        #  TODO get in detail trhough this, sums etc
 
         # Reconstruction loss
         reconst_loss = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1)
 
-        # Constraint loss
-        if self.constraint_regression_loss:
-            loss_constraint = torch.abs(y_m[:, constraints['gx']] * constraints['coef'] + constraints['intercept'] -
-                                        y_m[:, constraints['gx']]).sum(dim=1)
-        else:
-            loss_constraint = 0
-
-        loss = (reconst_loss + self.constraint_weight * loss_constraint).sum()
+        loss = reconst_loss.sum()
 
         return LossRecorder(loss=loss, reconstruction_loss=reconst_loss)

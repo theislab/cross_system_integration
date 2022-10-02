@@ -17,7 +17,7 @@ from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin, VAEMixin
 from scvi.utils import setup_anndata_dsp
 
 from constraint_pancreas_example.module._xymodule import XYModule
-from constraint_pancreas_example.model._gene_maps import GeneMap
+from constraint_pancreas_example.model._gene_maps import GeneMapRegression
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,8 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
     --------
     """
 
+    regression_constraint = False
+
     def __init__(
             self,
             adata: AnnData,
@@ -52,18 +54,21 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
         super(XYModel, self).__init__(adata)
 
         # self.summary_stats provides information about anndata dimensions and other tensor info
-
-        self.module = XYModule(
-            n_input=adata.uns['xsplit'],
-            n_output=adata.shape[1] - adata.uns['xsplit'],
-            gene_map=GeneMap(adata=adata),
-            **model_kwargs,
-        )
+        self._set_model(adata=adata, **model_kwargs)
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
         # necessary line to get params that will be used for saving/loading
         self.init_params_ = self._get_init_params(locals())
 
         logger.info("The model has been initialized")
+
+    def _set_model(self, adata, **model_kwargs):
+        self.module = XYModule(
+            n_input=adata.uns['xsplit'],
+            n_output=adata.shape[1] - adata.uns['xsplit'],
+            gene_map=GeneMapRegression(adata=adata, build_constraint=self.regression_constraint),
+            constraint_regression_loss=self.regression_constraint,
+            **model_kwargs,
+        )
 
     @torch.no_grad()
     def translate(
@@ -144,6 +149,26 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
         -------
         %(returns)s
         """
+        adata = cls._setup_adata_split(adata=adata, xy_key=xy_key)
+
+        if cls.regression_constraint and y_corr_key is None:
+            adata.uns['y_corr'] = pd.DataFrame(columns=['gx', 'gy', 'intercept', 'coef'])
+        else:
+            if set(adata.uns[y_corr_key].columns) != {'gx', 'gy', 'intercept', 'coef'}:
+                raise ValueError('y corr columns must be gx, gy, intercept, coef')
+            adata.uns['y_corr'] = adata.uns[y_corr_key]
+
+        cls._setup_adata(adata=adata,
+                         layer=layer,
+                         batch_key=batch_key,
+                         labels_key=labels_key,
+                         categorical_covariate_keys=categorical_covariate_keys,
+                         continuous_covariate_keys=continuous_covariate_keys,
+                         **kwargs)
+        return adata
+
+    @classmethod
+    def _setup_adata_split(cls, adata, xy_key):
         # Order genes to be first x and then y
         if set(adata.var[xy_key].unique()) != {'x', 'y'}:
             raise ValueError('values in xy_key column must be x and y')
@@ -151,14 +176,11 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
                                                   ), index=adata.var_names).sort_values().index].copy()
         adata.var['xy'] = adata.var[xy_key]
         adata.uns['xsplit'] = adata.var[xy_key].tolist().index('y')
+        return adata
 
-        if y_corr_key is None:
-            adata.uns['y_corr'] = pd.DataFrame(columns=['gx', 'gy', 'intercept', 'coef'])
-        else:
-            if set(adata.uns[y_corr_key].columns) != {'gx', 'gy', 'intercept', 'coef'}:
-                raise ValueError('y corr columns must be gx, gy, intercept, coef')
-            adata.uns['y_corr'] = adata.uns[y_corr_key]
-
+    @classmethod
+    def _setup_adata(cls, adata, layer, batch_key, labels_key, categorical_covariate_keys, continuous_covariate_keys,
+                     **kwargs):
         setup_method_args = cls._get_setup_method_args(**locals())
         anndata_fields = [
             LayerField(REGISTRY_KEYS.X_KEY, layer, is_count_data=True),
@@ -176,4 +198,3 @@ class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
         )
         adata_manager.register_fields(adata, **kwargs)
         cls.register_manager(adata_manager)
-        return adata
