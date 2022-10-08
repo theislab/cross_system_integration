@@ -79,7 +79,7 @@ class GeneMapEmbedding(GeneMap):
         self._constraints = dict()
         # TODO Could be already transposed here
         is_y = (adata.var['xy'] == 'y').values
-        self._constraints['embed'] = adata.varm['embed'][is_y].copy()
+        self._constraints['embed'] = np.array(adata.varm['embed'][is_y])
         self._constraints['mean'] = adata.var['mean'].values[is_y]
         self._constraints['std'] = adata.var['std'].values[is_y]
 

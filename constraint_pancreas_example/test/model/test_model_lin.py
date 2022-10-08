@@ -63,3 +63,9 @@ def test_model():
         give_mean=True,
         batch_size=None,
         as_numpy=True)
+    embedding = model.embed(
+        adata=adata_translation,
+        indices=None,
+        batch_size=None,
+        as_numpy=True
+    )

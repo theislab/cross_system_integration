@@ -11,7 +11,8 @@ from torch.distributions import Normal
 from torch.distributions import kl_divergence as kl
 
 from constraint_pancreas_example.model._gene_maps import GeneMapEmbedding
-from constraint_pancreas_example.nn._base_components import EncoderDecoderLin
+from constraint_pancreas_example.nn._base_components import DecoderLin
+from cross_species_prediction.nn._base_components import Layers
 
 torch.backends.cudnn.benchmark = True
 
@@ -61,13 +62,16 @@ class XYLinModule(BaseModuleClass):
         # setup the parameters of your generative model, as well as your inference model
         # z encoder goes from the n_input-dimensional data to an n_latent-d
         # latent space representation
-        self.fwd_nn = EncoderDecoderLin(
-            n_input=n_input,
+        self.fwd_embeder = Layers(
+            n_in=n_input,
+            n_cov=0,
+            n_out=self.gene_map.n_embed,
+            n_hidden=n_hidden,
+            n_layers=n_layers,
+            dropout_rate=dropout_rate)
+        self.fwd_decoder = DecoderLin(
             n_latent=self.gene_map.n_embed,
             n_output=n_output,
-            n_layers=n_layers,
-            n_hidden=n_hidden,
-            dropout_rate=dropout_rate,
         )
 
     def _get_fwd_input(self, tensors):
@@ -79,6 +83,29 @@ class XYLinModule(BaseModuleClass):
         return input_dict
 
     @auto_move_data
+    def fwd_embed(self, x):
+        """
+        High level inference method.
+
+        Runs the inference (encoder) model.
+        """
+        # get embedding via the encoder networks
+        z = self.fwd_embeder(x=x)
+        return z
+
+    @auto_move_data
+    def fwd_decode(self, z, embed, mean, std):
+        """
+        High level inference method.
+
+        Runs the inference (encoder) model.
+        """
+        # get variational parameters via the encoder networks
+        y_m, y_v = self.fwd_decoder(x=z, embed=embed, mean=mean, std=std)
+
+        return y_m, y_v
+
+    @auto_move_data
     def fwd(self, x, embed, mean, std):
         """
         High level inference method.
@@ -86,8 +113,8 @@ class XYLinModule(BaseModuleClass):
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        y_m, y_v = self.fwd_nn(x=x, embed=embed, mean=mean, std=std)
-
+        z = self.fwd_embed(x=x)
+        y_m, y_v = self.fwd_decode(z=z, embed=embed, mean=mean, std=std)
         outputs = dict(y_m=y_m, y_v=y_v)
         return outputs
 

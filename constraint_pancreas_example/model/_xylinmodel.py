@@ -70,6 +70,52 @@ class XYLinModel(XYModel):
             **model_kwargs,
         )
 
+    @torch.no_grad()
+    def embed(
+            self,
+            adata: AnnData,
+            indices: Optional[Sequence[int]] = None,
+            batch_size: Optional[int] = None,
+            as_numpy: bool = True
+    ) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Translate expression - based on input expression and metadata
+        predict expression of data as if it had given metadata.
+        expression, metadata (from adata) -> latent
+        latent, new metadata -> translated expression
+        :param prediction_metadata: Metadata for which samples should be predicted
+        :param species_key: Species col name in prediction_metadata
+        :param adata: Input adata based on which latent representation is obtained.
+        :param indices:
+        :param give_mean: In latent and expression prediction use mean rather than samples
+        :param batch_size:
+        :param as_numpy:  Move output tensor to cpu and convert to numpy
+        :return:
+        """
+        # Check model and adata
+        self._check_if_trained(warn=False)
+        adata = self._validate_anndata(adata)
+        if indices is None:
+            indices = np.arange(adata.n_obs)
+        # Prediction
+        # Do not shuffle to retain order
+        tensors_fwd = self._make_data_loader(
+            adata=adata, indices=indices, batch_size=batch_size, shuffle=False
+        )
+        predicted = []
+        for tensors in tensors_fwd:
+            # Inference
+            fwd_inputs = self.module._get_fwd_input(tensors)
+            z = self.module.fwd_embed(x=fwd_inputs['x'])
+            predicted += [z]
+
+        predicted = torch.cat(predicted)
+
+        if as_numpy:
+            predicted = predicted.cpu().numpy()
+        return predicted
+
+
     @classmethod
     @setup_anndata_dsp.dedent
     def setup_anndata(
