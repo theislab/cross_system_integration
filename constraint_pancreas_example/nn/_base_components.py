@@ -70,13 +70,11 @@ class DecoderLin(Module):
 
         self.var_eps = var_eps
 
-        #self.decoder_y = Layers(n_in=n_input, n_cov=0, n_out=n_latent, n_hidden=n_hidden, n_layers=n_layers, **kwargs)
         # Var mode is feature so that var is not take from other genes. Another option would be to estimate based on
         # mean with 1d conv with kernel and stride of 1
         self.var_encoder = VarEncoder(n_hidden=n_latent, n_output=n_output, mode='feature', eps=var_eps)
 
     def forward(self, x, embed, mean, std):
-        #y = self.decoder_y(x=x)
         y = torch.matmul(x, embed.transpose(0, 1))
         y_m = (y * std.reshape(-1, std.shape[0])) + mean.reshape(-1, mean.shape[0])
         y_v = self.var_encoder(y)

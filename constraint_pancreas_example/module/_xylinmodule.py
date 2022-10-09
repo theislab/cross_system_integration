@@ -11,7 +11,7 @@ from torch.distributions import Normal
 from torch.distributions import kl_divergence as kl
 
 from constraint_pancreas_example.model._gene_maps import GeneMapEmbedding
-from constraint_pancreas_example.nn._base_components import DecoderLin
+from constraint_pancreas_example.nn._base_components import DecoderLin, EncoderDecoder
 from cross_species_prediction.nn._base_components import Layers
 
 torch.backends.cudnn.benchmark = True
@@ -54,6 +54,7 @@ class XYLinModule(BaseModuleClass):
             n_hidden: int = 256,
             n_layers: int = 3,
             dropout_rate: float = 0.1,
+            **kwargs
     ):
         super().__init__()
 
@@ -68,10 +69,20 @@ class XYLinModule(BaseModuleClass):
             n_out=self.gene_map.n_embed,
             n_hidden=n_hidden,
             n_layers=n_layers,
-            dropout_rate=dropout_rate)
-        self.fwd_decoder = DecoderLin(
+            dropout_rate=dropout_rate,
+            **kwargs
+        )
+        self.fwd_decoder_y = DecoderLin(
             n_latent=self.gene_map.n_embed,
             n_output=n_output,
+        )
+        self.fwd_decoder_x = EncoderDecoder(
+            n_input=self.gene_map.n_embed,
+            n_output=n_input,
+            n_hidden=n_hidden,
+            n_layers=n_layers,
+            dropout_rate=dropout_rate,
+            **kwargs
         )
 
     def _get_fwd_input(self, tensors):
@@ -94,16 +105,28 @@ class XYLinModule(BaseModuleClass):
         return z
 
     @auto_move_data
-    def fwd_decode(self, z, embed, mean, std):
+    def fwd_decode_y(self, z, embed, mean, std):
         """
         High level inference method.
 
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        y_m, y_v = self.fwd_decoder(x=z, embed=embed, mean=mean, std=std)
+        y_m, y_v = self.fwd_decoder_y(x=z, embed=embed, mean=mean, std=std)
 
         return y_m, y_v
+
+    @auto_move_data
+    def fwd_decode_x(self, z):
+        """
+        High level inference method.
+
+        Runs the inference (encoder) model.
+        """
+        # get variational parameters via the encoder networks
+        x_m, x_v = self.fwd_decoder_x(x=z)
+
+        return x_m, x_v
 
     @auto_move_data
     def fwd(self, x, embed, mean, std):
@@ -114,8 +137,9 @@ class XYLinModule(BaseModuleClass):
         """
         # get variational parameters via the encoder networks
         z = self.fwd_embed(x=x)
-        y_m, y_v = self.fwd_decode(z=z, embed=embed, mean=mean, std=std)
-        outputs = dict(y_m=y_m, y_v=y_v)
+        y_m, y_v = self.fwd_decode_y(z=z, embed=embed, mean=mean, std=std)
+        x_m, x_v = self.fwd_decode_x(z=z)
+        outputs = dict(y_m=y_m, y_v=y_v, x_m=x_m, x_v=x_v)
         return outputs
 
     @auto_move_data
@@ -179,13 +203,18 @@ class XYLinModule(BaseModuleClass):
             tensors,
             fwd_outputs,
     ):
+        x = tensors[REGISTRY_KEYS.X_KEY][:, :self.gene_map.xsplit]
         y = tensors[REGISTRY_KEYS.X_KEY][:, self.gene_map.xsplit:]
         y_m = fwd_outputs["y_m"]
         y_v = fwd_outputs["y_v"]
+        x_m = fwd_outputs["x_m"]
+        x_v = fwd_outputs["x_v"]
 
         # Reconstruction loss
-        reconst_loss = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1)
+        reconst_loss_y = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1)
+        reconst_loss_x = torch.nn.GaussianNLLLoss(reduction='none')(x_m, x, x_v).sum(dim=1)
 
-        loss = reconst_loss.sum()
+        loss = reconst_loss_y.sum() + reconst_loss_x.sum()
 
-        return LossRecorder(loss=loss, reconstruction_loss=reconst_loss)
+        # TODO maybe later adapt scvi/train/_trainingplans.py to keep both recon losses
+        return LossRecorder(loss=loss, reconstruction_loss=reconst_loss_y, reconstruction_loss_x=reconst_loss_x.sum())
