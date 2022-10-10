@@ -410,6 +410,7 @@ def _prepare_metadata(meta_data: pd.DataFrame,
         :param categories: Order of categories to use.
         :return: dummies, categories. Dummies - one-hot encoding of categories in same order as categories.
         """
+        raise ValueError('TODO Falsely implemented categories - need adhere to the order')
         if categories is None:
             categories = pd.Categorical(values).categories.values
         dummies = pd.DataFrame(pd.get_dummies(values), columns=categories).fillna(0).values

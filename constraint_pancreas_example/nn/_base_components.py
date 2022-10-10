@@ -1,6 +1,6 @@
 import torch
 from torch.nn import Linear, Module
-from typing import List
+from typing import List, Union
 
 from scvi.nn._base_components import reparameterize_gaussian
 
@@ -12,6 +12,7 @@ class EncoderDecoder(Module):
     def __init__(self,
                  n_input: int,
                  n_output: int,
+                 n_cov:int,
                  n_hidden: int = 256,
                  n_layers: int = 3,
                  var_eps: float = 1e-4,
@@ -37,13 +38,14 @@ class EncoderDecoder(Module):
 
         self.var_eps = var_eps
 
-        self.decoder_y = Layers(n_in=n_input, n_cov=0, n_out=n_hidden, n_hidden=n_hidden, n_layers=n_layers, **kwargs)
+        self.decoder_y = Layers(n_in=n_input, n_cov=n_cov, n_out=n_hidden, n_hidden=n_hidden, n_layers=n_layers,
+                                **kwargs)
 
         self.mean_encoder = Linear(n_hidden, n_output)
         self.var_encoder = VarEncoder(n_hidden, n_output, mode=var_mode, eps=var_eps)
 
-    def forward(self, x):
-        y = self.decoder_y(x=x)
+    def forward(self, x, cov: Union[torch.Tensor, None] = None):
+        y = self.decoder_y(x=x, cov=cov)
         y_m = self.mean_encoder(y)
         y_v = self.var_encoder(y)
 

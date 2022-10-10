@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union, Sequence
+from typing import List, Optional, Union, Sequence, Dict
 import pandas as pd
 import numpy as np
 import torch
@@ -8,10 +8,9 @@ from anndata import AnnData
 from scvi import REGISTRY_KEYS
 from scvi.data import AnnDataManager
 from scvi.data.fields import (
-    CategoricalJointObsField,
-    CategoricalObsField,
+    ObsmField,
+    NumericalObsField,
     LayerField,
-    NumericalJointObsField,
 )
 from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin, VAEMixin
 from scvi.utils import setup_anndata_dsp
@@ -66,6 +65,7 @@ class XYLinModel(XYModel):
         self.module = XYLinModule(
             n_input=adata.uns['xsplit'],
             n_output=adata.shape[1] - adata.uns['xsplit'],
+            n_cov_x=adata.obsm['covariates_x'].shape[1],
             gene_map=GeneMapEmbedding(adata=adata, build_constraint=True),
             **model_kwargs,
         )
@@ -106,7 +106,7 @@ class XYLinModel(XYModel):
         for tensors in tensors_fwd:
             # Inference
             fwd_inputs = self.module._get_fwd_input(tensors)
-            z = self.module.fwd_embed(x=fwd_inputs['x'])[2]
+            z = self.module.fwd_embed(x=fwd_inputs['x'], cov_x = fwd_inputs['cov_x'])[2]
             predicted += [z]
 
         predicted = torch.cat(predicted)
@@ -115,7 +115,6 @@ class XYLinModel(XYModel):
             predicted = predicted.cpu().numpy()
         return predicted
 
-
     @classmethod
     @setup_anndata_dsp.dedent
     def setup_anndata(
@@ -123,13 +122,14 @@ class XYLinModel(XYModel):
             adata: AnnData,
             xy_key,
             gene_embed_key,
+            train_y_key,
             gene_mean_key: str = None,
             gene_std_key: str = None,
-            batch_key: Optional[str] = None,
-            labels_key: Optional[str] = None,
             layer: Optional[str] = None,
-            categorical_covariate_keys: Optional[List[str]] = None,
-            continuous_covariate_keys: Optional[List[str]] = None,
+            # TODO also make for y
+            categorical_covariate_keys_x: Optional[List[str]] = None,
+            continuous_covariate_keys_x: Optional[List[str]] = None,
+            covariate_orders: Optional[Dict] = None,
             **kwargs,
     ) -> Optional[AnnData]:
         """
@@ -142,6 +142,8 @@ class XYLinModel(XYModel):
         %(param_layer)s
         %(param_cat_cov_keys)s
         %(param_cont_cov_keys)s
+        train_y_key
+            Whether y should be used for training, 0 - False, 1 - True
 
         Returns
         -------
@@ -149,7 +151,28 @@ class XYLinModel(XYModel):
         """
         adata = cls._setup_adata_split(adata=adata, xy_key=xy_key)
 
+        # Set up covariates
+        # TODO this could be handled by specific field type in registry
+        if covariate_orders is None:
+            covariate_orders = {}
+
+        covariates_x, orders_dict_x, cov_dict_x = _prepare_metadata(
+            meta_data=adata.obs,
+            cov_cat_keys=categorical_covariate_keys_x,
+            cov_cont_keys=continuous_covariate_keys_x,
+            orders=covariate_orders
+        )
+
+        adata.uns['covariate_orders'] = {**orders_dict_x}
+        adata.uns['covariates'] = {'x': cov_dict_x}
+        adata.obsm['covariates_x'] = covariates_x
+
+        # Make sure that train y key is of correct type
+        if len(set(adata.obs[train_y_key].unique()) - {0, 1}) > 0:
+            raise ValueError('Obs field train_y_key can contain only 0 and 1')
+
         # Set up constraints
+        # TODO Could be somehow added in registry?
         adata.varm['embed'] = adata.varm[gene_embed_key]
         if gene_mean_key is not None:
             adata.var['mean'] = adata.var[gene_mean_key]
@@ -160,11 +183,66 @@ class XYLinModel(XYModel):
         else:
             adata.var['std'] = 1.0
 
-        cls._setup_adata(adata=adata,
-                         layer=layer,
-                         batch_key=batch_key,
-                         labels_key=labels_key,
-                         categorical_covariate_keys=categorical_covariate_keys,
-                         continuous_covariate_keys=continuous_covariate_keys,
-                         **kwargs)
+        # Anndata setup
+        setup_method_args = cls._get_setup_method_args(**locals())
+        anndata_fields = [
+            LayerField(REGISTRY_KEYS.X_KEY, layer, is_count_data=False),
+            ObsmField('covariates_x', 'covariates_x'),
+            NumericalObsField('train_y', train_y_key)
+        ]
+        adata_manager = AnnDataManager(
+            fields=anndata_fields, setup_method_args=setup_method_args
+        )
+        adata_manager.register_fields(adata, **kwargs)
+        cls.register_manager(adata_manager)
+
         return adata
+
+
+def _prepare_metadata(meta_data: pd.DataFrame,
+                      cov_cat_keys: Optional[list] = None,
+                      cov_cont_keys: Optional[list] = None,
+                      orders=None):
+    """
+
+    :param meta_data: Dataframe containing species and covariate info, e.g. from non-registered adata.obs
+    :param cov_cat_keys: List of categorical covariates column names.
+    :param cov_cont_keys: List of continuous covariates column names.
+    :param orders: Defined orders for species or categorical covariates. Dict with keys being
+    'species' or categorical covariates names and values being lists of categories. May contain more/less
+    categories than data.
+    :return:
+    """
+    if cov_cat_keys is None:
+        cov_cat_keys = []
+    if cov_cont_keys is None:
+        cov_cont_keys = []
+
+    def dummies_categories(values: pd.Series, categories: Union[List, None] = None):
+        """
+        Make dummies of categorical covariates. Use specified order of categories.
+        :param values: Categories for each observation.
+        :param categories: Order of categories to use.
+        :return: dummies, categories. Dummies - one-hot encoding of categories in same order as categories.
+        """
+        if categories is None:
+            categories = pd.Categorical(values).categories.values
+        values = pd.Series(pd.Categorical(values=values, categories=categories, ordered=True),
+                           index=values.index, name=values.name)
+        dummies = pd.get_dummies(values, prefix=values.name)
+        return dummies, list(categories)
+
+    # Covariate encoding
+    # Save order of covariates and categories
+    cov_dict = {'categorical': cov_cat_keys, 'continuous': cov_cont_keys}
+    # One-hot encoding of categorical covariates
+    orders_dict = {}
+    cov_cat_data = []
+    for cov_cat_key in cov_cat_keys:
+        cat_dummies, cat_order = dummies_categories(
+            values=meta_data[cov_cat_key], categories=orders.get(cov_cat_key, None))
+        cov_cat_data.append(cat_dummies)
+        orders_dict[cov_cat_key] = cat_order
+    # Prepare single cov array for all covariates and in per-species format
+    cov_data_parsed = pd.concat(cov_cat_data + [meta_data[cov_cont_keys]], axis=1)
+    return cov_data_parsed, orders_dict, cov_dict

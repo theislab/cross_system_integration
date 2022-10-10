@@ -50,6 +50,7 @@ class XYLinModule(BaseModuleClass):
             self,
             n_input: int,
             n_output: int,
+            n_cov_x: int,
             gene_map: GeneMapEmbedding,
             n_hidden: int = 256,
             n_layers: int = 3,
@@ -66,6 +67,7 @@ class XYLinModule(BaseModuleClass):
         self.encoder = EncoderDecoder(
             n_input=n_input,
             n_output=self.gene_map.n_embed,
+            n_cov=n_cov_x,
             n_hidden=n_hidden,
             n_layers=n_layers,
             dropout_rate=dropout_rate,
@@ -79,6 +81,7 @@ class XYLinModule(BaseModuleClass):
         self.decoder_x = EncoderDecoder(
             n_input=self.gene_map.n_embed,
             n_output=n_input,
+            n_cov=n_cov_x,
             n_hidden=n_hidden,
             n_layers=n_layers,
             dropout_rate=dropout_rate,
@@ -89,19 +92,21 @@ class XYLinModule(BaseModuleClass):
         """Parse the dictionary to get appropriate args"""
         x = tensors[REGISTRY_KEYS.X_KEY][:, :self.gene_map.xsplit]
         constraints = self.gene_map.constraints(device=self.device)
+        cov_x = tensors['covariates_x']
 
-        input_dict = dict(x=x, embed=constraints['embed'], mean=constraints['mean'], std=constraints['std'])
+        input_dict = dict(x=x, cov_x=cov_x, embed=constraints['embed'], mean=constraints['mean'],
+                          std=constraints['std'])
         return input_dict
 
     @auto_move_data
-    def fwd_embed(self, x):
+    def fwd_embed(self, x, cov_x):
         """
         High level inference method.
 
         Runs the inference (encoder) model.
         """
         # get embedding via the encoder networks
-        outputs = self.encoder(x=x)
+        outputs = self.encoder(x=x, cov=cov_x)
         return outputs['y_m'], outputs['y_v'], outputs['y']
 
     @auto_move_data
@@ -117,28 +122,28 @@ class XYLinModule(BaseModuleClass):
         return y_m, y_v
 
     @auto_move_data
-    def fwd_decode_x(self, z):
+    def fwd_decode_x(self, z, cov_x):
         """
         High level inference method.
 
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        outputs = self.decoder_x(x=z)
+        outputs = self.decoder_x(x=z, cov=cov_x)
 
         return outputs['y_m'], outputs['y_v']
 
     @auto_move_data
-    def fwd(self, x, embed, mean, std):
+    def fwd(self, x, cov_x, embed, mean, std):
         """
         High level inference method.
 
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        z_m, z_v, z = self.fwd_embed(x=x)
+        z_m, z_v, z = self.fwd_embed(x=x, cov_x=cov_x)
         y_m, y_v = self.fwd_decode_y(z=z, embed=embed, mean=mean, std=std)
-        x_m, x_v = self.fwd_decode_x(z=z)
+        x_m, x_v = self.fwd_decode_x(z=z, cov_x=cov_x)
         outputs = dict(y_m=y_m, y_v=y_v, x_m=x_m, x_v=x_v, z_m=z_m, z_v=z_v, z=z)
         return outputs
 
@@ -205,6 +210,7 @@ class XYLinModule(BaseModuleClass):
     ):
         x = tensors[REGISTRY_KEYS.X_KEY][:, :self.gene_map.xsplit]
         y = tensors[REGISTRY_KEYS.X_KEY][:, self.gene_map.xsplit:]
+        train_y = tensors['train_y']
         y_m = fwd_outputs["y_m"]
         y_v = fwd_outputs["y_v"]
         x_m = fwd_outputs["x_m"]
@@ -213,7 +219,8 @@ class XYLinModule(BaseModuleClass):
         z_v = fwd_outputs["z_v"]
 
         # Reconstruction loss
-        reconst_loss_y = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1)
+        # Reconstruction y loss is set to 0 for some examples that do not have meaningful expression
+        reconst_loss_y = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1) * torch.ravel(train_y)
         reconst_loss_x = torch.nn.GaussianNLLLoss(reduction='none')(x_m, x, x_v).sum(dim=1)
 
         # Kl divergence on latent space

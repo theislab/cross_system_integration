@@ -36,6 +36,9 @@ def mock_adata():
     adata.varm['embed'] = np.random.randn(95, 5)
     adata.var['mean'] = np.random.randn(95)
     adata.var['std'] = np.random.randn(95)
+    adata.obs['covariate_x_cont'] = list(range(200))
+    adata.obs['covariate_x_cat'] = ['a'] * 100 + ['b'] * 100
+    adata.obs['train_y'] = 1
 
     return adata
 
@@ -47,16 +50,24 @@ def test_model():
         adata,
         xy_key='xy',
         gene_embed_key='embed',
+        train_y_key='train_y',
         gene_mean_key='mean',
-        gene_std_key='std')
+        gene_std_key='std',
+        # TODO improve test for adata setup
+        categorical_covariate_keys_x=['covariate_x_cat'],
+        continuous_covariate_keys_x=['covariate_x_cont'],
+    )
     model = XYLinModel(adata=adata_training)
     model.train(max_epochs=2)
     adata_translation = XYLinModel.setup_anndata(
         adata,
         xy_key='xy',
         gene_embed_key='embed',
+        train_y_key='train_y',
         gene_mean_key='mean',
-        gene_std_key='std')
+        gene_std_key='std',
+        categorical_covariate_keys_x=['covariate_x_cat'],
+        continuous_covariate_keys_x=['covariate_x_cont'])
     translated = model.translate(
         adata=adata_translation,
         indices=None,

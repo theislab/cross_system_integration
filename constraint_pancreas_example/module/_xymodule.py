@@ -68,6 +68,7 @@ class XYModule(BaseModuleClass):
         self.fwd_nn = EncoderDecoder(
             n_input=n_input,
             n_output=n_output,
+            n_cov=0,
             n_layers=n_layers,
             n_hidden=n_hidden,
             dropout_rate=dropout_rate,
