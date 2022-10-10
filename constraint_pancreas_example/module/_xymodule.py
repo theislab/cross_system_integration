@@ -88,9 +88,8 @@ class XYModule(BaseModuleClass):
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        y_m, y_v = self.fwd_nn(x)
+        outputs = self.fwd_nn(x)
 
-        outputs = dict(y_m=y_m, y_v=y_v)
         return outputs
 
     @auto_move_data

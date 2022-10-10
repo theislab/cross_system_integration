@@ -2,6 +2,8 @@ import torch
 from torch.nn import Linear, Module
 from typing import List
 
+from scvi.nn._base_components import reparameterize_gaussian
+
 from cross_species_prediction.nn._base_components import Layers, VarEncoder
 
 
@@ -14,6 +16,7 @@ class EncoderDecoder(Module):
                  n_layers: int = 3,
                  var_eps: float = 1e-4,
                  var_mode: str = 'feature',
+                 sample: bool = False,
                  **kwargs
                  ):
         """
@@ -30,6 +33,7 @@ class EncoderDecoder(Module):
         :param kwargs:
         """
         super().__init__()
+        self.sample = sample
 
         self.var_eps = var_eps
 
@@ -43,7 +47,14 @@ class EncoderDecoder(Module):
         y_m = self.mean_encoder(y)
         y_v = self.var_encoder(y)
 
-        return y_m, y_v
+        outputs = dict(y_m=y_m, y_v=y_v)
+
+        # Sample from latent distribution
+        if self.sample:
+            y = reparameterize_gaussian(y_m, y_v)
+            outputs['y'] = y
+
+        return outputs
 
 
 class DecoderLin(Module):

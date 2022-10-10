@@ -106,7 +106,7 @@ class XYLinModel(XYModel):
         for tensors in tensors_fwd:
             # Inference
             fwd_inputs = self.module._get_fwd_input(tensors)
-            z = self.module.fwd_embed(x=fwd_inputs['x'])
+            z = self.module.fwd_embed(x=fwd_inputs['x'])[2]
             predicted += [z]
 
         predicted = torch.cat(predicted)

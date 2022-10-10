@@ -8,7 +8,7 @@ from scvi.distributions import ZeroInflatedNegativeBinomial
 from scvi.module.base import BaseModuleClass, LossRecorder, auto_move_data
 from scvi.nn import DecoderSCVI, Encoder, one_hot
 from torch.distributions import Normal
-from torch.distributions import kl_divergence as kl
+from torch.distributions import kl_divergence
 
 from constraint_pancreas_example.model._gene_maps import GeneMapEmbedding
 from constraint_pancreas_example.nn._base_components import DecoderLin, EncoderDecoder
@@ -63,20 +63,20 @@ class XYLinModule(BaseModuleClass):
         # setup the parameters of your generative model, as well as your inference model
         # z encoder goes from the n_input-dimensional data to an n_latent-d
         # latent space representation
-        self.fwd_embeder = Layers(
-            n_in=n_input,
-            n_cov=0,
-            n_out=self.gene_map.n_embed,
+        self.encoder = EncoderDecoder(
+            n_input=n_input,
+            n_output=self.gene_map.n_embed,
             n_hidden=n_hidden,
             n_layers=n_layers,
             dropout_rate=dropout_rate,
+            sample=True,
             **kwargs
         )
-        self.fwd_decoder_y = DecoderLin(
+        self.decoder_y = DecoderLin(
             n_latent=self.gene_map.n_embed,
             n_output=n_output,
         )
-        self.fwd_decoder_x = EncoderDecoder(
+        self.decoder_x = EncoderDecoder(
             n_input=self.gene_map.n_embed,
             n_output=n_input,
             n_hidden=n_hidden,
@@ -101,8 +101,8 @@ class XYLinModule(BaseModuleClass):
         Runs the inference (encoder) model.
         """
         # get embedding via the encoder networks
-        z = self.fwd_embeder(x=x)
-        return z
+        outputs = self.encoder(x=x)
+        return outputs['y_m'], outputs['y_v'], outputs['y']
 
     @auto_move_data
     def fwd_decode_y(self, z, embed, mean, std):
@@ -112,7 +112,7 @@ class XYLinModule(BaseModuleClass):
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        y_m, y_v = self.fwd_decoder_y(x=z, embed=embed, mean=mean, std=std)
+        y_m, y_v = self.decoder_y(x=z, embed=embed, mean=mean, std=std)
 
         return y_m, y_v
 
@@ -124,9 +124,9 @@ class XYLinModule(BaseModuleClass):
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        x_m, x_v = self.fwd_decoder_x(x=z)
+        outputs = self.decoder_x(x=z)
 
-        return x_m, x_v
+        return outputs['y_m'], outputs['y_v']
 
     @auto_move_data
     def fwd(self, x, embed, mean, std):
@@ -136,10 +136,10 @@ class XYLinModule(BaseModuleClass):
         Runs the inference (encoder) model.
         """
         # get variational parameters via the encoder networks
-        z = self.fwd_embed(x=x)
+        z_m, z_v, z = self.fwd_embed(x=x)
         y_m, y_v = self.fwd_decode_y(z=z, embed=embed, mean=mean, std=std)
         x_m, x_v = self.fwd_decode_x(z=z)
-        outputs = dict(y_m=y_m, y_v=y_v, x_m=x_m, x_v=x_v)
+        outputs = dict(y_m=y_m, y_v=y_v, x_m=x_m, x_v=x_v, z_m=z_m, z_v=z_v, z=z)
         return outputs
 
     @auto_move_data
@@ -209,12 +209,19 @@ class XYLinModule(BaseModuleClass):
         y_v = fwd_outputs["y_v"]
         x_m = fwd_outputs["x_m"]
         x_v = fwd_outputs["x_v"]
+        z_m = fwd_outputs["z_m"]
+        z_v = fwd_outputs["z_v"]
 
         # Reconstruction loss
         reconst_loss_y = torch.nn.GaussianNLLLoss(reduction='none')(y_m, y, y_v).sum(dim=1)
         reconst_loss_x = torch.nn.GaussianNLLLoss(reduction='none')(x_m, x, x_v).sum(dim=1)
 
-        loss = reconst_loss_y.sum() + reconst_loss_x.sum()
+        # Kl divergence on latent space
+        kl_divergence_z = kl_divergence(Normal(z_m, z_v.sqrt()),
+                                        Normal(torch.zeros_like(z_m), torch.ones_like(z_v))
+                                        ).sum(dim=1)
+
+        loss = torch.mean(reconst_loss_y + reconst_loss_x + kl_divergence_z)
 
         # TODO maybe later adapt scvi/train/_trainingplans.py to keep both recon losses
         return LossRecorder(loss=loss, reconstruction_loss=reconst_loss_y, reconstruction_loss_x=reconst_loss_x.sum())
