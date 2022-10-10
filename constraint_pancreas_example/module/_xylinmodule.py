@@ -224,4 +224,7 @@ class XYLinModule(BaseModuleClass):
         loss = torch.mean(reconst_loss_y + reconst_loss_x + kl_divergence_z)
 
         # TODO maybe later adapt scvi/train/_trainingplans.py to keep both recon losses
-        return LossRecorder(loss=loss, reconstruction_loss=reconst_loss_y, reconstruction_loss_x=reconst_loss_x.sum())
+        return LossRecorder(loss=loss,
+                            reconstruction_loss=reconst_loss_y,
+                            kl_local=kl_divergence_z,
+                            reconstruction_loss_x=reconst_loss_x.sum())
