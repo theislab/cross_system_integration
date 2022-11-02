@@ -1,13 +1,10 @@
-import abc
-
 import numpy as np
 import torch as nn
-from abc import ABC
 
 from cross_species_prediction.constants import INT_NN, FLOAT_NN
 
 
-class GeneMap(ABC):
+class GeneMap():
     ORTHOLOGUES = 'orthologues'
     SPECIES_SPECIFIC = 'species_specific'
     device = None
@@ -16,36 +13,45 @@ class GeneMap(ABC):
     Maps of genes across species
     """
 
-    def __init__(self, adata, build_constraint: bool = True):
+    def __init__(self, adata):
         self._build_xsplit(adata=adata)
-        if build_constraint:
-            self._build_constraints(adata=adata)
+        self._setup(adata=adata)
 
     def _build_xsplit(self, adata):
         self._xsplit = adata.uns['xsplit']
 
-    def _build_constraints(self, adata):
+    def _setup(self, adata):
         pass
 
     @property
     def xsplit(self):
         return self._xsplit
 
-    def constraints(self, device):
-        pass
+
+class GeneMapInput(GeneMap):
+    def __init__(self, adata):
+        super(GeneMapInput, self).__init__(adata)
+
+    def _setup(self, adata):
+        self._build_input_filter(adata=adata)
+
+    def _build_input_filter(self, adata):
+        self._input_filter = adata.var['input'].values.ravel()
+
+    def input_filter(self, device):
+        return nn.tensor(self._input_filter, device=device, dtype=INT_NN)
 
 
 class GeneMapRegression(GeneMap):
-    ORTHOLOGUES = 'orthologues'
-    SPECIES_SPECIFIC = 'species_specific'
-    device = None
-
     """
     Maps of genes across species
     """
 
-    def __init__(self, adata, build_constraint: bool = True):
-        super(GeneMapRegression, self).__init__(adata, build_constraint)
+    def __init__(self, adata):
+        super(GeneMapRegression, self).__init__(adata)
+
+    def _setup(self, adata):
+        self._build_constraints(adata=adata)
 
     def _build_constraints(self, adata):
         constraints = adata.uns['y_corr'].copy()
@@ -64,16 +70,15 @@ class GeneMapRegression(GeneMap):
 
 
 class GeneMapEmbedding(GeneMap):
-    ORTHOLOGUES = 'orthologues'
-    SPECIES_SPECIFIC = 'species_specific'
-    device = None
-
     """
     Maps of genes across species
     """
 
-    def __init__(self, adata, build_constraint: bool = True):
-        super(GeneMapEmbedding, self).__init__(adata, build_constraint)
+    def __init__(self, adata):
+        super(GeneMapEmbedding, self).__init__(adata)
+
+    def _setup(self, adata):
+        self._build_constraints(adata=adata)
 
     def _build_constraints(self, adata):
         self._constraints = dict()
