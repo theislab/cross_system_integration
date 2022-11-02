@@ -83,7 +83,7 @@ class XYLinModule(BaseModuleClass):
             n_output=n_input,
             n_cov=n_cov_x,
             n_hidden=n_hidden,
-            n_layers=n_layers,
+            n_layers=1,
             dropout_rate=dropout_rate,
             **kwargs
         )
@@ -116,6 +116,7 @@ class XYLinModule(BaseModuleClass):
 
         Runs the inference (encoder) model.
         """
+        # TODO add y covariates - one layer z+cov_y to get to final z and then lin decode
         # get variational parameters via the encoder networks
         y_m, y_v = self.decoder_y(x=z, embed=embed, mean=mean, std=std)
 
