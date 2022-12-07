@@ -139,7 +139,7 @@ class XYBiModule(BaseModuleClass):
             res = network(x=x, cov=c)
             if pad_output and mask_subset:
                 for k, dat in res.items():
-                    out = torch.zeros((mask.shape[0], dat.shape[1]))
+                    out = torch.zeros((mask.shape[0], dat.shape[1]), device=self.device)
                     out[mask_idx, :] = dat
                     res[k] = out
             return res
@@ -161,7 +161,7 @@ class XYBiModule(BaseModuleClass):
             res = network(x=x, cov=c)
             if pad_output and mask_subset:
                 for k, dat in res.items():
-                    out = torch.zeros((mask.shape[0], dat.shape[1]))
+                    out = torch.zeros((mask.shape[0], dat.shape[1]), device=self.device)
                     out[mask_idx, :] = dat
                     res[k] = out
             return res
@@ -188,7 +188,7 @@ class XYBiModule(BaseModuleClass):
         :return: samples
         """
         return Normal(x_m, x_v.sqrt()).sample()
-
+    
     def loss(
             self,
             tensors,
@@ -212,7 +212,7 @@ class XYBiModule(BaseModuleClass):
             :param mask_loss: Masking of loss since no expression is available
             :return:
             """
-            out = torch.zeros(mask_x.shape[0])
+            out = torch.zeros(mask_x.shape[0], device = self.device)
             mask = torch.ravel(torch.nonzero(torch.ravel(mask_x * mask_loss)))
             mask_x = torch.ravel(torch.nonzero(torch.ravel(mask_x)))
             mask_sub = torch.ravel(torch.nonzero(torch.ravel(mask_loss[mask_x, :])))
@@ -233,7 +233,7 @@ class XYBiModule(BaseModuleClass):
 
         # Kl divergence on latent space
         def kl_loss_part(m, v, mask):
-            out = torch.zeros(mask.shape[0])
+            out = torch.zeros(mask.shape[0], device = self.device)
             mask = torch.ravel(torch.nonzero(torch.ravel(mask)))
             out[mask] = kl_divergence(Normal(m, v.sqrt()), Normal(torch.zeros_like(m), torch.ones_like(v))).sum(dim=1)
             return out
