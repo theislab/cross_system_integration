@@ -194,7 +194,6 @@ class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
             train_y_key,
             input_gene_key: Optional[str] = None,
             layer: Optional[str] = None,
-            # TODO also make for y
             categorical_covariate_keys_x: Optional[List[str]] = None,
             continuous_covariate_keys_x: Optional[List[str]] = None,
             categorical_covariate_keys_y: Optional[List[str]] = None,
