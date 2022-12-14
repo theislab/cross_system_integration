@@ -337,6 +337,12 @@ class XYBiModule(BaseModuleClass):
             inference_outputs,
             generative_outputs,
             kl_weight: float = 1.0,
+            kl_cycle_weight:float = 1,
+            reconstruction_weight:float = 1,
+            reconstruction_cycle_weight:float=1,
+            z_distance_paired_weight:float=1,
+            z_distance_cycle_weight:float=1
+
     ):
         x, y = (tensors[REGISTRY_KEYS.X_KEY][:, :self.gene_map.xsplit],
                 tensors[REGISTRY_KEYS.X_KEY][:, self.gene_map.xsplit:])
@@ -422,23 +428,24 @@ class XYBiModule(BaseModuleClass):
         z_distance_cycle_y = z_loss(z_x=inference_outputs['z_y_m'], z_y=inference_outputs['z_y_x_m'],
                                     mask_x=train_y, mask_y=train_y)
 
-        z_distance = z_distance_paired + z_distance_cycle_x + z_distance_cycle_y
+        z_distance_cycle = z_distance_cycle_x + z_distance_cycle_y
 
         # Overall loss
-        loss = torch.mean(reconst_loss + reconst_loss_cycle + kl_divergence_z + kl_divergence_z_cycle + z_distance)
+        loss = torch.mean(reconst_loss * reconstruction_weight + reconst_loss_cycle * reconstruction_cycle_weight + \
+                          kl_divergence_z * kl_weight + kl_divergence_z_cycle * kl_cycle_weight + \
+                          z_distance_paired * z_distance_paired_weight + z_distance_cycle * z_distance_cycle_weight)
 
         # TODO maybe later adapt scvi/train/_trainingplans.py to keep both recon losses
         return LossRecorder(
             loss=loss, reconstruction_loss=reconst_loss, kl_local=kl_divergence_z,
             reconstruction_loss_cycle=reconst_loss_cycle.sum(), kl_local_cycle=kl_divergence_z_cycle.sum(),
-            z_distance=z_distance.sum(),
+            z_distance_paired=z_distance_paired.sum(), z_distance_cycle=z_distance_cycle.sum(),
             reconst_loss_x_x=reconst_loss_x_x.sum(), reconst_loss_x_y=reconst_loss_x_y.sum(),
             reconst_loss_y_y=reconst_loss_y_y.sum(), reconst_loss_y_x=reconst_loss_y_x.sum(),
             reconst_loss_x_y_x=reconst_loss_x_y_x.sum(), reconst_loss_y_x_y=reconst_loss_y_x_y.sum(),
             kl_divergence_z_x=kl_divergence_z_x.sum(), kl_divergence_z_y=kl_divergence_z_y.sum(),
             kl_divergence_z_x_y=kl_divergence_z_x_y.sum(), kl_divergence_z_y_x=kl_divergence_z_y_x.sum(),
-            z_distance_paired=z_distance_paired.sum(), z_distance_cycle_x=z_distance_cycle_x.sum(),
-            z_distance_cycle_y=z_distance_cycle_y.sum(),
+            z_distance_cycle_x=z_distance_cycle_x.sum(), z_distance_cycle_y=z_distance_cycle_y.sum(),
         )
 
 
