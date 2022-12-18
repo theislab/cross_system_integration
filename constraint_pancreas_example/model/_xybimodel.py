@@ -128,6 +128,8 @@ class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
         if as_numpy:
             predicted_x = predicted_x.cpu().numpy()
             predicted_y = predicted_y.cpu().numpy()
+            # TODO make sure that it is known which genes are at which feature index (gene names!) - since
+            #  setup adata mixes indices of features
         return predicted_x, predicted_y
 
     @torch.no_grad()
@@ -192,6 +194,7 @@ class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
             xy_key,
             train_x_key,
             train_y_key,
+            orthology_key: Optional[str] = None,
             input_gene_key: Optional[str] = None,
             layer: Optional[str] = None,
             categorical_covariate_keys_x: Optional[List[str]] = None,
@@ -222,7 +225,18 @@ class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
                 len(set(adata.obs[train_y_key].unique()) - {0, 1}) > 0:
             raise ValueError('Obs fields train_x_key and train_y_key can contain only 0 and 1')
 
+        # Make sure var names are unique
+        if adata.shape[1] != len(set(adata.var_names)):
+            raise ValueError('Adata var_names are not unique')
+
         adata = cls._setup_anndata_split(adata=adata, xy_key=xy_key)
+
+        if orthology_key is not None:
+            if set(adata.uns[orthology_key].columns) != {'x', 'y'}:
+                raise ValueError('Orthology DataFrame must have columns x and y')
+            adata.uns['orthology'] = adata.uns[orthology_key]
+        else:
+            adata.uns['orthology'] = pd.DataFrame(columns=['x', 'y'])
 
         # Which genes to use as input
         if input_gene_key is None:

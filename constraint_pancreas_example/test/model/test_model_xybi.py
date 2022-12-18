@@ -39,6 +39,10 @@ def mock_adata():
     adata.obs['train_x'] = [1] * 100 + [0] * 100
     adata.obs['train_y'] = [0] * 50 + [1] * 150
     adata.var['input'] = [1] * 20 + [0] * 25 + [1] * 20 + [0] * 30
+    adata.uns['orthology'] = pd.DataFrame({
+        'x': np.array([45, 46, 46, 65, 65]).astype(str),
+        'y': np.array([0, 0, 1, 20, 21]).astype(str),
+    })
 
     return adata
 
@@ -51,6 +55,7 @@ def test_model():
         xy_key='xy',
         train_x_key='train_x',
         train_y_key='train_y',
+        orthology_key='orthology',
         input_gene_key='input',
         # TODO improve test for adata setup
         categorical_covariate_keys_x=['covariate_x_cat'],
@@ -87,7 +92,3 @@ def test_model():
         as_numpy=True
     )
     assert translated_x.shape[0] == translated_y.shape[0] == adata_translation.shape[0]
-
-
-
-

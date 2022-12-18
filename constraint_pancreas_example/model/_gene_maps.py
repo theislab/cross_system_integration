@@ -34,12 +34,26 @@ class GeneMapInput(GeneMap):
 
     def _setup(self, adata):
         self._build_input_filter(adata=adata)
+        self._build_orthology_output(adata=adata)
 
     def _build_input_filter(self, adata):
         self._input_filter = adata.var['input'].values.ravel()
 
+    def _build_orthology_output(self, adata):
+        var_names_x = adata.var_names[:self.xsplit].values
+        var_names_y = adata.var_names[self.xsplit:].values
+        orthologs_x = []
+        orthologs_y = []
+        for i, (x, y) in adata.uns['orthology'][['x', 'y']].iterrows():
+            orthologs_x.append(np.argwhere(var_names_x == x)[0][0])
+            orthologs_y.append(np.argwhere(var_names_y == y)[0][0])
+        self._orthologs_output = {'x': orthologs_x, 'y': orthologs_y}
+
     def input_filter(self, device):
         return nn.tensor(self._input_filter, device=device, dtype=INT_NN)
+
+    def orthology_output(self, modality, device):
+        return nn.tensor(self._orthologs_output[modality], device=device, dtype=INT_NN)
 
 
 class GeneMapRegression(GeneMap):

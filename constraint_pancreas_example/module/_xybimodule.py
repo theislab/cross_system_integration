@@ -337,11 +337,12 @@ class XYBiModule(BaseModuleClass):
             inference_outputs,
             generative_outputs,
             kl_weight: float = 1.0,
-            kl_cycle_weight:float = 1,
-            reconstruction_weight:float = 1,
-            reconstruction_cycle_weight:float=1,
-            z_distance_paired_weight:float=1,
-            z_distance_cycle_weight:float=1
+            kl_cycle_weight: float = 1,
+            reconstruction_weight: float = 1,
+            reconstruction_cycle_weight: float = 1,
+            z_distance_paired_weight: float = 1,
+            z_distance_cycle_weight: float = 1,
+            corr_cycle_weight: float = 1,
 
     ):
         x, y = (tensors[REGISTRY_KEYS.X_KEY][:, :self.gene_map.xsplit],
@@ -430,22 +431,60 @@ class XYBiModule(BaseModuleClass):
 
         z_distance_cycle = z_distance_cycle_x + z_distance_cycle_y
 
+        # Correlation between both decodings within cycle for orthologous genes
+        # TODO Could be decayed towards the end after the matched cell types were primed
+        #  to enable species-specific flexibility as not all orthologues are functionally related
+        #   Alternatively: Could do weighted correlation where sum of all weights is constant but can be learned to be
+        #   distributed differently across genes
+        def expr_correlation_loss(x_m, y_m, mask_x, mask_y):
+            # Consideration for correlation loss:
+            # If x_m and y_m have no features we need to set the loss to 0 the loss woul be 1 (1-corr, corr=0),
+            # when we have features we need to set loss to 1-corr to have loss of 0 when correlation==1
+            out = torch.zeros(mask_x.shape[0], device=self.device)
+            if x_m.shape[1] > 0 and y_m.shape[1] > 0:
+                mask = torch.ravel(torch.nonzero(torch.ravel(mask_x * mask_y)))
+                mask_x_idx = torch.ravel(torch.nonzero(torch.ravel(mask_x)))
+                mask_y_idx = torch.ravel(torch.nonzero(torch.ravel(mask_y)))
+                mask_x_sub = torch.ravel(torch.nonzero(torch.ravel(mask_y[mask_x_idx, :])))
+                mask_y_sub = torch.ravel(torch.nonzero(torch.ravel(mask_x[mask_y_idx, :])))
+                x_m = x_m[mask_x_sub, :]
+                y_m = y_m[mask_y_sub, :]
+
+                def center(x):
+                    return x - x.mean(dim=1, keepdim=True)
+
+                out[mask] = 1 - torch.nn.CosineSimilarity()(center(x_m), center(y_m))
+            return out
+
+        corr_cycle_x = expr_correlation_loss(
+            x_m=generative_outputs['x_y_x_m'][:, self.gene_map.orthology_output(modality='x', device=self.device)],
+            y_m=generative_outputs['x_y_m'][:, self.gene_map.orthology_output(modality='y', device=self.device)],
+            mask_x=train_x, mask_y=train_x)
+        corr_cycle_y = expr_correlation_loss(
+            x_m=generative_outputs['y_x_y_m'][:, self.gene_map.orthology_output(modality='y', device=self.device)],
+            y_m=generative_outputs['y_x_m'][:, self.gene_map.orthology_output(modality='x', device=self.device)],
+            mask_x=train_y, mask_y=train_y)
+        corr_cycle = corr_cycle_x + corr_cycle_y
+
         # Overall loss
-        loss = torch.mean(reconst_loss * reconstruction_weight + reconst_loss_cycle * reconstruction_cycle_weight + \
-                          kl_divergence_z * kl_weight + kl_divergence_z_cycle * kl_cycle_weight + \
-                          z_distance_paired * z_distance_paired_weight + z_distance_cycle * z_distance_cycle_weight)
+        loss = torch.mean(reconst_loss * reconstruction_weight + reconst_loss_cycle * reconstruction_cycle_weight +
+                          kl_divergence_z * kl_weight + kl_divergence_z_cycle * kl_cycle_weight +
+                          z_distance_paired * z_distance_paired_weight + z_distance_cycle * z_distance_cycle_weight +
+                          corr_cycle * corr_cycle_weight)
 
         # TODO maybe later adapt scvi/train/_trainingplans.py to keep both recon losses
         return LossRecorder(
             loss=loss, reconstruction_loss=reconst_loss, kl_local=kl_divergence_z,
             reconstruction_loss_cycle=reconst_loss_cycle.sum(), kl_local_cycle=kl_divergence_z_cycle.sum(),
             z_distance_paired=z_distance_paired.sum(), z_distance_cycle=z_distance_cycle.sum(),
+            corr_cycle=corr_cycle.sum(),
             reconst_loss_x_x=reconst_loss_x_x.sum(), reconst_loss_x_y=reconst_loss_x_y.sum(),
             reconst_loss_y_y=reconst_loss_y_y.sum(), reconst_loss_y_x=reconst_loss_y_x.sum(),
             reconst_loss_x_y_x=reconst_loss_x_y_x.sum(), reconst_loss_y_x_y=reconst_loss_y_x_y.sum(),
             kl_divergence_z_x=kl_divergence_z_x.sum(), kl_divergence_z_y=kl_divergence_z_y.sum(),
             kl_divergence_z_x_y=kl_divergence_z_x_y.sum(), kl_divergence_z_y_x=kl_divergence_z_y_x.sum(),
             z_distance_cycle_x=z_distance_cycle_x.sum(), z_distance_cycle_y=z_distance_cycle_y.sum(),
+            corr_cycle_x=corr_cycle_x.sum(), corr_cycle_y=corr_cycle_y.sum(),
         )
 
 
