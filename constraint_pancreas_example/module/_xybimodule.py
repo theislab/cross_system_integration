@@ -2,12 +2,13 @@ from typing import Optional, Union, Tuple
 
 import torch
 from scvi import REGISTRY_KEYS
-from scvi.module.base import BaseModuleClass, LossRecorder, auto_move_data
+from scvi.module.base import BaseModuleClass, auto_move_data
 from torch.distributions import Normal
 from torch.distributions import kl_divergence
 
 from constraint_pancreas_example.model._gene_maps import GeneMapInput
 from constraint_pancreas_example.nn._base_components import EncoderDecoder
+from constraint_pancreas_example.module._loss_recorder import LossRecorder
 
 torch.backends.cudnn.benchmark = True
 
@@ -432,6 +433,9 @@ class XYBiModule(BaseModuleClass):
         z_distance_cycle = z_distance_cycle_x + z_distance_cycle_y
 
         # Correlation between both decodings within cycle for orthologous genes
+        # TODO This could be also NegLL of one prediction against the other, although unsure how well
+        #  this would fit wrt normalisation used in both species (e.g. gene means may be different due to
+        #  different expression of otehr genes)
         # TODO Could be decayed towards the end after the matched cell types were primed
         #  to enable species-specific flexibility as not all orthologues are functionally related
         #   Alternatively: Could do weighted correlation where sum of all weights is constant but can be learned to be
@@ -467,14 +471,15 @@ class XYBiModule(BaseModuleClass):
         corr_cycle = corr_cycle_x + corr_cycle_y
 
         # Overall loss
-        loss = torch.mean(reconst_loss * reconstruction_weight + reconst_loss_cycle * reconstruction_cycle_weight +
-                          kl_divergence_z * kl_weight + kl_divergence_z_cycle * kl_cycle_weight +
-                          z_distance_paired * z_distance_paired_weight + z_distance_cycle * z_distance_cycle_weight +
-                          corr_cycle * corr_cycle_weight)
+        loss = (reconst_loss * reconstruction_weight + reconst_loss_cycle * reconstruction_cycle_weight +
+                kl_divergence_z * kl_weight + kl_divergence_z_cycle * kl_cycle_weight +
+                z_distance_paired * z_distance_paired_weight + z_distance_cycle * z_distance_cycle_weight +
+                corr_cycle * corr_cycle_weight)
 
-        # TODO maybe later adapt scvi/train/_trainingplans.py to keep both recon losses
+        # TODO Currently this does not account for a different number of samples per batch due to masking
         return LossRecorder(
-            loss=loss, reconstruction_loss=reconst_loss, kl_local=kl_divergence_z,
+            n_obs=loss.shape[0], loss=loss.mean(), loss_sum=loss.sum(),
+            reconstruction_loss=reconst_loss.sum(), kl_local=kl_divergence_z.sum(),
             reconstruction_loss_cycle=reconst_loss_cycle.sum(), kl_local_cycle=kl_divergence_z_cycle.sum(),
             z_distance_paired=z_distance_paired.sum(), z_distance_cycle=z_distance_cycle.sum(),
             corr_cycle=corr_cycle.sum(),

@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from typing import List, Optional, Union, Sequence, Dict
 import pandas as pd
 import numpy as np
@@ -9,21 +8,19 @@ from anndata import AnnData
 from scvi import REGISTRY_KEYS
 from scvi.data import AnnDataManager
 from scvi.data.fields import (
-    CategoricalJointObsField,
-    CategoricalObsField,
-    LayerField,
-    NumericalJointObsField, ObsmField, NumericalObsField,
+    LayerField, ObsmField, NumericalObsField,
 )
-from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin, VAEMixin
+from scvi.model.base import BaseModelClass, VAEMixin
 from scvi.utils import setup_anndata_dsp
 
+from constraint_pancreas_example.model._training import TrainingMixin
 from constraint_pancreas_example.module._xybimodule import XYBiModule
 from constraint_pancreas_example.model._gene_maps import GeneMapInput
 
 logger = logging.getLogger(__name__)
 
 
-class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
+class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
     """
     Skeleton for an scvi-tools model.
 
@@ -44,8 +41,6 @@ class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
     Examples
     --------
     """
-
-    regression_constraint = False
 
     def __init__(
             self,
@@ -229,6 +224,7 @@ class XYBiModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
         if adata.shape[1] != len(set(adata.var_names)):
             raise ValueError('Adata var_names are not unique')
 
+        # This also copied adata!
         adata = cls._setup_anndata_split(adata=adata, xy_key=xy_key)
 
         if orthology_key is not None:
