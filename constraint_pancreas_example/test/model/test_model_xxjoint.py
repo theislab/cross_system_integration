@@ -5,6 +5,7 @@ import pandas as pd
 from scipy import sparse
 
 from constraint_pancreas_example.model._xxjointmodel import XXJointModel
+from constraint_pancreas_example.train import WeightScaling
 
 
 def mock_adata():
@@ -30,12 +31,12 @@ def mock_adata():
         np.random.normal(2, 0.009, (200, 5)),
         np.random.normal(1, 0.0001, (200, 5)),
     ], axis=1))),
-        var=pd.DataFrame( index=[str(i) for i in range(95)]),  # Make var names str to enable orthologue mapping
+        var=pd.DataFrame(index=[str(i) for i in range(95)]),  # Make var names str to enable orthologue mapping
     )
     adata.obs['covariate_cont'] = list(range(200))
     adata.obs['covariate_cat'] = ['a'] * 50 + ['b'] * 50 + ['c'] * 50 + ['d'] * 50
     adata.obs['system'] = ['a'] * 100 + ['b'] * 100
-    adata.obs['class'] = ((['a'] * 25 + ['b'] * 25)*2)*2
+    adata.obs['class'] = ((['a'] * 25 + ['b'] * 25) * 2) * 2
     adata.var['input'] = [1] * 20 + [0] * 25 + [1] * 20 + [0] * 30
 
     return adata
@@ -54,7 +55,12 @@ def test_model():
         continuous_covariate_keys=['covariate_cont'],
     )
     model = XXJointModel(adata=adata_training)
-    model.train(max_epochs=2)
+    model.train(max_epochs=2,
+                plan_kwargs={'loss_weights': {
+                    'kl_weight': 2,
+                    'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
+                                                     point_start=0, point_end=2, update_on='step')
+                }})
 
     adata_translation = XXJointModel.setup_anndata(
         adata,

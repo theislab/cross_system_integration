@@ -273,9 +273,9 @@ class XXJointModule(BaseModuleClass):
             kl_cycle_weight: float = 1,
             reconstruction_weight: float = 1,
             reconstruction_cycle_weight: float = 1,
-            z_distance_paired_weight: float = 1,
+            #z_distance_paired_weight: float = 1,
             z_distance_cycle_weight: float = 1,
-            corr_cycle_weight: float = 1,
+            #corr_cycle_weight: float = 1,
 
     ):
         x = tensors[REGISTRY_KEYS.X_KEY]

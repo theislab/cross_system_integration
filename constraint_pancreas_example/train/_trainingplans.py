@@ -182,6 +182,8 @@ class TrainingPlanMixin(TrainingPlan):
     def compute_loss_weight(self, weight):
         if isinstance(weight, float):
             return weight
+        elif isinstance(weight, int):
+            return float(weight)
         elif isinstance(weight, WeightScaling):
             return weight.weight(epoch=self.current_epoch, step=self.global_step)
 
