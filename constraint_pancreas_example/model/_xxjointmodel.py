@@ -224,9 +224,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             covariate_orders = {}
 
         # System and class must not be in cov
-        if class_key in categorical_covariate_keys or class_key in continuous_covariate_keys \
-                or system_key in categorical_covariate_keys or system_key in continuous_covariate_keys:
-            raise ValueError('class_key or system_key should not be within covariate keys')
+        if categorical_covariate_keys is not None:
+            if class_key in categorical_covariate_keys or system_key in categorical_covariate_keys:
+                raise ValueError('class_key or system_key should not be within covariate keys')
+        if continuous_covariate_keys is not None:
+            if class_key in continuous_covariate_keys or system_key in continuous_covariate_keys:
+                raise ValueError('class_key or system_key should not be within covariate keys')
 
         covariates, orders_dict, cov_dict = prepare_metadata(
             meta_data=adata.obs,
