@@ -14,14 +14,14 @@ from scvi.model.base import BaseModelClass, VAEMixin
 from scvi.utils import setup_anndata_dsp
 
 from constraint_pancreas_example.model._training import TrainingMixin
-from constraint_pancreas_example.module._xybimodule import XYBiModule
-from constraint_pancreas_example.model._gene_maps import GeneMapXYBimodel
+from constraint_pancreas_example.module._xxjointmodule import XXJointModule
+from constraint_pancreas_example.model._gene_maps import GeneMapInput
 from constraint_pancreas_example.model._utils import prepare_metadata
 
 logger = logging.getLogger(__name__)
 
 
-class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
+class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     """
     Skeleton for an scvi-tools model.
 
@@ -48,17 +48,15 @@ class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
             adata: AnnData,
             **model_kwargs,
     ):
-        super(XYBiModel, self).__init__(adata)
+        super(XXJointModel, self).__init__(adata)
 
         # self.summary_stats provides information about anndata dimensions and other tensor info
-        self.module = XYBiModule(
-            n_input_x=(adata.var['input'].values[:adata.uns['xsplit']]).sum(),
-            n_input_y=(adata.var['input'].values[adata.uns['xsplit']:]).sum(),
-            n_output_x=adata.uns['xsplit'],
-            n_output_y=adata.shape[1] - adata.uns['xsplit'],
-            gene_map=GeneMapXYBimodel(adata=adata),
-            n_cov_x=adata.obsm['covariates_x'].shape[1],
-            n_cov_y=adata.obsm['covariates_y'].shape[1],
+        self.module = XXJointModule(
+            # TODO!!!!
+            n_input=adata.var['input'].sum(),
+            n_output=adata.shape[1],
+            gene_map=GeneMapInput(adata=adata),  # TODO!!!!
+            n_cov=adata.obsm['covariates'].shape[1] + adata.obsm['system'].shape[1],
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
@@ -100,32 +98,24 @@ class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
         tensors_fwd = self._make_data_loader(
             adata=adata, indices=indices, batch_size=batch_size, shuffle=False
         )
-        predicted_x = []
         predicted_y = []
         for tensors in tensors_fwd:
             # Inference
             inference_inputs = self.module._get_inference_input(tensors)
             generative_inputs = self.module._get_generative_input(
                 tensors=tensors, inference_outputs=self.module.inference(**inference_inputs))
-            generative_outputs = self.module.generative(**generative_inputs, pad_output=True, x_x=False, y_y=False)
+            generative_outputs = self.module.generative(**generative_inputs, x_x=False, x_y=True)
             if give_mean:
-                x = generative_outputs["y_x_m"]
-                y = generative_outputs["x_y_m"]
+                y = generative_outputs["y_m"]
             else:
-                x = generative_outputs["y_x"]
-                y = generative_outputs["x_y"]
-            predicted_x += [x]
+                y = generative_outputs["y"]
             predicted_y += [y]
 
-        predicted_x = torch.cat(predicted_x)
         predicted_y = torch.cat(predicted_y)
 
         if as_numpy:
-            predicted_x = predicted_x.cpu().numpy()
             predicted_y = predicted_y.cpu().numpy()
-            # TODO make sure that it is known which genes are at which feature index (gene names!) - since
-            #  setup adata mixes indices of features
-        return predicted_x, predicted_y
+        return predicted_y
 
     @torch.no_grad()
     def embed(
@@ -160,44 +150,34 @@ class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
         tensors_fwd = self._make_data_loader(
             adata=adata, indices=indices, batch_size=batch_size, shuffle=False
         )
-        predicted_x = []
-        predicted_y = []
+        predicted = []
         for tensors in tensors_fwd:
             # Inference
             inference_inputs = self.module._get_inference_input(tensors)
-            z = self.module.inference(**inference_inputs, pad_output=True)
+            z = self.module.inference(**inference_inputs)
             if give_mean:
-                predicted_x += [z['z_x_m']]
-                predicted_y += [z['z_y_m']]
+                predicted += [z['z_m']]
             else:
-                predicted_x += [z['z_x']]
-                predicted_y += [z['z_y']]
+                predicted += [z['z']]
 
-        predicted_x = torch.cat(predicted_x)
-        predicted_y = torch.cat(predicted_y)
+        predicted = torch.cat(predicted)
 
         if as_numpy:
-            predicted_x = predicted_x.cpu().numpy()
-            predicted_y = predicted_y.cpu().numpy()
-        return predicted_x, predicted_y
+            predicted = predicted.cpu().numpy()
+        return predicted
 
     @classmethod
     @setup_anndata_dsp.dedent
     def setup_anndata(
             cls,
             adata: AnnData,
-            xy_key,
-            train_x_key,
-            train_y_key,
-            orthology_key: Optional[str] = None,
+            system_key: str,
+            class_key: str,
             input_gene_key: Optional[str] = None,
             layer: Optional[str] = None,
-            categorical_covariate_keys_x: Optional[List[str]] = None,
-            continuous_covariate_keys_x: Optional[List[str]] = None,
-            categorical_covariate_keys_y: Optional[List[str]] = None,
-            continuous_covariate_keys_y: Optional[List[str]] = None,
+            categorical_covariate_keys: Optional[List[str]] = None,
+            continuous_covariate_keys: Optional[List[str]] = None,
             covariate_orders: Optional[Dict] = None,
-            fill_covariates: bool = True,
             **kwargs,
     ) -> Optional[AnnData]:
         """
@@ -215,24 +195,22 @@ class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
         -------
         %(returns)s
         """
-        # Make sure that train x/y key is of correct type
-        if len(set(adata.obs[train_x_key].unique()) - {0, 1}) > 0 or \
-                len(set(adata.obs[train_y_key].unique()) - {0, 1}) > 0:
-            raise ValueError('Obs fields train_x_key and train_y_key can contain only 0 and 1')
 
         # Make sure var names are unique
         if adata.shape[1] != len(set(adata.var_names)):
             raise ValueError('Adata var_names are not unique')
 
-        # This also copied adata!
-        adata = cls._setup_anndata_split(adata=adata, xy_key=xy_key)
+        adata = adata.copy()
 
-        if orthology_key is not None:
-            if set(adata.uns[orthology_key].columns) != {'x', 'y'}:
-                raise ValueError('Orthology DataFrame must have columns x and y')
-            adata.uns['orthology'] = adata.uns[orthology_key]
-        else:
-            adata.uns['orthology'] = pd.DataFrame(columns=['x', 'y'])
+        # Make system to categorical for cov
+        if adata.obs[system_key].nunique() != 2:
+            raise ValueError('There must be exactly two systems')
+        system_order = sorted(adata.obs[system_key].unique())
+        systems_dict = dict(zip(system_order, [0.0, 1.0]))
+        adata.uns['system_order'] = system_order
+        adata.obsm['system'] = adata.obs[system_key].map(systems_dict).to_frame()
+
+        adata.obs['class'] = adata.obs[class_key]
 
         # Which genes to use as input
         if input_gene_key is None:
@@ -245,47 +223,28 @@ class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
         if covariate_orders is None:
             covariate_orders = {}
 
-        covariates_x, orders_dict_x, cov_dict_x = prepare_metadata(
+        # System and class must not be in cov
+        if class_key in categorical_covariate_keys or class_key in continuous_covariate_keys \
+                or system_key in categorical_covariate_keys or system_key in continuous_covariate_keys:
+            raise ValueError('class_key or system_key should not be within covariate keys')
+
+        covariates, orders_dict, cov_dict = prepare_metadata(
             meta_data=adata.obs,
-            cov_cat_keys=categorical_covariate_keys_x,
-            cov_cont_keys=continuous_covariate_keys_x,
+            cov_cat_keys=categorical_covariate_keys,
+            cov_cont_keys=continuous_covariate_keys,
             orders=covariate_orders
         )
 
-        covariates_y, orders_dict_y, cov_dict_y = prepare_metadata(
-            meta_data=adata.obs,
-            cov_cat_keys=categorical_covariate_keys_y,
-            cov_cont_keys=continuous_covariate_keys_y,
-            orders=covariate_orders
-        )
-
-        adata.uns['covariate_orders'] = {**orders_dict_x, **orders_dict_y}
-        adata.uns['covariates'] = {'x': cov_dict_x, 'y': cov_dict_y}
-        adata.obsm['covariates_x'] = covariates_x
-        adata.obsm['covariates_y'] = covariates_y
-
-        # Set cov of species cells not used for training to cov of another cell from that species
-        # Will be used later if predicting the other species (which is unknown)
-        def fill_cov(train_key, cov_key):
-            train = adata.obs[train_key].astype('bool').values.ravel()
-            cov_samples = adata.obsm[cov_key].values[train, :]
-            idx = np.random.randint(cov_samples.shape[0], size=(~train).sum())
-            cov_samples = cov_samples[idx, :]
-            adata.obsm[cov_key].loc[adata.obs_names[~train], :] = cov_samples
-            # TODO ensure that at leas some samples from both x and y are used for training
-
-        if fill_covariates:
-            fill_cov(train_key=train_x_key, cov_key='covariates_x')
-            fill_cov(train_key=train_y_key, cov_key='covariates_y')
+        adata.uns['covariate_orders'] = orders_dict
+        adata.uns['covariates_dict'] = cov_dict
+        adata.obsm['covariates'] = covariates
 
         # Anndata setup
         setup_method_args = cls._get_setup_method_args(**locals())
         anndata_fields = [
             LayerField(REGISTRY_KEYS.X_KEY, layer, is_count_data=False),
-            ObsmField('covariates_x', 'covariates_x'),
-            ObsmField('covariates_y', 'covariates_y'),
-            NumericalObsField('train_x', train_x_key),
-            NumericalObsField('train_y', train_y_key),
+            ObsmField('covariates', 'covariates'),
+            ObsmField('system', 'system'),
         ]
         adata_manager = AnnDataManager(
             fields=anndata_fields, setup_method_args=setup_method_args
@@ -293,15 +252,4 @@ class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
         adata_manager.register_fields(adata, **kwargs)
         cls.register_manager(adata_manager)
 
-        return adata
-
-    @classmethod
-    def _setup_anndata_split(cls, adata, xy_key):
-        # Order genes to be first x and then y
-        if set(adata.var[xy_key].unique()) != {'x', 'y'}:
-            raise ValueError('values in xy_key column must be x and y')
-        adata = adata[:, pd.Series(pd.Categorical(values=adata.var[xy_key], categories=['x', 'y'], ordered=True
-                                                  ), index=adata.var_names).sort_values().index].copy()
-        adata.var['xy'] = adata.var[xy_key]
-        adata.uns['xsplit'] = adata.var[xy_key].tolist().index('y')
         return adata

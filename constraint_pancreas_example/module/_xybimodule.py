@@ -6,7 +6,7 @@ from scvi.module.base import BaseModuleClass, auto_move_data
 from torch.distributions import Normal
 from torch.distributions import kl_divergence
 
-from constraint_pancreas_example.model._gene_maps import GeneMapInput
+from constraint_pancreas_example.model._gene_maps import GeneMapXYBimodel
 from constraint_pancreas_example.nn._base_components import EncoderDecoder
 from constraint_pancreas_example.module._loss_recorder import LossRecorder
 
@@ -48,7 +48,7 @@ class XYBiModule(BaseModuleClass):
             n_input_y: int,
             n_output_x: int,
             n_output_y: int,
-            gene_map: GeneMapInput,
+            gene_map: GeneMapXYBimodel,
             n_cov_x: int,
             n_cov_y: int,
             n_latent: int = 15,

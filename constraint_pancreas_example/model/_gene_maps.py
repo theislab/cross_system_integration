@@ -4,40 +4,36 @@ import torch as nn
 from cross_species_prediction.constants import INT_NN, FLOAT_NN
 
 
-class GeneMap():
-    ORTHOLOGUES = 'orthologues'
-    SPECIES_SPECIFIC = 'species_specific'
-    device = None
-
-    """
-    Maps of genes across species
-    """
+class GeneMapSplit:
 
     def __init__(self, adata):
         self._build_xsplit(adata=adata)
-        self._setup(adata=adata)
 
     def _build_xsplit(self, adata):
         self._xsplit = adata.uns['xsplit']
-
-    def _setup(self, adata):
-        pass
 
     @property
     def xsplit(self):
         return self._xsplit
 
 
-class GeneMapInput(GeneMap):
-    def __init__(self, adata):
-        super(GeneMapInput, self).__init__(adata)
+class GeneMapInput:
 
-    def _setup(self, adata):
+    def __init__(self, adata):
         self._build_input_filter(adata=adata)
-        self._build_orthology_output(adata=adata)
 
     def _build_input_filter(self, adata):
         self._input_filter = adata.var['input'].values.ravel()
+
+    def input_filter(self, device):
+        return nn.tensor(self._input_filter, device=device, dtype=INT_NN)
+
+
+class GeneMapXYBimodel(GeneMapSplit, GeneMapInput):
+    def __init__(self, adata):
+        GeneMapSplit.__init__(self, adata=adata)
+        GeneMapInput.__init__(self, adata=adata)
+        self._build_orthology_output(adata=adata)
 
     def _build_orthology_output(self, adata):
         var_names_x = adata.var_names[:self.xsplit].values
@@ -56,15 +52,13 @@ class GeneMapInput(GeneMap):
         return nn.tensor(self._orthologs_output[modality], device=device, dtype=INT_NN)
 
 
-class GeneMapRegression(GeneMap):
+class GeneMapRegression(GeneMapSplit):
     """
     Maps of genes across species
     """
 
     def __init__(self, adata):
-        super(GeneMapRegression, self).__init__(adata)
-
-    def _setup(self, adata):
+        GeneMapSplit.__init__(self,adata=adata)
         self._build_constraints(adata=adata)
 
     def _build_constraints(self, adata):
@@ -83,15 +77,13 @@ class GeneMapRegression(GeneMap):
                 }
 
 
-class GeneMapEmbedding(GeneMap):
+class GeneMapEmbedding(GeneMapSplit):
     """
     Maps of genes across species
     """
 
     def __init__(self, adata):
-        super(GeneMapEmbedding, self).__init__(adata)
-
-    def _setup(self, adata):
+        GeneMapSplit.__init__(self,adata=adata)
         self._build_constraints(adata=adata)
 
     def _build_constraints(self, adata):
