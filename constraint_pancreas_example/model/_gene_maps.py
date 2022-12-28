@@ -4,6 +4,18 @@ import torch as nn
 from cross_species_prediction.constants import INT_NN, FLOAT_NN
 
 
+class GeneMapConstraint:
+
+    def __init__(self, adata):
+        self._build_constraints(adata=adata)
+
+    def _build_constraints(self, adata):
+        pass
+
+    def constraints(self, device):
+        pass
+
+
 class GeneMapSplit:
 
     def __init__(self, adata):
@@ -52,13 +64,14 @@ class GeneMapXYBimodel(GeneMapSplit, GeneMapInput):
         return nn.tensor(self._orthologs_output[modality], device=device, dtype=INT_NN)
 
 
-class GeneMapRegression(GeneMapSplit):
+class GeneMapRegression(GeneMapSplit, GeneMapConstraint):
     """
     Maps of genes across species
     """
 
     def __init__(self, adata):
         GeneMapSplit.__init__(self,adata=adata)
+        GeneMapConstraint.__init__(self, adata=adata)
         self._build_constraints(adata=adata)
 
     def _build_constraints(self, adata):
@@ -77,13 +90,14 @@ class GeneMapRegression(GeneMapSplit):
                 }
 
 
-class GeneMapEmbedding(GeneMapSplit):
+class GeneMapEmbedding(GeneMapSplit, GeneMapConstraint):
     """
     Maps of genes across species
     """
 
     def __init__(self, adata):
         GeneMapSplit.__init__(self,adata=adata)
+        GeneMapConstraint.__init__(self, adata=adata)
         self._build_constraints(adata=adata)
 
     def _build_constraints(self, adata):

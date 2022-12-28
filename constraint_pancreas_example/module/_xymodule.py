@@ -10,7 +10,7 @@ from scvi.nn import DecoderSCVI, Encoder, one_hot
 from torch.distributions import Normal
 from torch.distributions import kl_divergence as kl
 
-from constraint_pancreas_example.model._gene_maps import GeneMap
+from constraint_pancreas_example.model._gene_maps import GeneMapConstraint
 from constraint_pancreas_example.nn._base_components import EncoderDecoder
 
 torch.backends.cudnn.benchmark = True
@@ -49,7 +49,7 @@ class XYModule(BaseModuleClass):
             self,
             n_input: int,
             n_output: int,
-            gene_map: GeneMap,
+            gene_map: GeneMapConstraint,
             n_hidden: int = 256,
             n_layers: int = 3,
             dropout_rate: float = 0.1,

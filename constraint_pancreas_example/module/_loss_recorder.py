@@ -1,9 +1,3 @@
-from typing import Optional, Union
-
-import torch
-from scvi._types import LossRecord
-import jax.numpy as jnp
-
 
 class LossRecorder:
     """
