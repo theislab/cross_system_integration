@@ -143,7 +143,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
                 cov_cat_keys=adata.uns['covariates_dict']['categorical'],
                 cov_cont_keys=adata.uns['covariates_dict']['continuous'],
                 orders=adata.uns['covariate_orders'])
-            cov = torch.Tensor(cov.values.astype(np.float32), device=self.device).expand(batch_size, -1)
+            cov = torch.tensor(cov.values.astype(np.float32), device=self.device).expand(batch_size, -1)
         return cov
 
     @torch.no_grad()
