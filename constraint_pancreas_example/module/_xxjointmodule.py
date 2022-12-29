@@ -100,10 +100,16 @@ class XXJointModule(BaseModuleClass):
         input_dict = dict(expr=expr, cov=cov, system=system)
         return input_dict
 
-    def _get_generative_input(self, tensors, inference_outputs, **kwargs):
-        """Parse the dictionary to get appropriate args"""
+    def _get_generative_input(self, tensors, inference_outputs, cov_replace: torch.Tensor = None, **kwargs):
+        """
+        Parse the dictionary to get appropriate args
+        :param cov_replace: Replace cov from tensors with this covariate vector
+        """
         z = inference_outputs["z"]
-        cov = {'x': tensors['covariates'], 'y': self._mock_cov(tensors['covariates'])}
+        if cov_replace is None:
+            cov = {'x': tensors['covariates'], 'y': self._mock_cov(tensors['covariates'])}
+        else:
+            cov = {'x': cov_replace, 'y': cov_replace}
         system = {'x': tensors['system'], 'y': self._negate_zero_one(tensors['system'])}
 
         input_dict = dict(z=z, cov=cov, system=system)
@@ -273,9 +279,9 @@ class XXJointModule(BaseModuleClass):
             kl_cycle_weight: float = 1,
             reconstruction_weight: float = 1,
             reconstruction_cycle_weight: float = 1,
-            #z_distance_paired_weight: float = 1,
+            # z_distance_paired_weight: float = 1,
             z_distance_cycle_weight: float = 1,
-            #corr_cycle_weight: float = 1,
+            # corr_cycle_weight: float = 1,
 
     ):
         x = tensors[REGISTRY_KEYS.X_KEY]
@@ -324,7 +330,7 @@ class XXJointModule(BaseModuleClass):
         # Overall loss
         loss = (reconst_loss * reconstruction_weight + reconst_loss_cyc * reconstruction_cycle_weight +
                 kl_divergence_z * kl_weight + kl_divergence_z_cyc * kl_cycle_weight +
-                z_distance_cyc * z_distance_cycle_weight )
+                z_distance_cyc * z_distance_cycle_weight)
 
         # TODO Currently this does not account for a different number of samples per batch due to masking
         return LossRecorder(

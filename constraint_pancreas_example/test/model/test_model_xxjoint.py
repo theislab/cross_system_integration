@@ -62,28 +62,23 @@ def test_model():
                                                      point_start=0, point_end=2, update_on='step')
                 }})
 
-    adata_translation = XXJointModel.setup_anndata(
-        adata,
-        input_gene_key='input',
-        system_key='system',
-        class_key='class',
-        categorical_covariate_keys=['covariate_cat'],
-        continuous_covariate_keys=['covariate_cont'],
-    )
+    # TODO test registration of new adata
+
     embedding = model.embed(
-        adata=adata_translation,
+        adata=adata_training,
         indices=None,
         give_mean=True,
         batch_size=None,
         as_numpy=True
     )
-    assert embedding.shape[0] == adata_translation.shape[0]
+    assert embedding.shape[0] == adata_training.shape[0]
 
     translated_y = model.translate(
-        adata=adata_translation,
+        adata=adata_training,
         indices=None,
+        covariates=pd.Series({'covariate_cat':'a','covariate_cont':1}),
         give_mean=True,
         batch_size=None,
         as_numpy=True
     )
-    assert translated_y.shape[0] == adata_translation.shape[0]
+    assert translated_y.shape[0] == adata_training.shape[0]

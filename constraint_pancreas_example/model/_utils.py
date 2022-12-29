@@ -31,6 +31,10 @@ def prepare_metadata(meta_data: pd.DataFrame,
         """
         if categories is None:
             categories = pd.Categorical(values).categories.values
+        else:
+            missing = set(values.unique()) - set(categories)
+            if len(missing) > 0:
+                raise ValueError(f'Some values of {values.name} are not in the specified categories order: {missing}')
         values = pd.Series(pd.Categorical(values=values, categories=categories, ordered=True),
                            index=values.index, name=values.name)
         dummies = pd.get_dummies(values, prefix=values.name)

@@ -69,8 +69,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     def translate(
             self,
             adata: AnnData,
+            switch_system: bool = True,
             indices: Optional[Sequence[int]] = None,
             give_mean: bool = True,
+            covariates: Optional[pd.Series] = None,
             batch_size: Optional[int] = None,
             as_numpy: bool = True
     ) -> (Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]):
@@ -79,11 +81,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         predict expression of data as if it had given metadata.
         expression, metadata (from adata) -> latent
         latent, new metadata -> translated expression
-        :param prediction_metadata: Metadata for which samples should be predicted
-        :param species_key: Species col name in prediction_metadata
         :param adata: Input adata based on which latent representation is obtained.
+        :param switch_system: Should in translation system be switched or not
         :param indices:
         :param give_mean: In latent and expression prediction use mean rather than samples
+        :param covariates: Covariates to be used for data generation. Can be None (uses all-0 covariates) or a series
+        with covariate metadata (same for all predicted samples)
         :param batch_size:
         :param as_numpy:  Move output tensor to cpu and convert to numpy
         :return:
@@ -98,24 +101,50 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         tensors_fwd = self._make_data_loader(
             adata=adata, indices=indices, batch_size=batch_size, shuffle=False
         )
-        predicted_y = []
+        predicted = []
+        x_x, x_y, pred_key = (False, True, 'y') if switch_system else (True, False, 'x')
+        # Specify cov to use, determine cov size below as here not all batches are of equal size since we predict
+        # each sample 1x
+        cov_replace = self._make_covariates(adata=adata, batch_size=1, cov_template=covariates)
         for tensors in tensors_fwd:
             # Inference
             inference_inputs = self.module._get_inference_input(tensors)
             generative_inputs = self.module._get_generative_input(
-                tensors=tensors, inference_outputs=self.module.inference(**inference_inputs))
-            generative_outputs = self.module.generative(**generative_inputs, x_x=False, x_y=True)
+                tensors=tensors,
+                inference_outputs=self.module.inference(**inference_inputs),
+                cov_replace=cov_replace.expand(tensors['covariates'].shape[0], -1))
+            generative_outputs = self.module.generative(**generative_inputs, x_x=x_x, x_y=x_y)
             if give_mean:
-                y = generative_outputs["y_m"]
+                pred_sub = generative_outputs[pred_key + "_m"]
             else:
-                y = generative_outputs["y"]
-            predicted_y += [y]
+                pred_sub = generative_outputs[pred_key]
+            predicted += [pred_sub]
 
-        predicted_y = torch.cat(predicted_y)
+        predicted = torch.cat(predicted)
 
         if as_numpy:
-            predicted_y = predicted_y.cpu().numpy()
-        return predicted_y
+            predicted = predicted.cpu().numpy()
+        return predicted
+
+    def _make_covariates(self, adata, batch_size, cov_template: pd.Series = None) -> torch.Tensor:
+        """
+        Make covariate tensor corresponding to covariate features of an already registered adata
+        Base covariates on a metadata series or empty (zeros).
+        :param adata: Adata (already registered/validated) to which covariates should correspond
+        :param batch_size: Number of samples, all will have same values
+        :param cov_template: Series with metadata for covariates, if None creates all-0 covariates
+        :return: Covariates tensor corresponding to covariates features in adata
+        """
+        if cov_template is None:
+            cov = torch.zeros((batch_size, adata.obsm['covariates'].shape[1]), device=self.device)
+        else:
+            cov, _, _ = prepare_metadata(
+                meta_data=cov_template.to_frame().T,
+                cov_cat_keys=adata.uns['covariates_dict']['categorical'],
+                cov_cont_keys=adata.uns['covariates_dict']['continuous'],
+                orders=adata.uns['covariate_orders'])
+            cov = torch.Tensor(cov.values.astype(np.float32), device=self.device).expand(batch_size, -1)
+        return cov
 
     @torch.no_grad()
     def embed(
