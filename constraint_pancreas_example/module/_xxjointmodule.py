@@ -1,4 +1,6 @@
+from collections import defaultdict
 from typing import Optional, Union, Tuple, Dict
+import numpy as np
 
 import torch
 from scvi import REGISTRY_KEYS
@@ -48,6 +50,7 @@ class XXJointModule(BaseModuleClass):
             n_output: int,
             gene_map: GeneMapInput,
             n_cov: int,
+            mixup_alpha: Optional[float] = None,
             n_latent: int = 15,
             n_hidden: int = 256,
             n_layers: int = 2,
@@ -57,6 +60,7 @@ class XXJointModule(BaseModuleClass):
         super().__init__()
 
         self.gene_map = gene_map
+        self.mixup_alpha = mixup_alpha
 
         self.encoder = EncoderDecoder(
             n_input=n_input,
@@ -120,6 +124,17 @@ class XXJointModule(BaseModuleClass):
         z = inference_cycle_outputs["z"]
         cov = {'x': self._mock_cov(tensors['covariates']), 'y': tensors['covariates']}
         system = {'x': self._negate_zero_one(tensors['system']), 'y': tensors['system']}
+
+        input_dict = dict(z=z, cov=cov, system=system)
+        return input_dict
+
+    def _get_generative_mixup_input(self, tensors, inference_outputs, mixup_setting):
+        z = self.mixup_data(x=inference_outputs["z"], **mixup_setting)
+        cov = {'x': self.mixup_data(x=tensors['covariates'], **mixup_setting),
+               # This wouldn't really need mixup as currently use all-0 cov, but added for safety if mock covar change
+               'y': self.mixup_data(x=self._mock_cov(tensors['covariates']), **mixup_setting)}
+        system = {'x': self.mixup_data(x=tensors['system'], **mixup_setting),
+                  'y': self.mixup_data(x=self._negate_zero_one(tensors['system']), **mixup_setting)}
 
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
@@ -217,6 +232,7 @@ class XXJointModule(BaseModuleClass):
             another return value.
         """
         """Core of the forward call shared by PyTorch- and Jax-based modules."""
+
         inference_kwargs = _get_dict_if_none(inference_kwargs)
         generative_kwargs = _get_dict_if_none(generative_kwargs)
         loss_kwargs = _get_dict_if_none(loss_kwargs)
@@ -233,6 +249,16 @@ class XXJointModule(BaseModuleClass):
             tensors, inference_outputs, **get_generative_input_kwargs
         )
         generative_outputs = self.generative(**generative_inputs, x_x=True, x_y=True, **generative_kwargs)
+
+        # Generative mixup
+        if self.mixup_alpha is not None:
+            mixup_setting = self.mixup_setting(
+                alpha=self.mixup_alpha, device=self.device, within_group=tensors['system'])
+            generative_mixup_inputs = self._get_generative_mixup_input(
+                tensors=tensors, inference_outputs=inference_outputs, mixup_setting=mixup_setting)
+            generative_mixup_outputs = self.generative(
+                **generative_mixup_inputs, x_x=True, x_y=False, **generative_kwargs)
+
         # Inference cycle
         inference_cycle_inputs = self._get_inference_cycle_input(
             tensors=tensors, generative_outputs=generative_outputs, **get_inference_input_kwargs)
@@ -242,11 +268,17 @@ class XXJointModule(BaseModuleClass):
             tensors=tensors, inference_cycle_outputs=inference_cycle_outputs, **get_generative_input_kwargs)
         generative_cycle_outputs = self.generative(**generative_cycle_inputs, x_x=False, x_y=True, **generative_kwargs)
 
+        # Combine outputs of all forward passes
         inference_outputs_merged = dict(**inference_outputs)
         inference_outputs_merged.update(
             **{k.replace('z_', 'z_cyc_'): v for k, v in inference_cycle_outputs.items()})
         generative_outputs_merged = dict(**generative_outputs)
+        if self.mixup_alpha is not None:
+            generative_outputs_merged.update(
+                **{k.replace('x_', 'x_mixup_'): v for k, v in generative_mixup_outputs.items()})
+            generative_outputs_merged['x_true_mixup'] = self.mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
         generative_outputs_merged.update(
+            # y_cyc won't be present as we don't predict x in the cycle
             **{k.replace('x_', 'y_cyc_').replace('y_', 'x_cyc_'): v for k, v in generative_cycle_outputs.items()})
 
         if compute_loss:
@@ -259,6 +291,63 @@ class XXJointModule(BaseModuleClass):
             return inference_outputs_merged, generative_outputs_merged, losses
         else:
             return inference_outputs_merged, generative_outputs_merged
+
+    @staticmethod
+    def mixup_setting(alpha: float, device, n: int = None, within_group: torch.Tensor = None):
+        """
+        Prepare mixup settings: indices and proportions for combining
+        :param alpha: Alpha for beta distn from which mixup ratios are sampled.
+        If ==0 gets uniform, if <1 concave, if >1 convex. Symmetric as use same param 9alpha) for both alpha and beta.
+        :param device: Device for output tensors
+        :param n: Number of samples between which mixup should be created
+        :param within_group: Tensor (shape=n*1) specifying groups within which mixup should be performed.
+        If this is specified the param n is ignored and n of samples is determined based on within_group.
+        :return: Indices and ratios for mixup pairs. Number of mixup samples equals the number of input samples.
+        """
+
+        # Params for performing mixup within a sample group or on all samples
+        if within_group is None and n is None:
+            raise ValueError('Either within_group or n must be specified')
+        if within_group is None:
+            within_group = np.ones(n)
+        else:
+            within_group = within_group.ravel().detach().numpy()
+
+        # Indices associated with each group within which mixup should be preformed
+        group_idx = defaultdict(list)
+        for idx, group in enumerate(within_group):
+            group_idx[group].append(idx)
+
+        # Generate mixup setting within every group
+        idx_i = []  # 1-dim
+        idx_j = []
+        ratio_i = []  # 2-dim
+        ratio_j = []
+        for group, idxs in group_idx.items():
+            ratio_i_sub = np.random.beta(alpha, alpha, size=(len(idxs), 1)).astype(np.float32)
+            ratio_j_sub = 1 - ratio_i_sub
+            idxs_shuffled = np.random.permutation(idxs)
+            for lis, el in [(idx_i, idxs), (idx_j, idxs_shuffled), (ratio_i, ratio_i_sub), (ratio_j, ratio_j_sub)]:
+                lis.append(el)
+
+        out = {}
+        for name, lis in [('idx_i', idx_i), ('idx_j', idx_j), ('ratio_i', ratio_i), ('ratio_j', ratio_j)]:
+            out[name] = torch.tensor(np.concatenate(lis), device=device)
+
+        return out
+
+    @staticmethod
+    def mixup_data(x, idx_i, idx_j, ratio_i, ratio_j):
+        """
+        Perform mixup between samples of given tensor
+        :param x: Tensor whose samples to mixup
+        :param idx_i: Indices of the first sample in mixup pair
+        :param idx_j: Indices of the second sample in mixup pair
+        :param ratio_i: Proportion of the first sample in mixup pair
+        :param ratio_j: Proportion of the second sample in mixup pair
+        :return: Mixed up tensor
+        """
+        return x[idx_i] * ratio_i + x[idx_j] * ratio_j
 
     @staticmethod
     def sample_expression(x_m, x_v):
@@ -278,13 +367,13 @@ class XXJointModule(BaseModuleClass):
             kl_weight: float = 1.0,
             kl_cycle_weight: float = 1,
             reconstruction_weight: float = 1,
+            reconstruction_mixup_weight: float = 1,
             reconstruction_cycle_weight: float = 1,
-            # z_distance_paired_weight: float = 1,
             z_distance_cycle_weight: float = 1,
-            # corr_cycle_weight: float = 1,
+            translation_corr_weight: float = 1,
 
     ):
-        x = tensors[REGISTRY_KEYS.X_KEY]
+        x_true = tensors[REGISTRY_KEYS.X_KEY]
 
         # Reconstruction loss
 
@@ -299,11 +388,20 @@ class XXJointModule(BaseModuleClass):
             return torch.nn.GaussianNLLLoss(reduction='none')(x_m, x, x_v).sum(dim=1)
 
         # Reconstruction loss
-        reconst_loss_x = reconst_loss_part(x_m=generative_outputs['x_m'], x=x, x_v=generative_outputs['x_v'])
+        reconst_loss_x = reconst_loss_part(x_m=generative_outputs['x_m'], x=x_true, x_v=generative_outputs['x_v'])
         reconst_loss = reconst_loss_x
 
+        # Reconstruction loss in mixup
+        if self.mixup_alpha is not None:
+            reconst_loss_x_mixup = reconst_loss_part(x_m=generative_outputs['x_mixup_m'],
+                                                     x=generative_outputs['x_true_mixup'],
+                                                     x_v=generative_outputs['x_mixup_v'])
+            reconst_loss_mixup = reconst_loss_x_mixup
+        else:
+            reconst_loss_mixup = torch.zeros_like(reconst_loss)
+
         # Reconstruction loss in cycle
-        reconst_loss_x_cyc = reconst_loss_part(x_m=generative_outputs['x_cyc_m'], x=x,
+        reconst_loss_x_cyc = reconst_loss_part(x_m=generative_outputs['x_cyc_m'], x=x_true,
                                                x_v=generative_outputs['x_cyc_v'])
         reconst_loss_cyc = reconst_loss_x_cyc
 
@@ -325,19 +423,45 @@ class XXJointModule(BaseModuleClass):
         #  z_x and z_x_y have more similar embeddings and z_y and z_y_x as well)
         z_distance_cyc = z_loss(z_x=inference_outputs['z_m'], z_y=inference_outputs['z_cyc_m'])
 
-        # Correlation between both decodings within cycle - TODO
+        # Correlation between both decoded expression reconstructions
+        # TODO This could be also NegLL of one prediction against the other, although unsure how well
+        #  this would fit wrt normalisation used in both species (e.g. gene means may be different due to
+        #  different expression of otehr genes)
+        # TODO Could be decayed towards the end after the matched cell types were primed
+        #  to enable species-specific flexibility as not all orthologues are functionally related
+        #   Alternatively: Could do weighted correlation where sum of all weights is constant but can be learned to be
+        #   distributed differently across genes
+        def expr_correlation_loss(x, y):
+            def center(x):
+                return x - x.mean(dim=1, keepdim=True)
+
+            return 1 - torch.nn.CosineSimilarity()(center(x), center(y))
+
+        transl_corr = expr_correlation_loss(
+            x=generative_outputs['y_m'],
+            y=generative_outputs['x_m'])
 
         # Overall loss
-        loss = (reconst_loss * reconstruction_weight + reconst_loss_cyc * reconstruction_cycle_weight +
-                kl_divergence_z * kl_weight + kl_divergence_z_cyc * kl_cycle_weight +
-                z_distance_cyc * z_distance_cycle_weight)
+        loss = (reconst_loss * reconstruction_weight +
+                reconst_loss_mixup * reconstruction_mixup_weight +
+                reconst_loss_cyc * reconstruction_cycle_weight +
+                kl_divergence_z * kl_weight +
+                kl_divergence_z_cyc * kl_cycle_weight +
+                z_distance_cyc * z_distance_cycle_weight +
+                transl_corr * translation_corr_weight)
 
         # TODO Currently this does not account for a different number of samples per batch due to masking
         return LossRecorder(
-            n_obs=loss.shape[0], loss=loss.mean(), loss_sum=loss.sum(),
-            reconstruction_loss=reconst_loss.sum(), kl_local=kl_divergence_z.sum(),
-            reconstruction_loss_cycle=reconst_loss_cyc.sum(), kl_local_cycle=kl_divergence_z_cyc.sum(),
+            n_obs=loss.shape[0],
+            loss=loss.mean(),
+            loss_sum=loss.sum(),
+            reconstruction_loss=reconst_loss.sum(),
+            kl_local=kl_divergence_z.sum(),
+            reconstruction_loss_mixup=reconst_loss_mixup.sum(),
+            reconstruction_loss_cycle=reconst_loss_cyc.sum(),
+            kl_local_cycle=kl_divergence_z_cyc.sum(),
             z_distance_cycle=z_distance_cyc.sum(),
+            translation_corr=transl_corr.sum(),
         )
 
 

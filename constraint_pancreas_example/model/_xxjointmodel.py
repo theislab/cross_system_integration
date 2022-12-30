@@ -8,7 +8,7 @@ from anndata import AnnData
 from scvi import REGISTRY_KEYS
 from scvi.data import AnnDataManager
 from scvi.data.fields import (
-    LayerField, ObsmField, NumericalObsField,
+    LayerField, ObsmField,
 )
 from scvi.model.base import BaseModelClass, VAEMixin
 from scvi.utils import setup_anndata_dsp
@@ -44,6 +44,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     def __init__(
             self,
             adata: AnnData,
+            mixup_alpha: Optional[float] = None,
             **model_kwargs,
     ):
         super(XXJointModel, self).__init__(adata)
@@ -55,6 +56,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             n_output=adata.shape[1],
             gene_map=GeneMapInput(adata=adata),  # TODO!!!!
             n_cov=adata.obsm['covariates'].shape[1] + adata.obsm['system'].shape[1],
+            mixup_alpha=mixup_alpha,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
