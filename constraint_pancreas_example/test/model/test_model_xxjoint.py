@@ -76,7 +76,7 @@ def test_model():
     translated_y = model.translate(
         adata=adata_training,
         indices=None,
-        covariates=pd.Series({'covariate_cat':'a','covariate_cont':1}),
+        covariates=pd.Series({'covariate_cat': 'a', 'covariate_cont': 1}),
         give_mean=True,
         batch_size=None,
         as_numpy=True

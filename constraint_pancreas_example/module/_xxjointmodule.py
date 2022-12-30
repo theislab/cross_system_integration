@@ -311,7 +311,7 @@ class XXJointModule(BaseModuleClass):
         if within_group is None:
             within_group = np.ones(n)
         else:
-            within_group = within_group.ravel().detach().numpy()
+            within_group = within_group.ravel().tolist()
 
         # Indices associated with each group within which mixup should be preformed
         group_idx = defaultdict(list)
