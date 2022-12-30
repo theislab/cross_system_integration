@@ -23,9 +23,8 @@ logger = logging.getLogger(__name__)
 
 class XYBiModel(VAEMixin, TrainingMixin, BaseModelClass):
     """
-    Skeleton for an scvi-tools model.
-
-    Please use this skeleton to create new models.
+    Architecture with two encoders and decoders for two different systems with shared latent space
+    (not yet working to be shared)
 
     Parameters
     ----------

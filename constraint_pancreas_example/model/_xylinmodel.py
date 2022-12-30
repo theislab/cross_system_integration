@@ -24,9 +24,7 @@ logger = logging.getLogger(__name__)
 
 class XYLinModel(XYModel):
     """
-    Skeleton for an scvi-tools model.
-
-    Please use this skeleton to create new models.
+    Single encoder and two decoders with one encoder having linear reconstruction based on gene embedding
 
     Parameters
     ----------

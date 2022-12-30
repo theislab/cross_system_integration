@@ -24,9 +24,7 @@ logger = logging.getLogger(__name__)
 
 class XYModel(VAEMixin, UnsupervisedTrainingMixin, BaseModelClass):
     """
-    Skeleton for an scvi-tools model.
-
-    Please use this skeleton to create new models.
+    Predict from one (encoder) to another system (decoder). A loss based on known gene relationships is added
 
     Parameters
     ----------

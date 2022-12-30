@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 
 class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     """
-    Skeleton for an scvi-tools model.
-
-    Please use this skeleton to create new models.
+    Architecture with a single encoder and decoder for two systems
 
     Parameters
     ----------
