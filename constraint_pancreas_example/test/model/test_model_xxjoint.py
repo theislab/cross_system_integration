@@ -54,13 +54,17 @@ def test_model():
         categorical_covariate_keys=['covariate_cat'],
         continuous_covariate_keys=['covariate_cont'],
     )
-    model = XXJointModel(adata=adata_training, mixup_alpha=0.4)
+
+    # Test both options with shared or per-system decoder
+    model = XXJointModel(adata=adata_training, mixup_alpha=None, system_decoders=False)
     model.train(max_epochs=2,
                 plan_kwargs={'loss_weights': {
                     'kl_weight': 2,
                     'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
                                                      point_start=0, point_end=2, update_on='step')
                 }})
+    model = XXJointModel(adata=adata_training, mixup_alpha=0.4, system_decoders=True)
+    model.train(max_epochs=2)
 
     # TODO test registration of new adata
 

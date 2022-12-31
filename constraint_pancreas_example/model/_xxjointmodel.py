@@ -45,6 +45,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             self,
             adata: AnnData,
             mixup_alpha: Optional[float] = None,
+            system_decoders: bool = False,
             **model_kwargs,
     ):
         super(XXJointModel, self).__init__(adata)
@@ -54,8 +55,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             # TODO!!!!
             n_input=adata.var['input'].sum(),
             n_output=adata.shape[1],
+            system_decoders=system_decoders,
             gene_map=GeneMapInput(adata=adata),  # TODO!!!!
-            n_cov=adata.obsm['covariates'].shape[1] + adata.obsm['system'].shape[1],
+            n_cov=adata.obsm['covariates'].shape[1],
+            n_system=adata.obsm['system'].shape[1],
             mixup_alpha=mixup_alpha,
             **model_kwargs)
 

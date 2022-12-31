@@ -11,6 +11,7 @@ from torch.distributions import kl_divergence
 from constraint_pancreas_example.model._gene_maps import GeneMapInput
 from constraint_pancreas_example.nn._base_components import EncoderDecoder
 from constraint_pancreas_example.module._loss_recorder import LossRecorder
+from constraint_pancreas_example.module._utils import *
 
 torch.backends.cudnn.benchmark = True
 
@@ -48,8 +49,10 @@ class XXJointModule(BaseModuleClass):
             self,
             n_input: int,
             n_output: int,
+            system_decoders: bool,
             gene_map: GeneMapInput,
             n_cov: int,
+            n_system: int,  # This should be one anyways
             mixup_alpha: Optional[float] = None,
             n_latent: int = 15,
             n_hidden: int = 256,
@@ -61,11 +64,13 @@ class XXJointModule(BaseModuleClass):
 
         self.gene_map = gene_map
         self.mixup_alpha = mixup_alpha
+        self.system_decoders = system_decoders
+        self.n_output = n_output
 
         self.encoder = EncoderDecoder(
             n_input=n_input,
             n_output=n_latent,
-            n_cov=n_cov,
+            n_cov=n_cov + n_system,
             n_hidden=n_hidden,
             n_layers=n_layers,
             dropout_rate=dropout_rate,
@@ -74,17 +79,43 @@ class XXJointModule(BaseModuleClass):
             **kwargs
         )
 
-        self.decoder = EncoderDecoder(
-            n_input=n_latent,
-            n_output=n_output,
-            n_cov=n_cov,
-            n_hidden=n_hidden,
-            n_layers=n_layers,
-            dropout_rate=dropout_rate,
-            sample=True,
-            var_mode='feature',
-            **kwargs
-        )
+        if not self.system_decoders:
+            self.decoder = EncoderDecoder(
+                n_input=n_latent,
+                n_output=n_output,
+                n_cov=n_cov + n_system,
+                n_hidden=n_hidden,
+                n_layers=n_layers,
+                dropout_rate=dropout_rate,
+                sample=True,
+                var_mode='feature',
+                **kwargs
+            )
+        else:
+            # Which decoder belongs to which system
+            self.decoder = {
+                0: EncoderDecoder(
+                    n_input=n_latent,
+                    n_output=n_output,
+                    n_cov=n_cov,
+                    n_hidden=n_hidden,
+                    n_layers=n_layers,
+                    dropout_rate=dropout_rate,
+                    sample=True,
+                    var_mode='feature',
+                    **kwargs
+                ),
+                1: EncoderDecoder(
+                    n_input=n_latent,
+                    n_output=n_output,
+                    n_cov=n_cov,
+                    n_hidden=n_hidden,
+                    n_layers=n_layers,
+                    dropout_rate=dropout_rate,
+                    sample=True,
+                    var_mode='feature',
+                    **kwargs
+                )}
 
     def _get_inference_input(self, tensors, **kwargs):
         """Parse the dictionary to get appropriate args"""
@@ -129,12 +160,12 @@ class XXJointModule(BaseModuleClass):
         return input_dict
 
     def _get_generative_mixup_input(self, tensors, inference_outputs, mixup_setting):
-        z = self.mixup_data(x=inference_outputs["z"], **mixup_setting)
-        cov = {'x': self.mixup_data(x=tensors['covariates'], **mixup_setting),
+        z = mixup_data(x=inference_outputs["z"], **mixup_setting)
+        cov = {'x': mixup_data(x=tensors['covariates'], **mixup_setting),
                # This wouldn't really need mixup as currently use all-0 cov, but added for safety if mock covar change
-               'y': self.mixup_data(x=self._mock_cov(tensors['covariates']), **mixup_setting)}
-        system = {'x': self.mixup_data(x=tensors['system'], **mixup_setting),
-                  'y': self.mixup_data(x=self._negate_zero_one(tensors['system']), **mixup_setting)}
+               'y': mixup_data(x=self._mock_cov(tensors['covariates']), **mixup_setting)}
+        system = {'x': mixup_data(x=tensors['system'], **mixup_setting),
+                  'y': mixup_data(x=self._negate_zero_one(tensors['system']), **mixup_setting)}
 
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
@@ -185,16 +216,25 @@ class XXJointModule(BaseModuleClass):
         :return:
         """
 
-        def outputs(compute, name, res, x, cov):
+        def outputs(compute, name, res, x, cov, system):
             if compute:
-                res_sub = self.decoder(x=x, cov=cov)
+                if not self.system_decoders:
+                    res_sub = self.decoder(x=x, cov=self._merge_cov([cov, system]))
+                else:
+                    res_sub = {k: torch.zeros((x.shape[0], self.n_output), device=self.device)
+                               for k in ['y', 'y_m', 'y_v']}
+                    system_idx = group_indices(system, return_tensors=True, device=self.device)
+                    for group, idxs in system_idx.items():
+                        res_sub_parts = self.decoder[group](x=x[idxs, :], cov=cov[idxs, :])
+                        for k, v in res_sub_parts.items():
+                            res_sub[k][idxs, :] = v
                 res[name] = res_sub['y']
                 res[name + '_m'] = res_sub['y_m']
                 res[name + '_v'] = res_sub['y_v']
 
         res = {}
-        outputs(compute=x_x, name='x', res=res, x=z, cov=self._merge_cov([cov['x'], system['x']]))
-        outputs(compute=x_y, name='y', res=res, x=z, cov=self._merge_cov([cov['y'], system['y']]))
+        outputs(compute=x_x, name='x', res=res, x=z, cov=cov['x'], system=system['x'])
+        outputs(compute=x_y, name='y', res=res, x=z, cov=cov['y'], system=system['y'])
         return res
 
     @auto_move_data
@@ -233,6 +273,9 @@ class XXJointModule(BaseModuleClass):
         """
         """Core of the forward call shared by PyTorch- and Jax-based modules."""
 
+        # TODO currently some forward paths are computed despite potentially having loss weight=0 -
+        #  don't compute if not needed
+
         inference_kwargs = _get_dict_if_none(inference_kwargs)
         generative_kwargs = _get_dict_if_none(generative_kwargs)
         loss_kwargs = _get_dict_if_none(loss_kwargs)
@@ -252,7 +295,7 @@ class XXJointModule(BaseModuleClass):
 
         # Generative mixup
         if self.mixup_alpha is not None:
-            mixup_setting = self.mixup_setting(
+            mixup_setting = mixup_setting_generator(
                 alpha=self.mixup_alpha, device=self.device, within_group=tensors['system'])
             generative_mixup_inputs = self._get_generative_mixup_input(
                 tensors=tensors, inference_outputs=inference_outputs, mixup_setting=mixup_setting)
@@ -276,7 +319,7 @@ class XXJointModule(BaseModuleClass):
         if self.mixup_alpha is not None:
             generative_outputs_merged.update(
                 **{k.replace('x_', 'x_mixup_'): v for k, v in generative_mixup_outputs.items()})
-            generative_outputs_merged['x_true_mixup'] = self.mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
+            generative_outputs_merged['x_true_mixup'] = mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
         generative_outputs_merged.update(
             # y_cyc won't be present as we don't predict x in the cycle
             **{k.replace('x_', 'y_cyc_').replace('y_', 'x_cyc_'): v for k, v in generative_cycle_outputs.items()})
@@ -292,73 +335,6 @@ class XXJointModule(BaseModuleClass):
         else:
             return inference_outputs_merged, generative_outputs_merged
 
-    @staticmethod
-    def mixup_setting(alpha: float, device, n: int = None, within_group: torch.Tensor = None):
-        """
-        Prepare mixup settings: indices and proportions for combining
-        :param alpha: Alpha for beta distn from which mixup ratios are sampled.
-        If ==0 gets uniform, if <1 concave, if >1 convex. Symmetric as use same param 9alpha) for both alpha and beta.
-        :param device: Device for output tensors
-        :param n: Number of samples between which mixup should be created
-        :param within_group: Tensor (shape=n*1) specifying groups within which mixup should be performed.
-        If this is specified the param n is ignored and n of samples is determined based on within_group.
-        :return: Indices and ratios for mixup pairs. Number of mixup samples equals the number of input samples.
-        """
-
-        # Params for performing mixup within a sample group or on all samples
-        if within_group is None and n is None:
-            raise ValueError('Either within_group or n must be specified')
-        if within_group is None:
-            within_group = np.ones(n)
-        else:
-            within_group = within_group.ravel().tolist()
-
-        # Indices associated with each group within which mixup should be preformed
-        group_idx = defaultdict(list)
-        for idx, group in enumerate(within_group):
-            group_idx[group].append(idx)
-
-        # Generate mixup setting within every group
-        idx_i = []  # 1-dim
-        idx_j = []
-        ratio_i = []  # 2-dim
-        ratio_j = []
-        for group, idxs in group_idx.items():
-            ratio_i_sub = np.random.beta(alpha, alpha, size=(len(idxs), 1)).astype(np.float32)
-            ratio_j_sub = 1 - ratio_i_sub
-            idxs_shuffled = np.random.permutation(idxs)
-            for lis, el in [(idx_i, idxs), (idx_j, idxs_shuffled), (ratio_i, ratio_i_sub), (ratio_j, ratio_j_sub)]:
-                lis.append(el)
-
-        out = {}
-        for name, lis in [('idx_i', idx_i), ('idx_j', idx_j), ('ratio_i', ratio_i), ('ratio_j', ratio_j)]:
-            out[name] = torch.tensor(np.concatenate(lis), device=device)
-
-        return out
-
-    @staticmethod
-    def mixup_data(x, idx_i, idx_j, ratio_i, ratio_j):
-        """
-        Perform mixup between samples of given tensor
-        :param x: Tensor whose samples to mixup
-        :param idx_i: Indices of the first sample in mixup pair
-        :param idx_j: Indices of the second sample in mixup pair
-        :param ratio_i: Proportion of the first sample in mixup pair
-        :param ratio_j: Proportion of the second sample in mixup pair
-        :return: Mixed up tensor
-        """
-        return x[idx_i] * ratio_i + x[idx_j] * ratio_j
-
-    @staticmethod
-    def sample_expression(x_m, x_v):
-        """
-        Draw expression samples from mean and variance in generative outputs.
-        :param x_m: Expression mean
-        :param x_v: Expression variance
-        :return: samples
-        """
-        return Normal(x_m, x_v.sqrt()).sample()
-
     def loss(
             self,
             tensors,
@@ -373,6 +349,7 @@ class XXJointModule(BaseModuleClass):
             translation_corr_weight: float = 1,
 
     ):
+
         x_true = tensors[REGISTRY_KEYS.X_KEY]
 
         # Reconstruction loss
