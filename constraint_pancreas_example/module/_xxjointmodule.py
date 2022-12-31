@@ -92,30 +92,32 @@ class XXJointModule(BaseModuleClass):
                 **kwargs
             )
         else:
+            # Must first assign decoders to self, as in the super base model only the params that belong to self
+            # are moved to the correct device
+            self.decoder_0 = EncoderDecoder(
+                n_input=n_latent,
+                n_output=n_output,
+                n_cov=n_cov,
+                n_hidden=n_hidden,
+                n_layers=n_layers,
+                dropout_rate=dropout_rate,
+                sample=True,
+                var_mode='feature',
+                **kwargs
+            )
+            self.decoder_1 = EncoderDecoder(
+                n_input=n_latent,
+                n_output=n_output,
+                n_cov=n_cov,
+                n_hidden=n_hidden,
+                n_layers=n_layers,
+                dropout_rate=dropout_rate,
+                sample=True,
+                var_mode='feature',
+                **kwargs
+            )
             # Which decoder belongs to which system
-            self.decoder = {
-                0: EncoderDecoder(
-                    n_input=n_latent,
-                    n_output=n_output,
-                    n_cov=n_cov,
-                    n_hidden=n_hidden,
-                    n_layers=n_layers,
-                    dropout_rate=dropout_rate,
-                    sample=True,
-                    var_mode='feature',
-                    **kwargs
-                ),
-                1: EncoderDecoder(
-                    n_input=n_latent,
-                    n_output=n_output,
-                    n_cov=n_cov,
-                    n_hidden=n_hidden,
-                    n_layers=n_layers,
-                    dropout_rate=dropout_rate,
-                    sample=True,
-                    var_mode='feature',
-                    **kwargs
-                )}
+            self.decoder = {0: self.decoder_0, 1: self.decoder_1}
 
     def _get_inference_input(self, tensors, **kwargs):
         """Parse the dictionary to get appropriate args"""

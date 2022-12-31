@@ -8,6 +8,13 @@ import torch
 
 def group_indices(group: Union[np.ndarray, list, torch.Tensor], return_tensors=False, device=None) -> \
         Dict[object, Union[list, torch.Tensor]]:
+    """
+    Obtain indices of samples per group (values).
+    :param group: Specifies groups of samples. Assumes that groups are given as 1D (if not makes it 1D via ravel).
+    :param return_tensors: Should the indices be returned as tensors. If false returns as list.
+    :param device: Device to use for returned index tensors
+    :return: Dict group:indices
+    """
     if isinstance(group, torch.Tensor):
         group = group.ravel().tolist()
     if isinstance(group, np.ndarray):
