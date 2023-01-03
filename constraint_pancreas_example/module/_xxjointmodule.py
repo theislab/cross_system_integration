@@ -466,8 +466,8 @@ class XXJointModule(BaseModuleClass):
             group_idx_i = group_indices(tensors['group'][idx_i, :], return_tensors=False)
             group_idx_j = group_indices(tensors['group'][idx_j, :], return_tensors=False)
             n_pairs = sim.shape[0] * sim.shape[1]
-            pos_l = 0
-            neg_l = 0
+            z_contrastive_pos = 0
+            z_contrastive_neg = 0
             # For each group compute positive and negative loss components
             # Potential refs (similar): https://arxiv.org/pdf/1902.01889.pdf , https://arxiv.org/pdf/1511.06452.pdf
             for group, idx_group_i in group_idx_i.items():
@@ -482,11 +482,11 @@ class XXJointModule(BaseModuleClass):
                     # Similarity with positive and negative examples
                     # Up-weights bad examples (of negatives/positives),
                     # assuming we use similarity bounded by [0,1] (cosine)
-                    pos_l += (pos_l_parts * pos_pairs).sum() / n_pos
-                    neg_l += (neg_l_parts * neg_pairs).sum() / (n_pairs - n_pos)
-            z_contrastive = pos_l + neg_l
+                    z_contrastive_pos += (pos_l_parts * pos_pairs).sum() / n_pos
+                    z_contrastive_neg += (neg_l_parts * neg_pairs).sum() / (n_pairs - n_pos)
         else:
-            z_contrastive = 0
+            z_contrastive_pos, z_contrastive_neg = 0, 0
+        z_contrastive = z_contrastive_pos + z_contrastive_neg
         # TODO due to class imbalance we may not get positive samples for some classes (very often).
         #  An alternative would be to construct data batches that contain more positive pairs:
         #  If batch size=n, sample n/2 points from system 1 and then find from system 2 one sample with matching class
@@ -517,6 +517,8 @@ class XXJointModule(BaseModuleClass):
             z_distance_cycle=z_distance_cyc.sum(),
             translation_corr=transl_corr.sum(),
             z_contrastive=z_contrastive,
+            z_contrastive_pos=z_contrastive_pos,
+            z_contrastive_neg=z_contrastive_neg,
         )
 
 
