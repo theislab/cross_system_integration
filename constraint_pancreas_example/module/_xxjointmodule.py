@@ -1,3 +1,4 @@
+import itertools
 from collections import defaultdict
 from typing import Optional, Union, Tuple, Dict
 import numpy as np
@@ -53,6 +54,7 @@ class XXJointModule(BaseModuleClass):
             gene_map: GeneMapInput,
             n_cov: int,
             n_system: int,  # This should be one anyways
+            use_group: bool,
             mixup_alpha: Optional[float] = None,
             n_latent: int = 15,
             n_hidden: int = 256,
@@ -63,6 +65,7 @@ class XXJointModule(BaseModuleClass):
         super().__init__()
 
         self.gene_map = gene_map
+        self.use_group = use_group
         self.mixup_alpha = mixup_alpha
         self.system_decoders = system_decoders
         self.n_output = n_output
@@ -349,6 +352,7 @@ class XXJointModule(BaseModuleClass):
             reconstruction_cycle_weight: float = 1,
             z_distance_cycle_weight: float = 1,
             translation_corr_weight: float = 1,
+            z_contrastive_weight: float = 1,
 
     ):
 
@@ -410,15 +414,86 @@ class XXJointModule(BaseModuleClass):
         #  to enable species-specific flexibility as not all orthologues are functionally related
         #   Alternatively: Could do weighted correlation where sum of all weights is constant but can be learned to be
         #   distributed differently across genes
-        def expr_correlation_loss(x, y):
-            def center(x):
-                return x - x.mean(dim=1, keepdim=True)
 
-            return 1 - torch.nn.CosineSimilarity()(center(x), center(y))
+        def center_samples(x):
+            return x - x.mean(dim=1, keepdim=True)
+
+        def expr_correlation_loss(x, y):
+            return 1 - torch.nn.CosineSimilarity()(center_samples(x), center_samples(y))
 
         transl_corr = expr_correlation_loss(
             x=generative_outputs['y_m'],
             y=generative_outputs['x_m'])
+
+        # Contrastive loss
+
+        def product_cosine(x, y, eps=1e-8):
+            """
+            Cosine similarity between all pairs of samples in x and y
+            :param x:
+            :param y:
+            :param eps:
+            :return:
+            """
+            # Center to get correlation
+            # if corr:
+            #    x = center_samples(x)
+            #    y = center_samples(y)
+
+            # Cosine between all pairs of samples
+            x_n, y_n = torch.linalg.norm(x, dim=1)[:, None], torch.linalg.norm(y, dim=1)[:, None]
+            x_norm = x / torch.clamp(x_n, min=eps)
+            y_norm = y / torch.clamp(y_n, min=eps)
+            cos = torch.mm(x_norm, y_norm.transpose(0, 1))
+
+            return cos
+
+        if self.use_group:
+            # Contrastive loss between samples of the same group across systems,
+            # based on cosine similarity between latent embeddings
+            # mean(cos(within_group)) - mean(cos(between_groups))
+
+            # Cosine similarity between samples from the two systems
+            system_idx = group_indices(tensors['system'], return_tensors=True, device=self.device)
+            idx_i = system_idx[0]
+            idx_j = system_idx[1]
+            sim = product_cosine(inference_outputs['z_m'][idx_i, :], inference_outputs['z_m'][idx_j, :])
+            eps = 1e-8
+            # Precompute loss components used for positive and negative pairs
+            pos_l_parts = -torch.log(torch.clamp(sim, min=eps))
+            neg_l_parts = -torch.log(torch.clamp(1 - sim, min=eps))
+            # Sample indices in similarity matrix belonging to each group
+            group_idx_i = group_indices(tensors['group'][idx_i, :], return_tensors=False)
+            group_idx_j = group_indices(tensors['group'][idx_j, :], return_tensors=False)
+            n_pairs = sim.shape[0] * sim.shape[1]
+            pos_l = 0
+            neg_l = 0
+            # For each group compute positive and negative loss components
+            # Potential refs (similar): https://arxiv.org/pdf/1902.01889.pdf , https://arxiv.org/pdf/1511.06452.pdf
+            for group, idx_group_i in group_idx_i.items():
+                idx_group_j = group_idx_j.get(group, None)
+                if idx_group_j is not None:
+                    # Which pairs are from the same/different class
+                    indices = torch.tensor(list(itertools.product(idx_group_i, idx_group_j)), device=self.device)
+                    n_pos = indices.shape[0]
+                    pos_pairs = torch.zeros_like(sim)
+                    pos_pairs[indices[:, 0], indices[:, 1]] = 1.0
+                    neg_pairs = self._negate_zero_one(pos_pairs)
+                    # Similarity with positive and negative examples
+                    # Up-weights bad examples (of negatives/positives),
+                    # assuming we use similarity bounded by [0,1] (cosine)
+                    pos_l += (pos_l_parts * pos_pairs).sum() / n_pos
+                    neg_l += (neg_l_parts * neg_pairs).sum() / (n_pairs - n_pos)
+            z_contrastive = pos_l + neg_l
+        else:
+            z_contrastive = 0
+        # TODO due to class imbalance we may not get positive samples for some classes (very often).
+        #  An alternative would be to construct data batches that contain more positive pairs:
+        #  If batch size=n, sample n/2 points from system 1 and then find from system 2 one sample with matching class
+        #  for every sampled point from system 1. To ensure that we dont introduce class imbalance bias from one system
+        #  iterate between sampling first from system 1 or 2
+        #  This could be done in ann_dataloader.BatchSampler; used in DataLoaderClass constructed
+        #  in DataSplitter in training
 
         # Overall loss
         loss = (reconst_loss * reconstruction_weight +
@@ -427,9 +502,9 @@ class XXJointModule(BaseModuleClass):
                 kl_divergence_z * kl_weight +
                 kl_divergence_z_cyc * kl_cycle_weight +
                 z_distance_cyc * z_distance_cycle_weight +
-                transl_corr * translation_corr_weight)
+                transl_corr * translation_corr_weight +
+                z_contrastive * z_contrastive_weight)
 
-        # TODO Currently this does not account for a different number of samples per batch due to masking
         return LossRecorder(
             n_obs=loss.shape[0],
             loss=loss.mean(),
@@ -441,6 +516,7 @@ class XXJointModule(BaseModuleClass):
             kl_local_cycle=kl_divergence_z_cyc.sum(),
             z_distance_cycle=z_distance_cyc.sum(),
             translation_corr=transl_corr.sum(),
+            z_contrastive=z_contrastive,
         )
 
 

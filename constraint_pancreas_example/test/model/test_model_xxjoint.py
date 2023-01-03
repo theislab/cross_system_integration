@@ -36,7 +36,7 @@ def mock_adata():
     adata.obs['covariate_cont'] = list(range(200))
     adata.obs['covariate_cat'] = ['a'] * 50 + ['b'] * 50 + ['c'] * 50 + ['d'] * 50
     adata.obs['system'] = ['a'] * 100 + ['b'] * 100
-    adata.obs['class'] = ((['a'] * 25 + ['b'] * 25) * 2) * 2
+    adata.obs['group'] = ((['a'] * 25 + ['b'] * 25) * 2) * 2
     adata.var['input'] = [1] * 20 + [0] * 25 + [1] * 20 + [0] * 30
 
     return adata
@@ -49,7 +49,7 @@ def test_model():
         adata,
         input_gene_key='input',
         system_key='system',
-        class_key='class',
+        group_key='group',
         # TODO improve test for adata setup
         categorical_covariate_keys=['covariate_cat'],
         continuous_covariate_keys=['covariate_cont'],

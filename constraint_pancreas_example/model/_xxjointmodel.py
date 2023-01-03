@@ -50,6 +50,8 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     ):
         super(XXJointModel, self).__init__(adata)
 
+        use_group = 'group' in adata.obsm
+
         # self.summary_stats provides information about anndata dimensions and other tensor info
         self.module = XXJointModule(
             # TODO!!!!
@@ -59,12 +61,14 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             gene_map=GeneMapInput(adata=adata),  # TODO!!!!
             n_cov=adata.obsm['covariates'].shape[1],
             n_system=adata.obsm['system'].shape[1],
+            use_group=use_group,
             mixup_alpha=mixup_alpha,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
         # necessary line to get params that will be used for saving/loading
         self.init_params_ = self._get_init_params(locals())
+        self.init_params_['use_group'] = use_group
 
         logger.info("The model has been initialized")
 
@@ -204,7 +208,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             cls,
             adata: AnnData,
             system_key: str,
-            class_key: str,
+            group_key: Optional[str] = None,
             input_gene_key: Optional[str] = None,
             layer: Optional[str] = None,
             categorical_covariate_keys: Optional[List[str]] = None,
@@ -242,7 +246,15 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         adata.uns['system_order'] = system_order
         adata.obsm['system'] = adata.obs[system_key].map(systems_dict).to_frame()
 
-        adata.obs['class'] = adata.obs[class_key]
+        # Remove any "group" column from obs (if group_key is None) as this is used to determine
+        # if group info will be used
+        if group_key is None and 'group' in adata.obsm:
+            del adata.obsm['group']
+        # Maps groups to numerical (int) as else data loading cant make tensors
+        group_order = sorted(adata.obs[group_key].unique())
+        group_dict = dict(zip(group_order, list(range(len(group_order)))))
+        adata.uns['group_order'] = group_order
+        adata.obsm['group'] = adata.obs[group_key].map(group_dict).to_frame()
 
         # Which genes to use as input
         if input_gene_key is None:
@@ -255,13 +267,13 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         if covariate_orders is None:
             covariate_orders = {}
 
-        # System and class must not be in cov
+        # System and group must not be in cov
         if categorical_covariate_keys is not None:
-            if class_key in categorical_covariate_keys or system_key in categorical_covariate_keys:
-                raise ValueError('class_key or system_key should not be within covariate keys')
+            if group_key in categorical_covariate_keys or system_key in categorical_covariate_keys:
+                raise ValueError('group_key or system_key should not be within covariate keys')
         if continuous_covariate_keys is not None:
-            if class_key in continuous_covariate_keys or system_key in continuous_covariate_keys:
-                raise ValueError('class_key or system_key should not be within covariate keys')
+            if group_key in continuous_covariate_keys or system_key in continuous_covariate_keys:
+                raise ValueError('group_key or system_key should not be within covariate keys')
 
         covariates, orders_dict, cov_dict = prepare_metadata(
             meta_data=adata.obs,
@@ -281,6 +293,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             ObsmField('covariates', 'covariates'),
             ObsmField('system', 'system'),
         ]
+        if group_key is not None:
+            anndata_fields.append(
+                ObsmField('group', 'group'),
+            )
         adata_manager = AnnDataManager(
             fields=anndata_fields, setup_method_args=setup_method_args
         )
