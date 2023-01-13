@@ -1,0 +1,112 @@
+# Seml evaluation of the model with different params
+seml:
+  executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
+  name: csp_eval
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v1/logs
+  project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
+  conda_environment: csp
+  
+slurm:
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-01:00     # max time, D-HH:MM, set to 0-08:00, for pancreas this could be 1h
+    nice: 10000
+
+fixed:
+  path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v1/
+  system_key: system
+  system_translate: 1
+  group_key: cell_type_final
+  group_translate: beta
+  batch_key: study_sample
+  max_epochs: 50
+       
+  
+grid:
+    eval_type:
+      type: choice
+      options:
+        #- translation
+        - integration
+    system_decoders:
+      type: choice
+      options:
+        - 0
+        - 1
+    name:
+      type: choice
+      options:
+        - r1
+        - r2
+        - r3
+        #- r4
+        #- r5
+kw_opt:
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
+kcw_opt:
+    grid:
+      kl_cycle_weight:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
+zdcw_opt:
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
+          - 100        
+rcw_opt:
+    grid:
+      reconstruction_cycle_weight:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+tcw_opt:
+    grid:
+      translation_corr_weight:
+        type: choice
+        options:
+          - 10
+          - 20
+          - 50
+          - 100
+rmw_opt:
+    fixed:
+      mixup_alpha: 0.4
+    grid:
+      reconstruction_mixup_weight:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+# TODO add combined option with z_distance_cycle_weigh, reconstruction_cycle_weight,   
+# and translation_corr_weight to improve separate decoders/integration
+          
