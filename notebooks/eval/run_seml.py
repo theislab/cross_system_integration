@@ -13,19 +13,21 @@ seml.setup_logger(ex)
 @ex.post_run_hook
 def collect_stats(_run):
     seml.collect_exp_stats(_run)
-    
+
 @ex.config
 def config():
     overwrite = None
     db_collection = None
     if db_collection is not None:
         ex.observers.append(seml.create_mongodb_observer(db_collection, overwrite=overwrite))
-        
+
 @ex.automain
 def run(eval_type:str, name:str=None, path_adata:str=None, path_save:str=None, system_key:str=None, 
         system_translate:str=None, group_key:str=None, group_translate:str=None, 
-        batch_key:str=None, mixup_alpha:str=None, system_decoders:str=None, 
-        max_epochs:str=None, kl_weight:str=None, kl_cycle_weight:str=None, 
+        batch_key:str=None, cells_eval:str=None, genes_eval:str=None, 
+        mixup_alpha:str=None, system_decoders:str=None, 
+        max_epochs:str=None, epochs_detail_plot:str=None,
+        kl_weight:str=None, kl_cycle_weight:str=None, 
         reconstruction_weight:str=None, reconstruction_mixup_weight:str=None, 
         reconstruction_cycle_weight:str=None, z_distance_cycle_weight:str=None, 
         translation_corr_weight:str=None, z_contrastive_weight:str=None, testing:str=None):
@@ -39,9 +41,12 @@ def run(eval_type:str, name:str=None, path_adata:str=None, path_save:str=None, s
                  "group_key": group_key, 
                  "group_translate": group_translate, 
                  "batch_key": batch_key, 
+                 "cells_eval": cells_eval,
+                 "genes_eval": genes_eval,
                  "mixup_alpha": mixup_alpha, 
                  "system_decoders": system_decoders, 
                  "max_epochs": max_epochs, 
+                 "epochs_detail_plot": epochs_detail_plot,
                  "kl_weight": kl_weight, 
                  "kl_cycle_weight": kl_cycle_weight, 
                  "reconstruction_weight": reconstruction_weight, 
@@ -62,8 +67,10 @@ def run(eval_type:str, name:str=None, path_adata:str=None, path_save:str=None, s
     for k,v in params_info.items():
         if k!='eval_type' and v is not None:
             # Integration does not have the translation specific args
+            # For now also not params that define which genes/cells to use for eval
             if not (eval_type=='integration' and 
-                    k in ['system_translate','group_translate']):
+                    k in ['system_translate','group_translate',
+                         'cells_eval','genes_eval']):
                 # Set path save based on eval type
                 # Expects that dirs were created before
                 if k=='path_save':

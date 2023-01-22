@@ -75,6 +75,8 @@ parser.add_argument('-sd', '--system_decoders', required=False,
                     help='system_decodersfor model. Converts 0/1 to bool')
 parser.add_argument('-me', '--max_epochs', required=False, type=int,default=50,
                     help='max_epochs for training')
+parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
+                    help='Loss subplot from this epoch on')
 parser.add_argument('-kw', '--kl_weight', required=False, type=float,default=1,
                     help='kl_weight for training')
 parser.add_argument('-kcw', '--kl_cycle_weight', required=False, type=float,default=0,
@@ -205,12 +207,15 @@ pkl.dump(model.trainer.logger.history,open(path_save+'losses.pkl','wb'))
 # Plot all loses
 losses=[k for k in model.trainer.logger.history.keys() 
         if '_step' not in k and '_epoch' not in k]
-fig,axs=plt.subplots(1,len(losses),figsize=(len(losses)*3,2))
-for ax,l in zip(axs,losses):
-    ax.plot(
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l in enumerate(losses):
+    axs[0,ax_i].plot(
         model.trainer.logger.history[l].index,
         model.trainer.logger.history[l][l])
-    ax.set_title(l)
+    axs[0,ax_i].set_title(l)
+    axs[1,ax_i].plot(
+        model.trainer.logger.history[l].index[args.epochs_detail_plot:],
+        model.trainer.logger.history[l][l][args.epochs_detail_plot:])
 fig.tight_layout()
 plt.savefig(path_save+'losses.png',dpi=300,bbox_inches='tight')
 

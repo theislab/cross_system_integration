@@ -15,7 +15,7 @@ for file in $files
     fi
 done
 
-# Git add
+# Git add in the specified subdirs and specified file types
 main_folder=$WSCL/cross_species_prediction/
 cd main_folder
 for folder in . notebooks/ notebooks/data/ notebooks/eval/ notebooks/tryout/ notebooks/tryout/test/ constraint_pancreas_example_notebooks/ constraint_pancreas_example_notebooks/test/
