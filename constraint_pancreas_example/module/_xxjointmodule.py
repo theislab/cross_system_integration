@@ -56,6 +56,7 @@ class XXJointModule(BaseModuleClass):
             n_system: int,  # This should be one anyways
             use_group: bool,
             mixup_alpha: Optional[float] = None,
+            z_dist_metric: str = 'MSE',
             n_latent: int = 15,
             n_hidden: int = 256,
             n_layers: int = 2,
@@ -69,6 +70,7 @@ class XXJointModule(BaseModuleClass):
         self.mixup_alpha = mixup_alpha
         self.system_decoders = system_decoders
         self.n_output = n_output
+        self.z_dist_metric = z_dist_metric
 
         self.encoder = EncoderDecoder(
             n_input=n_input,
@@ -353,7 +355,6 @@ class XXJointModule(BaseModuleClass):
             z_distance_cycle_weight: float = 1,
             translation_corr_weight: float = 1,
             z_contrastive_weight: float = 1,
-
     ):
 
         x_true = tensors[REGISTRY_KEYS.X_KEY]
@@ -398,13 +399,32 @@ class XXJointModule(BaseModuleClass):
         kl_divergence_z_cyc = kl_loss_part(m=inference_outputs['z_cyc_m'], v=inference_outputs['z_cyc_v'])
 
         # Distance between modality latent space embeddings
-        def z_loss(z_x, z_y):
-            return torch.nn.MSELoss(reduction='none')(z_x, z_y).sum(dim=1)
+        def z_dist(z_x, z_y):
+
+            if self.z_dist_metric == 'MSE':
+                return torch.nn.MSELoss(reduction='none')(z_x, z_y).sum(dim=1)
+
+            elif self.z_dist_metric == 'MSE_standard':
+                # Standardise data (jointly both z-s) before MSE calculation
+                z = torch.concat([z_x, z_y])
+                means = z.mean(dim=0, keepdim=True)
+                stds = z.std(dim=0, keepdim=True)
+
+                def standardize(x):
+                    return (x - means) / stds
+
+                return torch.nn.MSELoss(reduction='none')(standardize(z_x), standardize(z_y)).sum(dim=1)
+
+            # elif self.z_dist_metric == 'cosine':
+            #    return 1 - torch.nn.CosineSimilarity()(z_x, z_y)
+
+            else:
+                raise ValueError('z distance loss metric not recognised')
 
         # TODO one issue with z distance loss in cycle could be that the encoders and decoders learn to cheat
         #  and encode all cells from one species to one z region, even if they are from the cycle (e.g.
         #  z_x and z_x_y have more similar embeddings and z_y and z_y_x as well)
-        z_distance_cyc = z_loss(z_x=inference_outputs['z_m'], z_y=inference_outputs['z_cyc_m'])
+        z_distance_cyc = z_dist(z_x=inference_outputs['z_m'], z_y=inference_outputs['z_cyc_m'])
 
         # Correlation between both decoded expression reconstructions
         # TODO This could be also NegLL of one prediction against the other, although unsure how well
@@ -451,7 +471,7 @@ class XXJointModule(BaseModuleClass):
         if self.use_group:
             # Contrastive loss between samples of the same group across systems,
             # based on cosine similarity between latent embeddings
-            # mean(cos(within_group)) - mean(cos(between_groups))
+            # sum_over_groups(mean(-log(cos(within_group))) + mean(-log(1-cos(between_groups))))
 
             # Cosine similarity between samples from the two systems
             system_idx = group_indices(tensors['system'], return_tensors=True, device=self.device)

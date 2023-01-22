@@ -54,11 +54,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
 
         # self.summary_stats provides information about anndata dimensions and other tensor info
         self.module = XXJointModule(
-            # TODO!!!!
             n_input=adata.var['input'].sum(),
             n_output=adata.shape[1],
             system_decoders=system_decoders,
-            gene_map=GeneMapInput(adata=adata),  # TODO!!!!
+            gene_map=GeneMapInput(adata=adata),
             n_cov=adata.obsm['covariates'].shape[1],
             n_system=adata.obsm['system'].shape[1],
             use_group=use_group,
@@ -251,10 +250,11 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         if group_key is None and 'group' in adata.obsm:
             del adata.obsm['group']
         # Maps groups to numerical (int) as else data loading cant make tensors
-        group_order = sorted(adata.obs[group_key].unique())
-        group_dict = dict(zip(group_order, list(range(len(group_order)))))
-        adata.uns['group_order'] = group_order
-        adata.obsm['group'] = adata.obs[group_key].map(group_dict).to_frame()
+        if group_key is not None:
+            group_order = sorted(adata.obs[group_key].unique())
+            group_dict = dict(zip(group_order, list(range(len(group_order)))))
+            adata.uns['group_order'] = group_order
+            adata.obsm['group'] = adata.obs[group_key].map(group_dict).to_frame()
 
         # Which genes to use as input
         if input_gene_key is None:
