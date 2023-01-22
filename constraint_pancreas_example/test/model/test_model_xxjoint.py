@@ -56,7 +56,10 @@ def test_model():
     )
 
     # Test both options with shared or per-system decoder
-    model = XXJointModel(adata=adata_training, mixup_alpha=None, system_decoders=False)
+    model = XXJointModel(adata=adata_training,
+                         mixup_alpha=None,
+                         system_decoders=False,
+                         z_dist_metric='MSE_standard')
     model.train(max_epochs=2,
                 plan_kwargs={'loss_weights': {
                     'kl_weight': 2,
