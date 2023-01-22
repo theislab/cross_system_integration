@@ -1,8 +1,9 @@
 # Seml evaluation of the model with different params
+# NOTE: At some point this file started to be commented/uncommented to achieve different configurations so it no longer represents the needed run specs. Also, the saving dirs were changed (different versions, v0, v1,...)
 seml:
   executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
   name: csp_eval
-  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v1/logs
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/logs # CHANGE! OUT!
   project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
   conda_environment: csp
   
@@ -16,7 +17,7 @@ slurm:
 
 fixed:
   path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad
-  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v1/
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/ # CHANGE! OUT!
   system_key: system
   system_translate: 1
   group_key: cell_type_final
@@ -29,12 +30,12 @@ grid:
     eval_type:
       type: choice
       options:
-        #- translation
-        - integration
+        - translation
+        #- integration
     system_decoders:
       type: choice
       options:
-        - 0
+        #- 0
         - 1
     name:
       type: choice
@@ -44,69 +45,165 @@ grid:
         - r3
         #- r4
         #- r5
-kw_opt:
-    grid:
-      kl_weight:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 20
-          - 50
-kcw_opt:
-    grid:
-      kl_cycle_weight:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 20
-          - 50
-zdcw_opt:
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 20
-          - 50
-          - 100        
-rcw_opt:
-    grid:
-      reconstruction_cycle_weight:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-tcw_opt:
+# kw_opt:
+#     grid:
+#       kl_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+# kcw_opt:
+#     grid:
+#       kl_cycle_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+# zdcw_opt:
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+#           - 100        
+# rcw_opt:
+#     grid:
+#       reconstruction_cycle_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+# tcw_opt:
+#     grid:
+#       translation_corr_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+#           - 100
+# rmw_opt:
+#     fixed:
+#       mixup_alpha: 0.4
+#     grid:
+#       reconstruction_mixup_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 50
+#           - 100
+
+# combined_opt:
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 10
+#           - 50 
+#           - 100
+#       reconstruction_cycle_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 5
+#           - 10
+#       translation_corr_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 5
+#           - 10
+
+# combined_mixup_opt:
+#     fixed:
+#       mixup_alpha: 0.4
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 10
+#           - 50 
+#           - 100
+#       reconstruction_cycle_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 5
+#           - 10
+#       translation_corr_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 5
+#           - 10
+#       reconstruction_mixup_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 10
+#           - 50
+combined_mixup_opt_v2:
+    fixed:
+      mixup_alpha: 0.4
     grid:
       translation_corr_weight:
         type: choice
         options:
+          - 5
           - 10
           - 20
           - 50
           - 100
-rmw_opt:
-    fixed:
-      mixup_alpha: 0.4
-    grid:
       reconstruction_mixup_weight:
         type: choice
         options:
-          - 1
-          - 2
           - 5
           - 10
+          - 20
+          - 50
+          - 100
+
+combined_mixup_opt_v3:
+    fixed:
+      mixup_alpha: 0.4
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 5
+          - 10
+          - 20
+          - 50
+          - 100
+      reconstruction_mixup_weight:
+        type: choice
+        options:
+          - 5
+          - 10
+          - 20
+          - 50
+          - 100
 # TODO add combined option with z_distance_cycle_weigh, reconstruction_cycle_weight,   
 # and translation_corr_weight to improve separate decoders/integration
           

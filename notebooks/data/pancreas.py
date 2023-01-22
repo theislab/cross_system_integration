@@ -16,6 +16,9 @@
 # %% [markdown]
 # # Prepare pancreas data example
 
+# %% [markdown]
+# # TODO!!! ERROR: oto_orthologues are computed wrongly, need to use keep=False in duplicated
+
 # %%
 import scanpy as sc
 import pandas as pd

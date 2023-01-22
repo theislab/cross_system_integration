@@ -16,10 +16,6 @@
 # %% [markdown]
 # # Evaluate translation accross species
 
-# %% [markdown]
-# # TODO
-# - Save losses numbers
-
 # %%
 import scanpy as sc
 import pickle as pkl
@@ -67,6 +63,12 @@ parser.add_argument('-gt', '--group_translate', required=True, type=str,
                     help='Group to translate')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
+parser.add_argument('-ce', '--cells_eval', required=False, type=str,default=None,
+                    help='obs col with info which cells to use for eval.'+\
+                    'If unspecified uses all cells.')
+parser.add_argument('-ge', '--genes_eval', required=False, type=str,default=None,
+                    help='var col with info which genes to use for eval.'+\
+                    'If unspecified uses all genes.')
 parser.add_argument('-ma', '--mixup_alpha', required=False, 
                     type=str_to_float_zeronone,default='0',
                     help='mixup_alpha for model. If unspecified or 0 dont use mixup_alpha, '+
@@ -76,6 +78,8 @@ parser.add_argument('-sd', '--system_decoders', required=False,
                     help='system_decodersfor model. Converts 0/1 to bool')
 parser.add_argument('-me', '--max_epochs', required=False, type=int,default=50,
                     help='max_epochs for training')
+parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
+                    help='Loss subplot from this epoch on')
 parser.add_argument('-kw', '--kl_weight', required=False, type=float,default=1,
                     help='kl_weight for training')
 parser.add_argument('-kcw', '--kl_cycle_weight', required=False, type=float,default=0,
@@ -100,13 +104,16 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 # %%
 if False:
     args= parser.parse_args(args=[
-        '-pa','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad',
+        '-pa','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad',
         '-ps','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/translation/',
         '-sk','system',
-        '-gk','cell_type_final',
-        '-gt','beta',
-        '-bk','study_sample',
+        '-gk','cell_type',
+        '-gt','type B pancreatic cell',
+        '-bk','batch',
+        '-ce','eval_cells',
+        '-ge','eval_genes',
         '-me','2',
+        '-edp','0',
         '-t','1'
     ])
 # Read command line args
@@ -207,15 +214,22 @@ model.train(max_epochs=args.max_epochs if not TESTING else 2,
 print('Plot losses')
 
 # %%
+# Save losses
+pkl.dump(model.trainer.logger.history,open(path_save+'losses.pkl','wb'))
+
+# %%
 # Plot all loses
 losses=[k for k in model.trainer.logger.history.keys() 
         if '_step' not in k and '_epoch' not in k]
-fig,axs=plt.subplots(1,len(losses),figsize=(len(losses)*3,2))
-for ax,l in zip(axs,losses):
-    ax.plot(
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l in enumerate(losses):
+    axs[0,ax_i].plot(
         model.trainer.logger.history[l].index,
         model.trainer.logger.history[l][l])
-    ax.set_title(l)
+    axs[0,ax_i].set_title(l)
+    axs[1,ax_i].plot(
+        model.trainer.logger.history[l].index[args.epochs_detail_plot:],
+        model.trainer.logger.history[l][l][args.epochs_detail_plot:])
 fig.tight_layout()
 plt.savefig(path_save+'losses.png',dpi=300,bbox_inches='tight')
 
@@ -224,12 +238,13 @@ plt.savefig(path_save+'losses.png',dpi=300,bbox_inches='tight')
 
 # %%
 # Cell used for translation in ref system and ground truth in query system
+eval_cells_query='' if args.cells_eval is None else f'& {args.cells_eval}==True'
 cells_ref=adata.obs.query(
     f'{args.group_key}=="{args.group_translate}" &'+ 
-    f'{args.system_key}!={args.system_translate}').index
+    f'{args.system_key}!={args.system_translate}'+eval_cells_query).index
 cells_query=adata.obs.query(
     f'{args.group_key}=="{args.group_translate}" &'+ 
-    f'{args.system_key}=={args.system_translate}').index
+    f'{args.system_key}=={args.system_translate}'+eval_cells_query).index
 print(f'N cells ref: {len(cells_ref)} and query: {len(cells_query)}')
 
 # %%
@@ -253,6 +268,10 @@ for translation_type, switch in {'ref':False,
     )
 # Concat to single adata
 pred=sc.concat(pred)
+
+# %%
+if args.genes_eval is not None:
+    pred=pred[:,adata.var[args.genes_eval]]
 
 # %% [markdown]
 # #### Correlation
@@ -280,5 +299,8 @@ plt.savefig(path_save+'translation_correlation.png',dpi=300,bbox_inches='tight')
 # %%
 # Save correlation
 cor.to_csv(path_save+'translation_correlation.tsv',sep='\t')
+
+# %%
+print('Finished!')
 
 # %%
