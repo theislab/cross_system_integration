@@ -157,6 +157,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             self,
             adata: AnnData,
             indices: Optional[Sequence[int]] = None,
+            cycle: bool = False,
             give_mean: bool = True,
             batch_size: Optional[int] = None,
             as_numpy: bool = True
@@ -166,10 +167,9 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         predict expression of data as if it had given metadata.
         expression, metadata (from adata) -> latent
         latent, new metadata -> translated expression
-        :param prediction_metadata: Metadata for which samples should be predicted
-        :param species_key: Species col name in prediction_metadata
         :param adata: Input adata based on which latent representation is obtained.
         :param indices:
+        :param cycle: Return z from cycle
         :param give_mean: In latent and expression prediction use mean rather than samples
         :param batch_size:
         :param as_numpy:  Move output tensor to cpu and convert to numpy
@@ -189,11 +189,17 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         for tensors in tensors_fwd:
             # Inference
             inference_inputs = self.module._get_inference_input(tensors)
-            z = self.module.inference(**inference_inputs)
+            inference_outputs = self.module.inference(**inference_inputs)
+            if cycle:
+                generative_inputs = self.module._get_generative_input(tensors, inference_outputs)
+                generative_outputs = self.module.generative(**generative_inputs, x_x=False, x_y=True)
+                inference_cycle_inputs = self.module._get_inference_cycle_input(
+                    tensors=tensors, generative_outputs=generative_outputs)
+                inference_outputs = self.module.inference(**inference_cycle_inputs)
             if give_mean:
-                predicted += [z['z_m']]
+                predicted += [inference_outputs['z_m']]
             else:
-                predicted += [z['z']]
+                predicted += [inference_outputs['z']]
 
         predicted = torch.cat(predicted)
 

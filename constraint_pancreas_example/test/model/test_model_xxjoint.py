@@ -79,6 +79,14 @@ def test_model():
         as_numpy=True
     )
     assert embedding.shape[0] == adata_training.shape[0]
+    embedding = model.embed(
+        adata=adata_training,
+        indices=None,
+        cycle=True,
+        give_mean=True,
+        batch_size=None,
+        as_numpy=True
+    )
 
     translated_y = model.translate(
         adata=adata_training,
