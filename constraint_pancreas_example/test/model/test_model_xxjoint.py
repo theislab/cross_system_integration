@@ -97,3 +97,11 @@ def test_model():
         as_numpy=True
     )
     assert translated_y.shape[0] == adata_training.shape[0]
+    translated_y = model.translate(
+        adata=adata_training[[1, 2], :],
+        indices=None,
+        covariates=pd.DataFrame({'covariate_cat': ['a', 'b'], 'covariate_cont': [1] * 2}),
+        give_mean=True,
+        batch_size=None,
+        as_numpy=True
+    )
