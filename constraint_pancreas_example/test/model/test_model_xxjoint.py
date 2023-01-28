@@ -55,7 +55,7 @@ def test_model():
         continuous_covariate_keys=['covariate_cont'],
     )
 
-    # Test both options with shared or per-system decoder
+    # Test single decoder and different losses (with w scale) and in z_distance_cycle metric MSE standard loss
     model = XXJointModel(adata=adata_training,
                          mixup_alpha=None,
                          system_decoders=False,
@@ -66,7 +66,11 @@ def test_model():
                     'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
                                                      point_start=0, point_end=2, update_on='step')
                 }})
+    # Test double decoder and mixup
     model = XXJointModel(adata=adata_training, mixup_alpha=0.4, system_decoders=True)
+    model.train(max_epochs=2)
+    # Test vamp prior
+    model = XXJointModel(adata=adata_training, prior='vamp')
     model.train(max_epochs=2)
 
     # TODO test registration of new adata

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union, Sequence, Dict
+from typing import List, Optional, Union, Sequence, Dict, Literal
 import pandas as pd
 import numpy as np
 import torch
@@ -46,6 +46,8 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             adata: AnnData,
             mixup_alpha: Optional[float] = None,
             system_decoders: bool = False,
+            prior: Literal["standard_normal", "vamp"] = 'standard_normal',
+            n_prior_components=100,
             **model_kwargs,
     ):
         super(XXJointModel, self).__init__(adata)
@@ -62,6 +64,8 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             n_system=adata.obsm['system'].shape[1],
             use_group=use_group,
             mixup_alpha=mixup_alpha,
+            prior=prior,
+            n_prior_components=n_prior_components,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
@@ -93,7 +97,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         :param indices:
         :param give_mean: In latent and expression prediction use mean rather than samples
         :param covariates: Covariates to be used for data generation. Can be None (uses all-0 covariates) or a series
-        with covariate metadata (same for all predicted samples) or dataframe
+        with covariate metadata (same for all predicted samples) or dataframe (matching adata).
         :param batch_size:
         :param as_numpy:  Move output tensor to cpu and convert to numpy
         :return:
@@ -112,6 +116,8 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         x_x, x_y, pred_key = (False, True, 'y') if switch_system else (True, False, 'x')
         # Specify cov to use, determine cov size below as here not all batches are of equal size since we predict
         # each sample 1x
+        if isinstance(covariates, pd.DataFrame):
+            covariates = covariates.iloc[indices, :]
         cov_replace = self._make_covariates(adata=adata, batch_size=indices.shape[0], cov_template=covariates)
         idx_previous = 0
         for tensors in tensors_fwd:
