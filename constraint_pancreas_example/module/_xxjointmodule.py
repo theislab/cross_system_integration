@@ -1,6 +1,6 @@
 import itertools
 from collections import defaultdict
-from typing import Optional, Union, Tuple, Dict
+from typing import Optional, Union, Tuple, Dict, Literal
 import numpy as np
 
 import torch
@@ -13,6 +13,7 @@ from constraint_pancreas_example.model._gene_maps import GeneMapInput
 from constraint_pancreas_example.nn._base_components import EncoderDecoder
 from constraint_pancreas_example.module._loss_recorder import LossRecorder
 from constraint_pancreas_example.module._utils import *
+from constraint_pancreas_example.module._priors import StandardPrior, VampPrior
 
 torch.backends.cudnn.benchmark = True
 
@@ -56,6 +57,8 @@ class XXJointModule(BaseModuleClass):
             n_system: int,  # This should be one anyways
             use_group: bool,
             mixup_alpha: Optional[float] = None,
+            prior: Literal["standard_normal", "vamp"] = 'standard_normal',
+            n_prior_components=100,
             z_dist_metric: str = 'MSE',
             n_latent: int = 15,
             n_hidden: int = 256,
@@ -72,10 +75,12 @@ class XXJointModule(BaseModuleClass):
         self.n_output = n_output
         self.z_dist_metric = z_dist_metric
 
+        n_cov_encoder = n_cov + n_system
+
         self.encoder = EncoderDecoder(
             n_input=n_input,
             n_output=n_latent,
-            n_cov=n_cov + n_system,
+            n_cov=n_cov_encoder,
             n_hidden=n_hidden,
             n_layers=n_layers,
             dropout_rate=dropout_rate,
@@ -123,6 +128,14 @@ class XXJointModule(BaseModuleClass):
             )
             # Which decoder belongs to which system
             self.decoder = {0: self.decoder_0, 1: self.decoder_1}
+
+        if prior == 'standard_normal':
+            self.prior = StandardPrior()
+        elif prior == 'vamp':
+            self.prior = VampPrior(n_components=n_prior_components, n_input=n_input, n_cov=n_cov_encoder,
+                                   encoder=self.encoder)
+        else:
+            raise ValueError('Prior not recognised')
 
     def _get_inference_input(self, tensors, **kwargs):
         """Parse the dictionary to get appropriate args"""
@@ -321,15 +334,15 @@ class XXJointModule(BaseModuleClass):
         # Combine outputs of all forward passes
         inference_outputs_merged = dict(**inference_outputs)
         inference_outputs_merged.update(
-            **{k.replace('z_', 'z_cyc_'): v for k, v in inference_cycle_outputs.items()})
+            **{k.replace('z', 'z_cyc'): v for k, v in inference_cycle_outputs.items()})
         generative_outputs_merged = dict(**generative_outputs)
         if self.mixup_alpha is not None:
             generative_outputs_merged.update(
-                **{k.replace('x_', 'x_mixup_'): v for k, v in generative_mixup_outputs.items()})
+                **{k.replace('x', 'x_mixup'): v for k, v in generative_mixup_outputs.items()})
             generative_outputs_merged['x_true_mixup'] = mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
         generative_outputs_merged.update(
-            # y_cyc won't be present as we don't predict x in the cycle
-            **{k.replace('x_', 'y_cyc_').replace('y_', 'x_cyc_'): v for k, v in generative_cycle_outputs.items()})
+            # y_cyc (from output x) won't be present as we don't predict x in the cycle
+            **{k.replace('y', 'x_cyc'): v for k, v in generative_cycle_outputs.items()})
 
         if compute_loss:
             losses = self.loss(
@@ -390,13 +403,12 @@ class XXJointModule(BaseModuleClass):
         reconst_loss_cyc = reconst_loss_x_cyc
 
         # Kl divergence on latent space
-        def kl_loss_part(m, v):
-            return kl_divergence(Normal(m, v.sqrt()), Normal(torch.zeros_like(m), torch.ones_like(v))).sum(dim=1)
-
-        kl_divergence_z = kl_loss_part(m=inference_outputs['z_m'], v=inference_outputs['z_v'])
+        kl_divergence_z = self.prior.kl(m_q=inference_outputs['z_m'], v_q=inference_outputs['z_v'],
+                                        z=inference_outputs['z'])
 
         # KL on the cycle z
-        kl_divergence_z_cyc = kl_loss_part(m=inference_outputs['z_cyc_m'], v=inference_outputs['z_cyc_v'])
+        kl_divergence_z_cyc = self.prior.kl(m_q=inference_outputs['z_cyc_m'], v_q=inference_outputs['z_cyc_v'],
+                                            z=inference_outputs['z_cyc'])
 
         # Distance between modality latent space embeddings
         def z_dist(z_x, z_y):
