@@ -48,11 +48,19 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             system_decoders: bool = False,
             prior: Literal["standard_normal", "vamp"] = 'standard_normal',
             n_prior_components=100,
+            pseudoinputs_data_init: bool = True,
             **model_kwargs,
     ):
         super(XXJointModel, self).__init__(adata)
 
         use_group = 'group' in adata.obsm
+
+        if pseudoinputs_data_init:
+            indices = np.random.randint(0, adata.shape[0], n_prior_components)
+            pseudoinput_data = next(iter(self._make_data_loader(
+                adata=adata, indices=indices, batch_size=n_prior_components, shuffle=False)))
+        else:
+            pseudoinput_data = None
 
         # self.summary_stats provides information about anndata dimensions and other tensor info
         self.module = XXJointModule(
@@ -66,6 +74,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             mixup_alpha=mixup_alpha,
             prior=prior,
             n_prior_components=n_prior_components,
+            pseudoinput_data=pseudoinput_data,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"

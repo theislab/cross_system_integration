@@ -59,6 +59,7 @@ class XXJointModule(BaseModuleClass):
             mixup_alpha: Optional[float] = None,
             prior: Literal["standard_normal", "vamp"] = 'standard_normal',
             n_prior_components=100,
+            pseudoinput_data=None,
             z_dist_metric: str = 'MSE',
             n_latent: int = 15,
             n_hidden: int = 256,
@@ -132,8 +133,13 @@ class XXJointModule(BaseModuleClass):
         if prior == 'standard_normal':
             self.prior = StandardPrior()
         elif prior == 'vamp':
+            if pseudoinput_data is not None:
+                pseudoinput_data = self._get_inference_input(pseudoinput_data)
             self.prior = VampPrior(n_components=n_prior_components, n_input=n_input, n_cov=n_cov_encoder,
-                                   encoder=self.encoder)
+                                   encoder=self.encoder,
+                                   data=(pseudoinput_data['expr'],
+                                         self._merge_cov(cov=pseudoinput_data['cov'],system=pseudoinput_data['system']))
+                                   )
         else:
             raise ValueError('Prior not recognised')
 
@@ -196,8 +202,8 @@ class XXJointModule(BaseModuleClass):
         return torch.logical_not(x).float()
 
     @staticmethod
-    def _merge_cov(covs):
-        return torch.cat(covs, dim=1)
+    def _merge_cov(cov, system):
+        return torch.cat([cov, system], dim=1)
 
     @staticmethod
     def _mock_cov(cov):
@@ -216,7 +222,7 @@ class XXJointModule(BaseModuleClass):
         :return:
         """
 
-        z = self.encoder(x=expr, cov=self._merge_cov([cov, system]))
+        z = self.encoder(x=expr, cov=self._merge_cov(cov=cov, system=system))
         return dict(z=z['y'], z_m=z['y_m'], z_v=z['y_v'])
 
     @auto_move_data
@@ -239,7 +245,7 @@ class XXJointModule(BaseModuleClass):
         def outputs(compute, name, res, x, cov, system):
             if compute:
                 if not self.system_decoders:
-                    res_sub = self.decoder(x=x, cov=self._merge_cov([cov, system]))
+                    res_sub = self.decoder(x=x, cov=self._merge_cov(cov=cov, system=system))
                 else:
                     res_sub = {k: torch.zeros((x.shape[0], self.n_output), device=self.device)
                                for k in ['y', 'y_m', 'y_v']}
