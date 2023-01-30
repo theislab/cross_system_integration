@@ -99,13 +99,6 @@ class TrainingPlanMixin(TrainingPlan):
         eps used for optimization.
     optimizer
         One of "Adam" (:class:`~torch.optim.Adam`), "AdamW" (:class:`~torch.optim.AdamW`).
-    n_steps_kl_warmup
-        Number of training steps (minibatches) to scale weight on KL divergences from
-        `min_kl_weight` to `max_kl_weight`. Only activated when `n_epochs_kl_warmup` is
-        set to None.
-    n_epochs_kl_warmup
-        Number of epochs to scale weight on KL divergences from `min_kl_weight` to
-        `max_kl_weight`. Overrides `n_steps_kl_warmup` when both are not `None`.
     reduce_lr_on_plateau
         Whether to monitor validation loss and reduce learning rate when validation set
         `lr_scheduler_metric` plateaus.
@@ -139,6 +132,7 @@ class TrainingPlanMixin(TrainingPlan):
             lr_factor: float = 0.6,
             lr_patience: int = 30,
             lr_threshold: float = 0.0,
+            lr_threshold_mode: str = 'rel',
             lr_scheduler_metric: Literal[
                 "loss"
             ] = "loss",
@@ -157,6 +151,7 @@ class TrainingPlanMixin(TrainingPlan):
         self.lr_patience = lr_patience
         self.lr_scheduler_metric = lr_scheduler_metric
         self.lr_threshold = lr_threshold
+        self.lr_threshold_mode = lr_threshold_mode
         self.lr_min = lr_min
         self.loss_kwargs = loss_kwargs
 
@@ -306,7 +301,7 @@ class TrainingPlanMixin(TrainingPlan):
                 factor=self.lr_factor,
                 threshold=self.lr_threshold,
                 min_lr=self.lr_min,
-                threshold_mode="abs",
+                threshold_mode=self.lr_threshold_mode,
                 verbose=True,
             )
             config.update(
