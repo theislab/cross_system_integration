@@ -37,7 +37,7 @@ class GeneMapInput:
     def _build_input_filter(self, adata):
         self._input_filter = adata.var['input'].values.ravel()
 
-    def input_filter(self, device):
+    def input_filter(self, device=None):
         return nn.tensor(self._input_filter, device=device, dtype=INT_NN)
 
 

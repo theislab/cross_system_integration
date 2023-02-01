@@ -69,7 +69,10 @@ class XXJointModule(BaseModuleClass):
     ):
         super().__init__()
 
-        self.gene_map = gene_map
+        # self.gene_map = gene_map
+        # TODO transfer functionality of gene maps to not need the class itself needed anymore -
+        #  it was used only to return tensors on correct device for this specific model type
+        self.register_buffer('gm_input_filter', gene_map.input_filter(), persistent=False)
         self.use_group = use_group
         self.mixup_alpha = mixup_alpha
         self.system_decoders = system_decoders
@@ -138,14 +141,15 @@ class XXJointModule(BaseModuleClass):
             self.prior = VampPrior(n_components=n_prior_components, n_input=n_input, n_cov=n_cov_encoder,
                                    encoder=self.encoder,
                                    data=(pseudoinput_data['expr'],
-                                         self._merge_cov(cov=pseudoinput_data['cov'],system=pseudoinput_data['system']))
+                                         self._merge_cov(cov=pseudoinput_data['cov'],
+                                                         system=pseudoinput_data['system']))
                                    )
         else:
             raise ValueError('Prior not recognised')
 
     def _get_inference_input(self, tensors, **kwargs):
         """Parse the dictionary to get appropriate args"""
-        input_features = torch.ravel(torch.nonzero(self.gene_map.input_filter(device=self.device)))
+        input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
         expr = tensors[REGISTRY_KEYS.X_KEY][:, input_features]
         cov = tensors['covariates']
         system = tensors['system']
@@ -154,7 +158,7 @@ class XXJointModule(BaseModuleClass):
 
     def _get_inference_cycle_input(self, tensors, generative_outputs, **kwargs):
         """Parse the dictionary to get appropriate args"""
-        input_features = torch.ravel(torch.nonzero(self.gene_map.input_filter(device=self.device)))
+        input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
         expr = generative_outputs['y_m'][:, input_features]
         cov = self._mock_cov(tensors['covariates'])
         system = self._negate_zero_one(tensors['system'])
