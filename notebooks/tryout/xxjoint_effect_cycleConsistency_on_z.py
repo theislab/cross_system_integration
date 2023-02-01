@@ -254,6 +254,9 @@ for weight,embed in embeds.items():
     ax.set_title(weight)
 
 # %% [markdown]
+# C: Standardising Z before MSE reduces loss of range of Z, however, there are still more components taht are pushed closer to 0.
+
+# %% [markdown]
 # Since the span of features is not informative about their variability look at how they vary accross cts. To make this less afected by system do only for human data. Normalise features to [0,1] before averaging per ct to ensure that feature size does not affect the perceived variability. Then compute var of feature accross ct means.
 
 # %%
@@ -282,6 +285,9 @@ ax[0].set_title('var over cts')
 ct_entropy.boxplot(ax=ax[1])
 ax[1].set_title('entropy over cts')
 
+# %% [markdown]
+# C: The latent space is made simpler by previous standardisation - at high weights features split cells in blocks where features become very similar. The features also seem more corrlated. The latent space becomes simpler. Maybe there is only a small number of features needed to reconstruct the data so adding more features just adds noise and increases the z_dist loss. - Although the features that are very high in some cts still vary somewhat in some other cts.
+
 # %%
 for weight,embed in embeds.items():
     # Minmax scale the embed comonents so that perceived var is not affected by range
@@ -294,6 +300,57 @@ for weight,embed in embeds.items():
                    )
     g.fig.suptitle(weight)
 
+
+# %% [markdown]
+# C: maybe batch is hidden by averaging accross cts - would need to plot per ct the system.
+
+# %% [markdown]
+# Plot embed at weight = 0 (no z dist loss)
+
+# %%
+embed=sc.AnnData(embeds[0],obs=adata_training.obs)
+embed.obs['species']=embed.obs.system.map({0:'mm',1:'hs'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+rcParams['figure.figsize']=(8,8)
+sc.pl.umap(embed,color=['species','cell_type_final','study_sample'],s=10,wspace=0.5)
+
+# %% [markdown]
+# Plot embed at weight = 1
+
+# %%
+embed=sc.AnnData(embeds[1],obs=adata_training.obs)
+embed.obs['species']=embed.obs.system.map({0:'mm',1:'hs'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+rcParams['figure.figsize']=(8,8)
+sc.pl.umap(embed,color=['species','cell_type_final','study_sample'],s=10,wspace=0.5)
+
+# %% [markdown]
+# Plot embed at weight = 5
+
+# %%
+embed=sc.AnnData(embeds[5],obs=adata_training.obs)
+embed.obs['species']=embed.obs.system.map({0:'mm',1:'hs'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+rcParams['figure.figsize']=(8,8)
+sc.pl.umap(embed,color=['species','cell_type_final','study_sample'],s=10,wspace=0.5)
+
+# %% [markdown]
+# C: It seems that integration may get corrupted at lower weight than when MSE standardistaion is not used. Maybe because w/o standardisation the Z is pushed to 0 sooner so the loss is smaller? - Indeed, the losses are smaller bwfore weighing when the data is not standardised before MSE.
 
 # %% [markdown]
 # ## Train with different z KL weights

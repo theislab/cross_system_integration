@@ -1,5 +1,6 @@
 # Seml evaluation of the model with different params
 # NOTE: At some point this file started to be commented/uncommented to achieve different configurations so it no longer represents the needed run specs. Also, the saving dirs were changed (different versions, v0, v1,...)
+# _v0 folder was used for translation and _v1 for integration
 seml:
   executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
   name: csp_eval
@@ -12,7 +13,7 @@ slurm:
   sbatch_options:
     mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
     cpus-per-task: 4  # num cores, set to 4
-    time: 0-01:00     # max time, D-HH:MM, set to 0-08:00, for pancreas this could be 1h
+    time: 0-01:30     # max time, D-HH:MM, for pancreas with 50 epochs this could be 1h
     nice: 10000
 
 fixed:
@@ -35,8 +36,8 @@ grid:
     system_decoders:
       type: choice
       options:
-        #- 0
-        - 1
+        - 0
+        #- 1
     name:
       type: choice
       options:
@@ -113,7 +114,26 @@ grid:
 #           - 10
 #           - 50
 #           - 100
-
+# vamp_opt:
+#     fixed:
+#       prior: vamp
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 5
+#           - 10
+#           - 50
+#           - 100
+me_opt:
+    fixed:
+      params_opt: max_epochs
+    grid:
+      max_epochs:
+        type: choice
+        options:
+          - 100
+          - 200
 # combined_opt:
 #     grid:
 #       z_distance_cycle_weight:
@@ -163,47 +183,47 @@ grid:
 #           - 1
 #           - 10
 #           - 50
-combined_mixup_opt_v2:
-    fixed:
-      mixup_alpha: 0.4
-    grid:
-      translation_corr_weight:
-        type: choice
-        options:
-          - 5
-          - 10
-          - 20
-          - 50
-          - 100
-      reconstruction_mixup_weight:
-        type: choice
-        options:
-          - 5
-          - 10
-          - 20
-          - 50
-          - 100
+# combined_mixup_opt_v2:
+#     fixed:
+#       mixup_alpha: 0.4
+#     grid:
+#       translation_corr_weight:
+#         type: choice
+#         options:
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+#           - 100
+#       reconstruction_mixup_weight:
+#         type: choice
+#         options:
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+#           - 100
 
-combined_mixup_opt_v3:
-    fixed:
-      mixup_alpha: 0.4
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 5
-          - 10
-          - 20
-          - 50
-          - 100
-      reconstruction_mixup_weight:
-        type: choice
-        options:
-          - 5
-          - 10
-          - 20
-          - 50
-          - 100
+# combined_mixup_opt_v3:
+#     fixed:
+#       mixup_alpha: 0.4
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+#           - 100
+#       reconstruction_mixup_weight:
+#         type: choice
+#         options:
+#           - 5
+#           - 10
+#           - 20
+#           - 50
+#           - 100
 # TODO add combined option with z_distance_cycle_weigh, reconstruction_cycle_weight,   
 # and translation_corr_weight to improve separate decoders/integration
           

@@ -1379,6 +1379,57 @@ sc.pl.umap(embed,color=['species','cell_type_final','study_sample'],s=10,wspace=
 # C: Interestingly, the contrastive loss may even push cell types accross systems away. Seems to be most evident in large cts.
 #
 
+# %% [markdown]
+# ## cVAE  - check val loss
+
 # %%
+adata_training = XXJointModel.setup_anndata(
+    adata=adata,
+    system_key='system',
+    categorical_covariate_keys=['study_sample'],
+)
+
+# %%
+model = XXJointModel(adata=adata_training)
+model.train(max_epochs=200,check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':{
+               'reconstruction_mixup_weight':0,
+               'reconstruction_cycle_weight':0,
+               'kl_cycle_weight':0,
+               'z_distance_cycle_weight':0,
+               'translation_corr_weight':0,
+               'z_contrastive_weight':0,
+               
+           }})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[20:],
+            model.trainer.logger.history[l][l][20:],c=c)
+fig.tight_layout()
+
+# %% [markdown]
+# C: probably would need ~100 epochs to get val not to improve while train improves.
+
+# %%
+model.train_indices_.shape
+
+# %%
+model.test_indices_.shape
+
+# %%
+model.validation_indices_.shape
 
 # %%

@@ -19,6 +19,7 @@ import numpy as np
 import glob
 import pickle as pkl
 import os
+import itertools
 
 from sklearn.preprocessing import minmax_scale
 
@@ -50,6 +51,21 @@ for run in glob.glob(path_integration+'*/'):
 res=pd.concat(res,axis=1).T
 
 # %%
+defaults={'max_epochs':50,'n_hidden':256,'n_layers':2,
+          'n_prior_components':{'filter_col':'prior','filter_val':'vamp'}}
+def parse_defaults(res,defaults=defaults):
+    # Set values that equal defaults to nan (assumes they were not to be plotted)
+    # As add_losses_summary uses nan to determine if they are to be added
+    for param, default in defaults.items():
+        if isinstance(default, dict):
+            res[param]=res.apply(
+                lambda x: np.nan if x[default['filter_col']]!=default['filter_val'] 
+                else x[param],axis=1)
+        else:
+            res[param]=res[param].apply( lambda x: np.nan if x==default else x)
+
+
+# %%
 # Find modified losses in each experiment
 losses=['kl_weight', 
           'kl_cycle_weight', 
@@ -58,37 +74,55 @@ losses=['kl_weight',
           'reconstruction_cycle_weight',
           'z_distance_cycle_weight', 
           'translation_corr_weight', 
-          'z_contrastive_weight']
-def add_losses_summary(res,losses):
+          'z_contrastive_weight',
+       ]
+other_params=['n_prior_components','n_hidden','n_layers','max_epochs']
+def add_losses_summary(res,losses=losses,other_params=other_params):
     # Check which losses were modified
     # Assumes that defaults of losses are int and modified float!!!!
     # Also does not account for changes in mixup_alpha (assumes same) 
     # and system_decoders - this one can be separately shown as different architecture
+    losses=[l for l in losses if l in res.columns]
+    other_params=[l for l in other_params if l in res.columns]
     res['tested_losses']=res.apply(
     lambda x: '&'.join([loss.replace('_weight','') for loss in losses 
-                        if not isinstance(x[loss],int)]), axis=1)
+                        if not isinstance(x[loss],int)]), axis=1).fillna('')
+    
+    res['tested_losses']=res.apply(
+        lambda x: '&'.join([x['tested_losses']]+[
+            param for param in other_params if not np.isnan(x[param])]).strip('&'),axis=1)
     # If only one loss has been changed add here normalized tested loss values range
     loss_weight_norm={}
-    for loss in losses:
-        loss_values=list(sorted(set([v for v in  res[loss] if isinstance(v,float)])))
+    for loss in losses+other_params:
+        if loss in losses:
+            loss_values=list(sorted(set([v for v in  res[loss] if isinstance(v,float)])))
+        else:
+            loss_values=list(sorted([v for v in 
+                                     res.query(f'~{loss}.isna()',engine='python')
+                                     [loss].unique()]))
         # Some losses dont have any hyperparam search
         if len(loss_values)>0:
-            loss_weight_norm[loss]=dict(zip(
+            loss_weight_norm[loss.replace('_weight','')]=dict(zip(
                 loss_values,
                 # Need to round as else there is difference at last decimal 
                 # sometimes due to precision
                 [round(x,5) for x in minmax_scale(loss_values)]))
     # Adds loss weight rank if single loss was used, else adds 0
     res['primary_loss_weight_norm']=res.apply(
-        lambda x: loss_weight_norm.get(x['tested_losses']+'_weight'
-                                       )[x[x['tested_losses']+'_weight']]
-        if x['tested_losses']+'_weight' in loss_weight_norm else 0, axis=1
+        lambda x: loss_weight_norm.get(x['tested_losses']
+                                       )[x[x['tested_losses']+'_weight' 
+                                           if x['tested_losses']+'_weight' in losses
+                                          else x['tested_losses']]]
+        if x['tested_losses'] in loss_weight_norm else 0, axis=1
     )
+    
     res['tested_losses']=pd.Categorical(res['tested_losses'],sorted(res['tested_losses'].unique()),
                                         ordered=True,)
 
 
 # %%
+# Set to nan if default
+parse_defaults(res)
 add_losses_summary(res=res,losses=losses)
 
 
@@ -96,9 +130,10 @@ add_losses_summary(res=res,losses=losses)
 # MAke df for plotting with seaborn (metrics concatenated as rows)
 def make_res_plot(res,metrics,cols=[]):
     res_plot=[]
+    cols=[c for c in ['tested_losses','primary_loss_weight_norm','system_decoders']+cols
+          if c in res.columns]
     for metric in metrics:
-        res_plot_sub=res[
-            ['tested_losses','primary_loss_weight_norm','system_decoders',metric]+cols].copy()
+        res_plot_sub=res[cols+[metric]].copy()
         res_plot_sub['metric_type']=metric
         res_plot_sub.rename({metric:'metric'},axis=1,inplace=True)
         res_plot.append(res_plot_sub)
@@ -143,6 +178,9 @@ g=sb.scatterplot(x='asw_system',y='asw_group',hue='tested_losses',
 g.get_legend().remove()
 
 # %% [markdown]
+# C: kl_cycle adds anotehr loss part that is similar to kl, thus less bio preservation?
+
+# %% [markdown]
 # Correspondence between lisi and asw for batch and bio
 
 # %%
@@ -166,6 +204,8 @@ g.legend(bbox_to_anchor=(1.8, 0.5), ncol=1,title='tested_losses')
 # C: Based on ilisi reconstruction_cycle weight also helps with integration, also in the double decoder setting. It is also good performer based on asw.
 #
 # C: interestingly, too high kl weight harms integration. This is less evident for kl_cycle weight. Although this may be in part due to random variation (some other loss values vary greatly).
+#
+# C: interestingly, vamp prior helps both for integration and bio preservation (expected only bio preservation).
 
 # %% [markdown]
 # Bio and batch eval in 1D and 2D system based on selected metrics
@@ -204,14 +244,18 @@ for loss in sorted(res['tested_losses'].unique()):
         'tested_losses == @loss & system_decoders==False'+\
         '& primary_loss_weight_norm == 1' 
     ).sort_values('ilisi_system',ascending=False).index[0]
-    runs_show[loss+'_2D_low']=res.query(
+    runs=res.query(
         'tested_losses == @loss & system_decoders==True '+\
         '& primary_loss_weight_norm == 0'
-    ).sort_values('ilisi_system',ascending=False).index[0]
-    runs_show[loss+'_2D_high']=res.query(
+    ).sort_values('ilisi_system',ascending=False)
+    if len(runs)>0:
+        runs_show[loss+'_2D_low']=runs.index[0]
+    runs=res.query(
         'tested_losses == @loss & system_decoders==True'+\
         '& primary_loss_weight_norm == 1'
-    ).sort_values('ilisi_system',ascending=False).index[0]
+    ).sort_values('ilisi_system',ascending=False)
+    if len(runs)>0:
+        runs_show[loss+'_2D_high']=runs.index[0]
 for k,v in runs_show.items():
     print(k,v)
 
@@ -294,6 +338,7 @@ for run in glob.glob(path_translation+'*/'):
 res=pd.concat(res,axis=1).T
 
 # %%
+parse_defaults(res)
 add_losses_summary(res=res,losses=losses)
 
 # %%
@@ -337,6 +382,23 @@ res.sort_values('query-pred_query',ascending=False).head()[metrics]
 # C: Having two decoders improves prediction of reference while still enabling good prediction of query. Maybe having single decoder leads to regularisation (learn accross systems). Translation corr weight has similar effect, but unclear how this may work if we had different genes in the two decoders (e.g. how would be predicted genes that couldnt have correlation based regularisation).
 #
 # C: Combined weights for 2D: removing z_cycle_distance and reconstruction_cycle weights while keeping translation_corr and mixup does not lead to better performance than having all of them, despite shown below that the first two losses do not seem to lead to improvement. Could be due to lower number of runs where there would be an opportunity to improve. However, at least there are no runs at the lower eval end with the reduced setting. It also does not seem to perform as well as mixup only in 1D setting. Having mixup and z_distance_cycle does not work as well.
+#
+# C: Using more epochs doe snot help to make the results less variable.
+
+# %%
+# N of epochs
+for run_dir in res.query(
+    'tested_losses =="max_epochs" & max_epochs==200').index:
+    print(run_dir)
+    with plt.rc_context({'figure.figsize':(40,10)}):
+        path_run=path_translation+run_dir+'/'
+        for img_fn in ['losses.png']:
+            img = mpimg.imread(path_run+img_fn)
+            imgplot = plt.imshow(img)
+            plt.show()
+
+# %% [markdown]
+# C: pancreas probably doe snot need more than 50 epochs
 
 # %%
 # 2D reconstruction_cycle variation at max and min weight
@@ -521,9 +583,6 @@ fig.tight_layout()
 path_translation_tabula=path_eval+'pancreas_tabula_example_v0/translation/'
 
 # %%
-os.path.exists(run+'args.pkl')
-
-# %%
 # Load params and translation eval metric
 res_tab=[]
 for run in glob.glob(path_translation_tabula+'*/'):
@@ -541,7 +600,8 @@ for run in glob.glob(path_translation_tabula+'*/'):
 res_tab=pd.concat(res_tab,axis=1).T
 
 # %%
-add_losses_summary(res=res_tab,losses=losses)
+parse_defaults(res_tab)
+add_losses_summary(res=res_tab)
 
 # %%
 res_sub=[]
@@ -581,15 +641,290 @@ sb.set_style(style)
 
 # %% [markdown]
 # C: Adding tabula dataset does not work well. In general decreases performance (self prediction nd translation).
+#
+# C: Adding VAMP prior helps and mixup, but still does not achieve performance of using pancreatic data only.
+#
+# C: Increasing network capacity (layers, hidden) does not help.
 
 # %%
 for loss in res_tab.query('dataset=="pancreas+tabula"')['tested_losses'].unique():
     run_dir=res_tab.query('dataset=="pancreas+tabula" & tested_losses ==@loss'
                  ).sort_values('query-pred_query',ascending=False).index[0]
-    print(run_dir)
+    print(loss,run_dir)
     with plt.rc_context({'figure.figsize':(40,10)}):
         path_run=path_translation_tabula+run_dir+'/'
         for img_fn in ['losses.png']:
             img = mpimg.imread(path_run+img_fn)
             imgplot = plt.imshow(img)
             plt.show()
+
+# %% [markdown]
+# Training of all kl-pancreas+tabula runs as they have very different final performance
+
+# %%
+for run_dir in res_tab.query(
+    'dataset=="pancreas+tabula" & tested_losses =="max_epochs" & max_epochs==100').index:
+    print(run_dir)
+    with plt.rc_context({'figure.figsize':(40,10)}):
+        print(res_tab.loc[run_dir,metrics])
+        path_run=path_translation_tabula+run_dir+'/'
+        for img_fn in ['losses.png']:
+            img = mpimg.imread(path_run+img_fn)
+            imgplot = plt.imshow(img)
+            plt.show()
+
+# %% [markdown]
+# C: there is different behaviour wrt reconstruction and KL accross runs.
+
+# %%
+for run_dir in res_tab.query(
+    'dataset=="pancreas+tabula" & tested_losses =="max_epochs" & max_epochs==200').index:
+    print(run_dir)
+    with plt.rc_context({'figure.figsize':(40,10)}):
+        print(res_tab.loc[run_dir,metrics])
+        path_run=path_translation_tabula+run_dir+'/'
+        for img_fn in ['losses.png']:
+            img = mpimg.imread(path_run+img_fn)
+            imgplot = plt.imshow(img)
+            plt.show()
+
+# %% [markdown]
+# C: Having 50 (or a bit more, e.g. 70) epochs is probably also ok for tabula+pancreas as soon after start overfitting in some cases or at least no longer improve val loss
+
+# %% [markdown]
+# How does final loss affect translation performance - test for cVAE case where kl=1
+
+# %%
+# Df with loss and metric values
+res_tab_loss=[]
+for loss in ['max_epochs', 'kl']:
+    for run_dir in res_tab.query(
+        'dataset=="pancreas+tabula" & tested_losses ==@loss & kl_weight==1').index:
+        sub=res_tab.loc[run_dir,metrics].to_dict()
+        sub['run_dir']=run_dir
+        history=pkl.load(open(path_translation_tabula+run_dir+'/losses.pkl','rb'))
+        for l in ['loss', 'reconstruction_loss', 'kl_local']:
+            for l_type in ['train','validation']:
+                l_name=l+'_'+l_type
+                sub[l_name]=history[l_name].values.ravel()[-1] if l_name in history else np.nan
+        res_tab_loss.append(sub)
+res_tab_loss=pd.DataFrame(res_tab_loss)
+
+# %%
+# Plot relationship between training losses and metrics
+metrics_plot_loss=['ref-pred_ref','query-pred_query']
+fig,ax=plt.subplots(2,3,figsize=(3*3.5,2*3))
+for i,loss in enumerate(['loss', 'reconstruction_loss', 'kl_local']):
+    res_tab_loss_plot=[]
+    for loss_type in ['train','validation']:
+        sub=res_tab_loss[metrics_plot_loss+[loss+'_'+loss_type]]
+        sub.rename({loss+'_'+loss_type:loss},axis=1,inplace=True)
+        sub['loss_type']=loss_type
+        res_tab_loss_plot.append(sub)
+    res_tab_loss_plot=pd.concat(res_tab_loss_plot)
+    for j,metric in enumerate(metrics_plot_loss):
+        sb.scatterplot(x=loss,y=metric,hue='loss_type',data=res_tab_loss_plot, ax=ax[j,i])
+        if i==2 and j==1:
+            plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        else:
+            ax[j,i].get_legend().remove()
+plt.tight_layout()
+
+# %% [markdown]
+# ## Performance on smaller training data
+
+# %%
+path_subset=path_eval+'subset_v1/translation/'
+
+# %%
+# Load params and translation eval metric
+res_tab=[]
+for run in glob.glob(path_subset+'*/'):
+    # Add this so that code can be tested while not all runs finished
+    if os.path.exists(run+'args.pkl') and os.path.exists(run+'translation_correlation.tsv'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        transl_corr=pd.read_table(run+'translation_correlation.tsv',index_col=0)
+        transl_corr=pd.Series({'ref-pred_ref':transl_corr.at['ref','pred_ref'],
+                          'query-pred_query':transl_corr.at['query','pred_query'],
+                              'ref-pred_query':transl_corr.at['ref','pred_query'],
+                              'query-pred_ref':transl_corr.at['query','pred_ref'],})
+        data=pd.concat([args,transl_corr])
+        data.name=run.split('/')[-2]
+        res_tab.append(data)
+res_tab=pd.concat(res_tab,axis=1).T
+
+# %%
+res_tab['dataset']=res_tab['path_adata'].map({
+    '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad':'pancreas',
+    '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad':'pancreas+tabula'})
+
+# %%
+metrics=['ref-pred_ref','query-pred_query','ref-pred_query','query-pred_ref']
+res_plot=make_res_plot(res=res_tab,metrics=metrics,cols=['dataset','train_size'])
+# Must convert this to str as sb expects it for swarmplot not to be numeric
+res_plot['train_size']=pd.Categorical(
+    values=res_plot['train_size'].astype(str),
+    categories=[str(s) for s  in sorted(res_plot['train_size'].unique())], ordered=True)
+
+# %%
+# Compare results of all runs, separately for loss settings
+style=sb.axes_style()
+sb.set_style("whitegrid")
+g=sb.catplot(
+    data=res_plot,
+    y="train_size", x="metric", col='metric_type',row='dataset',
+    kind="swarm", height=3, aspect=1.5,
+)
+sb.set_style(style)
+
+# %% [markdown]
+# C: The performance doesnt change much even with very small training dataset, there are options:
+# - The model is at max capacity and does not improve upon increasing data. Interestingly, despite having larger val than test set at 0.1 it still performes better when combining both test+val in prediction (not so much in favour of memorisation then?).
+# - The cells that are added are very similar (random subset of cells from same cell types). Thus adding them does not lead to much better performance. 
+# - The model may be just memorising data. Adding more diverse cell types (e.g. pancreas only and pancreas&tabula) leads to lover performance, so model isnt able to deal with this complexity? Indeed, the model may be just memorising as also self-prediction is potentially worse when more data is used (would need more replicates to be sure).
+
+# %% [markdown]
+# Self correlation on train and val data
+
+# %%
+# Load params and prediction on train/val sets
+res_pred=[]
+for run in glob.glob(path_subset+'*/'):
+    # Add this so that code can be tested while not all runs finished
+    if os.path.exists(run+'args.pkl') and os.path.exists(run+'prediction_correlation_trainval.tsv'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        data=pd.read_table(run+'prediction_correlation_trainval.tsv',index_col=0)
+        for k,v in args.items():
+            data[k]=v
+        res_pred.append(data)
+res_pred=pd.concat(res_pred)
+
+# %%
+res_pred['dataset']=res_pred['path_adata'].map({
+    '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad':'pancreas',
+    '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad':'pancreas+tabula'})
+
+# %%
+# Plot self-corr distn over cells
+style=sb.axes_style()
+sb.set_style("whitegrid")
+g=sb.catplot(
+    data=res_pred,
+    y="corr", x="name", hue='set', col='train_size',row='dataset',
+    kind="violin", height=3, aspect=1.2,
+)
+sb.set_style(style)
+
+# %% [markdown]
+# C: Correlation on train and val set seems to perform similarly.
+
+# %% [markdown]
+# Training history examples
+
+# %%
+for dataset in res_tab['dataset'].unique():
+    for train_size in [0.1,0.9]:
+        run_dir=res_tab.query('dataset==@dataset & train_size ==@train_size'
+                     ).sort_values('query-pred_query',ascending=False).index[0]
+        print(dataset, train_size, run_dir)
+        with plt.rc_context({'figure.figsize':(40,10)}):
+            path_run=path_subset+run_dir+'/'
+            for img_fn in ['losses.png']:
+                img = mpimg.imread(path_run+img_fn)
+                imgplot = plt.imshow(img)
+                plt.show()
+
+# %% [markdown]
+# ## LR optimisation
+
+# %%
+path_subset=path_eval+'lr/translation/'
+
+# %%
+# Load params and translation eval metric
+res=[]
+for run in glob.glob(path_subset+'*/'):
+    # Add this so that code can be tested while not all runs finished
+    if os.path.exists(run+'args.pkl') and os.path.exists(run+'translation_correlation.tsv'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        transl_corr=pd.read_table(run+'translation_correlation.tsv',index_col=0)
+        transl_corr=pd.Series({'ref-pred_ref':transl_corr.at['ref','pred_ref'],
+                          'query-pred_query':transl_corr.at['query','pred_query'],
+                              'ref-pred_query':transl_corr.at['ref','pred_query'],
+                              'query-pred_ref':transl_corr.at['query','pred_ref'],})
+        history_end=pd.Series({'hisEnd_'+l:vals.values.ravel()[-1]
+                           for l,vals in pkl.load(open(run+'losses.pkl','rb')).items()})
+        history_min=pd.Series({'hisMin_'+l:vals.min()
+                           for l,vals in pkl.load(open(run+'losses.pkl','rb')).items()})
+        data=pd.concat([args,history_end,history_min,transl_corr])
+        data.name=run.split('/')[-2]
+        res.append(data)
+res=pd.concat(res,axis=1).T
+
+# %%
+res['dataset']=res['path_adata'].map({
+    '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad':'pancreas',
+    '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad':'pancreas+tabula'})
+
+# %%
+params_opt=['lr','lr_patience', 'lr_factor', 'lr_min','lr_threshold']
+losses_hist=['_'.join([h,l,t]) for h,l,t in itertools.product(['hisMin','hisEnd'],
+                              ['loss', 'reconstruction_loss','kl_local'],
+                              ['train','validation'])]
+res_sub_plot=res.query('dataset=="pancreas"')[
+       ['ref-pred_ref','query-pred_query']+losses_hist+params_opt]
+res_sub_plot[losses_hist+params_opt]=pd.DataFrame(
+    minmax_scale(res_sub_plot[losses_hist+params_opt]),
+    columns=losses_hist+params_opt,index=res_sub_plot.index)
+res_sub_plot=res_sub_plot.astype(float)
+
+# %%
+for p in params_opt:
+    print(p,sorted(res.query('dataset=="pancreas"')[p].unique()))
+
+# %%
+rcParams['figure.figsize']=(5,7)
+sb.heatmap(res_sub_plot.sort_values('query-pred_query',ascending=False),yticklabels=False)
+
+# %%
+rcParams['figure.figsize']=(5,7)
+sb.heatmap(res_sub_plot.sort_values('hisMin_loss_train'),yticklabels=False)
+
+# %%
+# Plot relationship between training losses and metrics
+metrics_plot_loss=['ref-pred_ref','query-pred_query']
+fig,ax=plt.subplots(2,3,figsize=(3*3.5,2*3))
+for i,loss in enumerate(['hisEnd_loss', 'hisEnd_reconstruction_loss', 'hisEnd_kl_local']):
+    res_loss_plot=[]
+    for loss_type in ['train','validation']:
+        sub=res.query('dataset=="pancreas"')[metrics_plot_loss+[loss+'_'+loss_type]]
+        sub.rename({loss+'_'+loss_type:loss},axis=1,inplace=True)
+        sub['loss_type']=loss_type
+        res_loss_plot.append(sub)
+    res_loss_plot=pd.concat(res_loss_plot)
+    for j,metric in enumerate(metrics_plot_loss):
+        sb.scatterplot(x=loss,y=metric,hue='loss_type',data=res_loss_plot, ax=ax[j,i])
+        if i==2 and j==1:
+            plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        else:
+            ax[j,i].get_legend().remove()
+plt.tight_layout()
+
+# %%
+rcParams['figure.figsize']=(3,3)
+sb.scatterplot(x='ref-pred_ref',y='query-pred_query',data=res.query('dataset=="pancreas"'))
+
+# %% [markdown]
+# Variance of translation metric depending on lr setting (accross 3 random re-runs).
+
+# %%
+x=res.query('dataset=="pancreas"').groupby(
+    ['lr','lr_patience', 'lr_factor', 'lr_min','lr_threshold']
+).var()['query-pred_query'].reset_index()
+x=pd.DataFrame(minmax_scale(x),columns=x.columns,index=x.index).astype(float)
+
+# %%
+rcParams['figure.figsize']=(2,3)
+sb.heatmap(x.sort_values('query-pred_query'),yticklabels=False)
+
+# %%

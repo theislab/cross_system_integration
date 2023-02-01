@@ -22,18 +22,25 @@ def config():
         ex.observers.append(seml.create_mongodb_observer(db_collection, overwrite=overwrite))
 
 @ex.automain
-def run(eval_type:str, name:str=None, path_adata:str=None, path_save:str=None, system_key:str=None, 
+def run(eval_type:str, name:str=None, params_opt:str=None,
+        path_adata:str=None, path_save:str=None, system_key:str=None, 
         system_translate:str=None, group_key:str=None, group_translate:str=None, 
-        batch_key:str=None, cells_eval:str=None, genes_eval:str=None, 
+        batch_key:str=None, cells_eval:str=None, genes_eval:str=None, train_size:str=None,
         mixup_alpha:str=None, system_decoders:str=None, 
+        prior:str=None, n_prior_components:str=None,
+        n_layers:str=None, n_hidden:str=None,
         max_epochs:str=None, epochs_detail_plot:str=None,
         kl_weight:str=None, kl_cycle_weight:str=None, 
         reconstruction_weight:str=None, reconstruction_mixup_weight:str=None, 
         reconstruction_cycle_weight:str=None, z_distance_cycle_weight:str=None, 
-        translation_corr_weight:str=None, z_contrastive_weight:str=None, testing:str=None):
+        translation_corr_weight:str=None, z_contrastive_weight:str=None, testing:str=None,
+        optimizer:str=None,lr:str=None,reduce_lr_on_plateau:str=None,
+        lr_scheduler_metric:str=None,lr_patience:str=None,lr_factor:str=None,
+        lr_min:str=None,lr_threshold_mode:str=None,lr_threshold:str=None):
     params_info={
                  "eval_type": eval_type,         
                  "name": name, 
+                 "params_opt":params_opt,
                  "path_adata": path_adata, 
                  "path_save": path_save, 
                  "system_key": system_key, 
@@ -43,8 +50,13 @@ def run(eval_type:str, name:str=None, path_adata:str=None, path_save:str=None, s
                  "batch_key": batch_key, 
                  "cells_eval": cells_eval,
                  "genes_eval": genes_eval,
+                 "train_size":train_size,
                  "mixup_alpha": mixup_alpha, 
                  "system_decoders": system_decoders, 
+                 "prior":prior,
+                 "n_prior_components":n_prior_components,
+                 "n_layers":n_layers,
+                 "n_hidden":n_hidden,
                  "max_epochs": max_epochs, 
                  "epochs_detail_plot": epochs_detail_plot,
                  "kl_weight": kl_weight, 
@@ -55,6 +67,17 @@ def run(eval_type:str, name:str=None, path_adata:str=None, path_save:str=None, s
                  "z_distance_cycle_weight": z_distance_cycle_weight, 
                  "translation_corr_weight": translation_corr_weight, 
                  "z_contrastive_weight": z_contrastive_weight,
+                
+                'optimizer':optimizer,
+                'lr':lr,
+                'reduce_lr_on_plateau':reduce_lr_on_plateau,
+                'lr_scheduler_metric':lr_scheduler_metric,
+                'lr_patience':lr_patience,
+                'lr_factor':lr_factor,
+                'lr_min':lr_min,
+                'lr_threshold_mode':lr_threshold_mode,
+                'lr_threshold':lr_threshold,
+        
                  "testing":testing,
     }
     logging.info('Received the following configuration:')

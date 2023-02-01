@@ -12,7 +12,7 @@ slurm:
   sbatch_options:
     mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
     cpus-per-task: 4  # num cores, set to 4
-    time: 0-01:00     # max time, D-HH:MM, set to 0-08:00, for pancreas this could be 1h
+    time: 0-02:30     # max time, D-HH:MM,  for 50epochs this could be 1:30h
     nice: 10000
 
 fixed:
@@ -44,25 +44,55 @@ grid:
         - r1
         - r2
         - r3
-kw_opt:
-    grid:
-      kl_weight:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-rmw_opt:
+# kw_opt:
+#     grid:
+#       kl_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+# rmw_opt:
+#     fixed:
+#       mixup_alpha: 0.4
+#     grid:
+#       reconstruction_mixup_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 50
+#           - 100
+# vamp_opt:
+#     fixed:
+#       prior: vamp
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 50
+#           - 100
+#           - 200
+#           - 500
+# size_opt:
+#     grid:
+#       n_layers:
+#         type: choice
+#         options:
+#           - 4
+#       n_hidden:
+#         type: choice
+#         options:
+#           - 512
+me_opt:
     fixed:
-      mixup_alpha: 0.4
+      params_opt: max_epochs
     grid:
-      reconstruction_mixup_weight:
+      max_epochs:
         type: choice
         options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 50
           - 100
+          - 200

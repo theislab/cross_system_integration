@@ -1,0 +1,63 @@
+# Seml evaluation of lr on pancreas and pancreas+tabula data
+seml:
+  executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
+  name: csp_eval
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/test/logs # CHANGE! OUT!
+  project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
+  conda_environment: csp
+  
+slurm:
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-01:00     # max time, D-HH:MM
+    nice: 10000
+
+fixed:
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/test/ # CHANGE! OUT!
+  system_key: system
+  system_translate: 1
+  max_epochs: 50
+  epochs_detail_plot: 20
+  eval_type: translation
+  # Model params
+  system_decoders: 0
+  # LR param
+  optimizer: AdamW
+  reduce_lr_on_plateau: 1
+       
+grid:
+  name:
+    type: choice
+    options:
+      - r1
+  lr:
+    type: choice
+    options:
+      - 0.01
+  lr_patience:
+    type: choice
+    options:
+      - 5
+  lr_factor:
+    type: choice
+    options:
+      - 0.1
+  lr_min:
+    type: choice
+    options:
+      - 1e-7
+  lr_threshold:
+    type: choice
+    options:
+      - -0.05
+     
+pancreas:
+  fixed:
+    path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad
+    group_key: cell_type_final
+    group_translate: beta
+    batch_key: study_sample
+    params_opt: pancreas
+    
