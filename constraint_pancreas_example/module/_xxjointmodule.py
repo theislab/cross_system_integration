@@ -65,6 +65,7 @@ class XXJointModule(BaseModuleClass):
             n_hidden: int = 256,
             n_layers: int = 2,
             dropout_rate: float = 0.1,
+            data_eval=None,
             **kwargs
     ):
         super().__init__()
@@ -78,6 +79,7 @@ class XXJointModule(BaseModuleClass):
         self.system_decoders = system_decoders
         self.n_output = n_output
         self.z_dist_metric = z_dist_metric
+        self.data_eval = data_eval
 
         n_cov_encoder = n_cov + n_system
 
@@ -562,6 +564,28 @@ class XXJointModule(BaseModuleClass):
             z_contrastive_pos=z_contrastive_pos,
             z_contrastive_neg=z_contrastive_neg,
         )
+
+    @torch.no_grad()
+    def eval_metrics(self):
+        if self.data_eval is None:
+            return None
+        else:
+            return {metric: self._compute_eval_metrics(**data) for metric, data in self.data_eval.items()}
+
+    @auto_move_data
+    def _compute_eval_metrics(self, inference_tensors, generative_cov, generative_kwargs, genes, target_x):
+        inference_inputs = self._get_inference_input(inference_tensors)
+        generative_inputs = self._get_generative_input(
+            tensors=inference_tensors,
+            inference_outputs=self.inference(**inference_inputs),
+            cov_replace=generative_cov)
+        generative_outputs = self.generative(
+            **generative_inputs,
+            x_x=generative_kwargs['x_x'],
+            x_y=generative_kwargs['x_y'])
+        pred_x = generative_outputs[generative_kwargs['pred_key'] + "_m"][:, genes].mean(axis=0)
+        metric = torch.corrcoef(torch.concat([pred_x.unsqueeze(0), target_x.unsqueeze(0)]))[0, 1].item()
+        return metric
 
 
 def _get_dict_if_none(param):

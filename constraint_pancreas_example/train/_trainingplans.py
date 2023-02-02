@@ -221,6 +221,7 @@ class TrainingPlanMixin(TrainingPlan):
             loss_recorder: LossRecorder,
             metrics: MetricCollection,
             mode: str,
+            metrics_eval:Optional[dict]=None,
     ):
         """
         Computes and logs metrics.
@@ -234,6 +235,8 @@ class TrainingPlanMixin(TrainingPlan):
         mode
             Postfix string to add to the metric name of
             extra metrics
+        metrics_eval
+            Evaluation metrics given as dict name:metric_value
         """
         n_obs_minibatch = loss_recorder.n_obs
         loss_sum = loss_recorder.loss_sum
@@ -244,6 +247,7 @@ class TrainingPlanMixin(TrainingPlan):
             n_obs_minibatch=n_obs_minibatch,
         )
         # pytorch lightning handles everything with the torchmetric object
+        # TODO in trainer init can set how often per epoch the val is checked with val_check_interval
         self.log_dict(
             metrics,
             on_step=False,
@@ -265,6 +269,20 @@ class TrainingPlanMixin(TrainingPlan):
                 on_epoch=True,
                 batch_size=n_obs_minibatch,
             )
+        # accumulate extra eval metrics
+        if metrics_eval is not None:
+            for extra_metric, met in metrics_eval.items():
+                if isinstance(met, torch.Tensor):
+                    if met.shape != torch.Size([]):
+                        raise ValueError("Extra tracked metrics should be 0-d tensors.")
+                    met = met.detach()
+                self.log(
+                    f"{extra_metric}_{mode}_eval",
+                    met,
+                    on_step=False,
+                    on_epoch=True,
+                    batch_size=n_obs_minibatch,
+                )
 
     def training_step(self, batch, batch_idx, optimizer_idx=0):
         for loss, weight in self.loss_weights.items():
@@ -280,7 +298,8 @@ class TrainingPlanMixin(TrainingPlan):
         # of training examples
         _, _, scvi_loss = self.forward(batch, loss_kwargs=self.loss_kwargs)
         self.log("validation_loss", scvi_loss.loss, on_epoch=True)
-        self.compute_and_log_metrics(scvi_loss, self.val_metrics, "validation")
+        metrics_eval = self.module.eval_metrics()
+        self.compute_and_log_metrics(scvi_loss, self.val_metrics, "validation", metrics_eval=metrics_eval)
 
     def configure_optimizers(self):
         params = filter(lambda p: p.requires_grad, self.module.parameters())

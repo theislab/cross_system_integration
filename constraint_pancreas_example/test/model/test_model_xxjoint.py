@@ -56,11 +56,19 @@ def test_model():
     )
 
     # Test single decoder and different losses (with w scale) and in z_distance_cycle metric MSE standard loss
+    adata_training.uns['eval_info'] = {'evalMetric': {
+        'cells_in': ['1', '4'],
+        'switch_system': True,
+        'cells_target': ['2', '4'],
+        'genes': ['2', '1', '3']}}
     model = XXJointModel(adata=adata_training,
                          mixup_alpha=None,
                          system_decoders=False,
-                         z_dist_metric='MSE_standard')
+                         z_dist_metric='MSE_standard',
+                         adata_eval=adata_training
+                         )
     model.train(max_epochs=2,
+                check_val_every_n_epoch=1,
                 plan_kwargs={'loss_weights': {
                     'kl_weight': 2,
                     'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
