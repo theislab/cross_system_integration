@@ -35,6 +35,15 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         Dimensionality of the latent space.
     n_layers
         Number of hidden layers used for encoder and decoder NNs.
+    adata_eval
+        Adata used for eval. Should be set up as adata and have eval info in uns['eval_info'] given as
+        dict(metric_name:dict(cells_in, switch_ system, cells_target, genes)) where metric_name is name of metric
+        cells_in are obs names
+        to be used for prediction (list), switch_system determines if system is switched in prediction (dict),
+        cells_target are obs names to  evaluate prediction against (list),
+        genes - genes to use for evaluation (list/set).
+        List specifies multiple eval settings. Eval metric is correlation between mean of predicted and target cells
+        on the specified genes. Uses null cov for predicted cells.
     **model_kwargs
         Keyword args for :class:`~mypackage.MyModule`
     Examples
@@ -49,6 +58,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             prior: Literal["standard_normal", "vamp"] = 'standard_normal',
             n_prior_components=100,
             pseudoinputs_data_init: bool = True,
+            adata_eval: Optional[AnnData] = None,
             **model_kwargs,
     ):
         super(XXJointModel, self).__init__(adata)
@@ -75,6 +85,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             prior=prior,
             n_prior_components=n_prior_components,
             pseudoinput_data=pseudoinput_data,
+            data_eval=self._prepare_eval_data(adata_eval) if adata_eval is not None else None,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
@@ -83,6 +94,33 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         self.init_params_['use_group'] = use_group
 
         logger.info("The model has been initialized")
+
+    def _prepare_eval_data(self, adata: AnnData):
+        """
+        Prepare evaluation inputs
+        :param adata: adata_eval: set up as training adata and with eval_info in uns
+        :return:
+        """
+        adata = self._validate_anndata(adata)
+        eval_data = {}
+        for metric_name, eval_case_info in adata.uns['eval_info'].items():
+            eval_case_data = {}
+            obs_idx = dict(zip(adata.obs_names, range(adata.shape[0])))
+            indices_in = [obs_idx[o] for o in eval_case_info['cells_in']]
+            n_in = len(indices_in)
+            eval_case_data['inference_tensors'] = next(iter(self._make_data_loader(
+                adata=adata, indices=indices_in, batch_size=n_in, shuffle=False)))
+            eval_case_data['generative_cov'] = torch.zeros(n_in, adata.obsm['covariates'].shape[1])
+            x_x, x_y, pred_key = (False, True, 'y') if eval_case_info['switch_system'] else (True, False, 'x')
+            eval_case_data['generative_kwargs'] = {'x_x': x_x, 'x_y': x_y, 'pred_key': pred_key}
+            # Note: ordering of selected genes will match adata not eval_info gene list
+            eval_genes = set(eval_case_info['genes'])
+            eval_genes_bool = torch.tensor([g in eval_genes for g in adata.var_names])
+            eval_case_data['genes'] = eval_genes_bool
+            eval_case_data['target_x'] = torch.tensor(adata[eval_case_info['cells_target'], :].to_df().values
+                                                      )[:, eval_genes_bool].mean(axis=0)
+            eval_data[metric_name] = eval_case_data
+        return eval_data
 
     @torch.no_grad()
     def translate(
@@ -95,6 +133,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             batch_size: Optional[int] = None,
             as_numpy: bool = True
     ) -> (Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]):
+        # TODo this is mainly the same as evaluation metrics data prep and computation so maybe combine
         """
         Translate expression - based on input expression and metadata
         predict expression of data as if it had given metadata.
