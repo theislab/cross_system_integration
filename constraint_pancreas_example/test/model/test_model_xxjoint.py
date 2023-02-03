@@ -1,3 +1,5 @@
+import math
+
 import scanpy as sc
 import numpy as np
 import pandas as pd
@@ -68,7 +70,10 @@ def test_model():
                          adata_eval=adata_training
                          )
     model.train(max_epochs=2,
+                log_every_n_steps=1,
+                batch_size=math.ceil(adata_training.n_obs/2.0),
                 check_val_every_n_epoch=1,
+                val_check_interval=1,
                 plan_kwargs={'loss_weights': {
                     'kl_weight': 2,
                     'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,

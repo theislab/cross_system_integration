@@ -221,7 +221,9 @@ class TrainingPlanMixin(TrainingPlan):
             loss_recorder: LossRecorder,
             metrics: MetricCollection,
             mode: str,
-            metrics_eval:Optional[dict]=None,
+            metrics_eval: Optional[dict] = None,
+            on_epoch: bool = False,
+            on_step: bool = True,
     ):
         """
         Computes and logs metrics.
@@ -247,11 +249,18 @@ class TrainingPlanMixin(TrainingPlan):
             n_obs_minibatch=n_obs_minibatch,
         )
         # pytorch lightning handles everything with the torchmetric object
-        # TODO in trainer init can set how often per epoch the val is checked with val_check_interval
-        self.log_dict(
-            metrics,
-            on_step=False,
-            on_epoch=True,
+        # self.log_dict(
+        #     metrics,
+        #     on_step=on_step,
+        #     on_epoch=on_epoch,
+        #     batch_size=n_obs_minibatch,
+        # )
+
+        self.log(
+            f"loss_{mode}",
+            loss_recorder.loss_sum,
+            on_step=on_step,
+            on_epoch=on_epoch,
             batch_size=n_obs_minibatch,
         )
 
@@ -265,8 +274,8 @@ class TrainingPlanMixin(TrainingPlan):
             self.log(
                 f"{extra_metric}_{mode}",
                 met,
-                on_step=False,
-                on_epoch=True,
+                on_step=on_step,
+                on_epoch=on_epoch,
                 batch_size=n_obs_minibatch,
             )
         # accumulate extra eval metrics
@@ -279,8 +288,8 @@ class TrainingPlanMixin(TrainingPlan):
                 self.log(
                     f"{extra_metric}_{mode}_eval",
                     met,
-                    on_step=False,
-                    on_epoch=True,
+                    on_step=on_step,
+                    on_epoch=on_epoch,
                     batch_size=n_obs_minibatch,
                 )
 
@@ -288,16 +297,16 @@ class TrainingPlanMixin(TrainingPlan):
         for loss, weight in self.loss_weights.items():
             self.loss_kwargs.update({loss: self.compute_loss_weight(weight=weight)})
         _, _, scvi_loss = self.forward(batch, loss_kwargs=self.loss_kwargs)
-        self.log("train_loss", scvi_loss.loss, on_epoch=True)
+        # self.log("train_loss", scvi_loss.loss, on_epoch=True)  # Saved above via loss recorder
         self.compute_and_log_metrics(scvi_loss, self.train_metrics, "train")
-        return torch.mean(scvi_loss.loss)
+        return scvi_loss.loss
 
     def validation_step(self, batch, batch_idx):
         # loss kwargs here contains `n_obs` equal to n_training_obs
         # so when relevant, the actual loss value is rescaled to number
         # of training examples
         _, _, scvi_loss = self.forward(batch, loss_kwargs=self.loss_kwargs)
-        self.log("validation_loss", scvi_loss.loss, on_epoch=True)
+        # self.log("validation_loss", scvi_loss.loss, on_epoch=True)  # Saved above via loss recorder
         metrics_eval = self.module.eval_metrics()
         self.compute_and_log_metrics(scvi_loss, self.val_metrics, "validation", metrics_eval=metrics_eval)
 
