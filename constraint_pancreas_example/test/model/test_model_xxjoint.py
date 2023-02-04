@@ -74,10 +74,13 @@ def test_model():
                 batch_size=math.ceil(adata_training.n_obs/2.0),
                 check_val_every_n_epoch=1,
                 val_check_interval=1,
-                plan_kwargs={'loss_weights': {
-                    'kl_weight': 2,
-                    'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
-                                                     point_start=0, point_end=2, update_on='step')
+                plan_kwargs={
+                    'log_on_epoch': False,
+                    'log_on_step': True,
+                    'loss_weights': {
+                        'kl_weight': 2,
+                        'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
+                                                         point_start=0, point_end=2, update_on='step')
                 }})
     # Test double decoder and mixup
     model = XXJointModel(adata=adata_training, mixup_alpha=0.4, system_decoders=True)

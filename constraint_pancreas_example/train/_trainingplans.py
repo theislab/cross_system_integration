@@ -138,6 +138,8 @@ class TrainingPlanMixin(TrainingPlan):
             ] = "loss",
             lr_min: float = 0,
             loss_weights: Union[None, Dict[str, Union[float, WeightScaling]]] = None,
+            log_on_epoch: bool = True,
+            log_on_step: bool = False,
             **loss_kwargs,
     ):
         super(TrainingPlan, self).__init__()
@@ -154,6 +156,8 @@ class TrainingPlanMixin(TrainingPlan):
         self.lr_threshold_mode = lr_threshold_mode
         self.lr_min = lr_min
         self.loss_kwargs = loss_kwargs
+        self.log_on_epoch = log_on_epoch
+        self.log_on_step = log_on_step
 
         self._n_obs_training = None
         self._n_obs_validation = None
@@ -222,8 +226,6 @@ class TrainingPlanMixin(TrainingPlan):
             metrics: MetricCollection,
             mode: str,
             metrics_eval: Optional[dict] = None,
-            on_epoch: bool = False,
-            on_step: bool = True,
     ):
         """
         Computes and logs metrics.
@@ -259,8 +261,8 @@ class TrainingPlanMixin(TrainingPlan):
         self.log(
             f"loss_{mode}",
             loss_recorder.loss_sum,
-            on_step=on_step,
-            on_epoch=on_epoch,
+            on_step=self.log_on_step,
+            on_epoch=self.log_on_epoch,
             batch_size=n_obs_minibatch,
         )
 
@@ -274,8 +276,8 @@ class TrainingPlanMixin(TrainingPlan):
             self.log(
                 f"{extra_metric}_{mode}",
                 met,
-                on_step=on_step,
-                on_epoch=on_epoch,
+                on_step=self.log_on_step,
+                on_epoch=self.log_on_epoch,
                 batch_size=n_obs_minibatch,
             )
         # accumulate extra eval metrics
@@ -288,8 +290,8 @@ class TrainingPlanMixin(TrainingPlan):
                 self.log(
                     f"{extra_metric}_{mode}_eval",
                     met,
-                    on_step=on_step,
-                    on_epoch=on_epoch,
+                    on_step=self.log_on_step,
+                    on_epoch=self.log_on_epoch,
                     batch_size=n_obs_minibatch,
                 )
 
