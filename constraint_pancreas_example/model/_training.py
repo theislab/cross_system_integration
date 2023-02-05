@@ -2,10 +2,10 @@ from typing import Optional, Union
 
 import numpy as np
 
-from scvi.dataloaders import DataSplitter
 from scvi.train import TrainRunner
 
 from constraint_pancreas_example.train import TrainingPlanMixin
+from constraint_pancreas_example.dataloaders import DataSplitter
 
 
 class TrainingMixin:
@@ -30,6 +30,7 @@ class TrainingMixin:
             batch_size: int = 128,
             early_stopping: bool = False,
             plan_kwargs: Optional[dict] = None,
+            indices: np.array = None,
             **trainer_kwargs,
     ):
         """
@@ -58,14 +59,17 @@ class TrainingMixin:
         **trainer_kwargs
             Other keyword args for :class:`~scvi.train.Trainer`.
         """
-        n_cells = self.adata.n_obs
+        if indices is None:
+            indices = np.array(list(range(self.adata_manager.adata.n_obs)))
+        n_cells = indices.shape[0]
         if max_epochs is None:
             max_epochs = int(np.min([round((20000 / n_cells) * 400), 400]))
 
         plan_kwargs = plan_kwargs if isinstance(plan_kwargs, dict) else dict()
 
         data_splitter = self.data_splitter_cls(
-            self.adata_manager,
+            adata_manager=self.adata_manager,
+            indices=indices,
             train_size=train_size,
             validation_size=validation_size,
             batch_size=batch_size,
@@ -78,6 +82,9 @@ class TrainingMixin:
             early_stopping if es not in trainer_kwargs.keys() else trainer_kwargs[es]
         )
         trainer_kwargs['early_stopping_monitor'] = 'loss'
+        # NOTE: TrainRunner saves indices from last DataSplitter -
+        # it ensures consistency between runs with random seed (but if two different sets of input indices are passed
+        # they will no longer match)
         runner = self.train_runner_cls(
             self,
             training_plan=training_plan,

@@ -499,6 +499,8 @@ class XXJointModule(BaseModuleClass):
 
             # Cosine similarity between samples from the two systems
             system_idx = group_indices(tensors['system'], return_tensors=True, device=self.device)
+            # TODO BUG this fails if only 1 system is present -
+            #  system_idx does not have 2nd element (index out of shape)
             idx_i = system_idx[0]
             idx_j = system_idx[1]
             sim = product_cosine(inference_outputs['z_m'][idx_i, :], inference_outputs['z_m'][idx_j, :])

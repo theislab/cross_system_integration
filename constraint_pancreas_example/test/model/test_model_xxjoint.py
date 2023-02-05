@@ -89,6 +89,18 @@ def test_model():
     # Test vamp prior
     model = XXJointModel(adata=adata_training, prior='vamp')
     model.train(max_epochs=2)
+    # Test training with different indices at different training runs
+    model = XXJointModel(adata=adata_training)
+    n_indices1 = int(adata_training.shape[0] * 0.5)
+    indices_permuted = np.random.permutation(adata_training.shape[0])
+    indices1 = indices_permuted[:n_indices1]
+    indices2 = indices_permuted[n_indices1:]
+    model.train(max_epochs=1, indices=indices1)
+    np.testing.assert_array_equal(np.sort(indices1),
+                                  np.sort(np.concatenate([model.train_indices, model.validation_indices])))
+    model.train(max_epochs=1, indices=indices2)
+    np.testing.assert_array_equal(np.sort(indices2),
+                                  np.sort(np.concatenate([model.train_indices, model.validation_indices])))
 
     # TODO test registration of new adata
 
