@@ -53,6 +53,7 @@ class EncoderDecoder(Module):
 
         # Sample from latent distribution
         if self.sample:
+            # The nan_to_num should be temporary solution until figured out what is happening
             y = reparameterize_gaussian(torch.nan_to_num(y_m), y_v)
             outputs['y'] = y
 
