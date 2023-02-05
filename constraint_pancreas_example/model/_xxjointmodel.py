@@ -318,7 +318,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             del adata.obsm['group']
         # Maps groups to numerical (int) as else data loading cant make tensors
         if group_key is not None:
-            group_order = sorted(adata.obs[group_key].unique())
+            group_order = sorted(adata.obs[group_key].dropna().unique())
             group_dict = dict(zip(group_order, list(range(len(group_order)))))
             adata.uns['group_order'] = group_order
             adata.obsm['group'] = adata.obs[group_key].map(group_dict).to_frame()

@@ -38,7 +38,8 @@ def mock_adata():
     adata.obs['covariate_cont'] = list(range(200))
     adata.obs['covariate_cat'] = ['a'] * 50 + ['b'] * 50 + ['c'] * 50 + ['d'] * 50
     adata.obs['system'] = ['a'] * 100 + ['b'] * 100
-    adata.obs['group'] = ((['a'] * 25 + ['b'] * 25) * 2) * 2
+    # Also deal with missing group vals
+    adata.obs['group'] = ((['a'] * 25 + ['b'] * 20 + [np.nan] * 5) * 2) * 2
     adata.var['input'] = [1] * 20 + [0] * 25 + [1] * 20 + [0] * 30
 
     return adata
@@ -71,7 +72,7 @@ def test_model():
                          )
     model.train(max_epochs=2,
                 log_every_n_steps=1,
-                batch_size=math.ceil(adata_training.n_obs/2.0),
+                batch_size=math.ceil(adata_training.n_obs / 2.0),
                 check_val_every_n_epoch=1,
                 val_check_interval=1,
                 plan_kwargs={
@@ -81,7 +82,7 @@ def test_model():
                         'kl_weight': 2,
                         'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
                                                          point_start=0, point_end=2, update_on='step')
-                }})
+                    }})
     # Test double decoder and mixup
     model = XXJointModel(adata=adata_training, mixup_alpha=0.4, system_decoders=True)
     model.train(max_epochs=2)
