@@ -53,7 +53,7 @@ class EncoderDecoder(Module):
 
         # Sample from latent distribution
         if self.sample:
-            y = reparameterize_gaussian(y_m, y_v)
+            y = reparameterize_gaussian(torch.nan_to_num(y_m), y_v)
             outputs['y'] = y
 
         return outputs
