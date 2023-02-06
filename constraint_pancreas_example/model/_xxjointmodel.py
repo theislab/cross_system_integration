@@ -129,6 +129,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             switch_system: bool = True,
             indices: Optional[Sequence[int]] = None,
             give_mean: bool = True,
+            give_var: bool = False,
             covariates: Optional[Union[pd.Series, pd.DataFrame]] = None,
             batch_size: Optional[int] = None,
             as_numpy: bool = True
@@ -144,11 +145,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         :param switch_system: Should in translation system be switched or not
         :param indices:
         :param give_mean: In latent and expression prediction use mean rather than samples
+        :param give_var: Also return var besides mean/sampled
         :param covariates: Covariates to be used for data generation. Can be None (uses all-0 covariates) or a series
         with covariate metadata (same for all predicted samples) or dataframe (matching adata).
         :param batch_size:
         :param as_numpy:  Move output tensor to cpu and convert to numpy
-        :return:
+        :return: mean/sample and optional var
         """
         # Check model and adata
         self._check_if_trained(warn=False)
@@ -161,6 +163,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             adata=adata, indices=indices, batch_size=batch_size, shuffle=False
         )
         predicted = []
+        predicted_var = []
         x_x, x_y, pred_key = (False, True, 'y') if switch_system else (True, False, 'x')
         # Specify cov to use, determine cov size below as here not all batches are of equal size since we predict
         # each sample 1x
@@ -182,12 +185,22 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             else:
                 pred_sub = generative_outputs[pred_key]
             predicted += [pred_sub]
+            if give_var:
+                predicted_var += [generative_outputs[pred_key + "_v"]]
             idx_previous = idx_next
         predicted = torch.cat(predicted)
+        if give_var:
+            predicted_var = torch.cat(predicted_var)
 
         if as_numpy:
             predicted = predicted.cpu().numpy()
-        return predicted
+            if give_var:
+                predicted_var = predicted_var.cpu().numpy()
+
+        if give_var:
+            return predicted, predicted_var
+        else:
+            return predicted
 
     def _make_covariates(self, adata, batch_size,
                          cov_template: Optional[Union[pd.Series, pd.DataFrame]] = None) -> torch.Tensor:

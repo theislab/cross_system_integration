@@ -130,6 +130,16 @@ def test_model():
         as_numpy=True
     )
     assert translated_y.shape[0] == adata_training.shape[0]
+    _, translated_y_v = model.translate(
+        adata=adata_training,
+        indices=None,
+        covariates=pd.Series({'covariate_cat': 'a', 'covariate_cont': 1}),
+        give_mean=True,
+        give_var=True,
+        batch_size=None,
+        as_numpy=True
+    )
+    assert translated_y_v.shape[0] == adata_training.shape[0]
     translated_y = model.translate(
         adata=adata_training[[1, 2], :],
         indices=None,
