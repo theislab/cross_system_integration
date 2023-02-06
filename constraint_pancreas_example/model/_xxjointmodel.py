@@ -58,6 +58,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             prior: Literal["standard_normal", "vamp"] = 'standard_normal',
             n_prior_components=100,
             pseudoinputs_data_init: bool = True,
+            pseudoinputs_data_indices:Optional[np.array]=None,
             adata_eval: Optional[AnnData] = None,
             **model_kwargs,
     ):
@@ -66,9 +67,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         use_group = 'group' in adata.obsm
 
         if pseudoinputs_data_init:
-            indices = np.random.randint(0, adata.shape[0], n_prior_components)
+            if pseudoinputs_data_indices is None:
+                pseudoinputs_data_indices = np.random.randint(0, adata.shape[0], n_prior_components)
             pseudoinput_data = next(iter(self._make_data_loader(
-                adata=adata, indices=indices, batch_size=n_prior_components, shuffle=False)))
+                adata=adata, indices=pseudoinputs_data_indices, batch_size=n_prior_components, shuffle=False)))
         else:
             pseudoinput_data = None
 
