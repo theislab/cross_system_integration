@@ -572,10 +572,12 @@ class XXJointModule(BaseModuleClass):
         if self.data_eval is None:
             return None
         else:
-            return {metric: self._compute_eval_metrics(**data) for metric, data in self.data_eval.items()}
+            return {metric_name + '_' + metric: val for metric, data in self.data_eval.items()
+                    for metric_name, val in self._compute_eval_metrics(**data).items()}
 
     @auto_move_data
-    def _compute_eval_metrics(self, inference_tensors, generative_cov, generative_kwargs, genes, target_x):
+    def _compute_eval_metrics(self, inference_tensors, generative_cov, generative_kwargs, genes, target_x_m,
+                              target_x_std):
         inference_inputs = self._get_inference_input(inference_tensors)
         generative_inputs = self._get_generative_input(
             tensors=inference_tensors,
@@ -585,9 +587,13 @@ class XXJointModule(BaseModuleClass):
             **generative_inputs,
             x_x=generative_kwargs['x_x'],
             x_y=generative_kwargs['x_y'])
-        pred_x = generative_outputs[generative_kwargs['pred_key'] + "_m"][:, genes].mean(axis=0)
-        metric = torch.corrcoef(torch.concat([pred_x.unsqueeze(0), target_x.unsqueeze(0)]))[0, 1].item()
-        return metric
+        pred_x = generative_outputs[generative_kwargs['pred_key'] + "_m"][:, genes]
+        corr = torch.corrcoef(torch.concat([pred_x.mean(axis=0).unsqueeze(0), target_x_m.unsqueeze(0)]))[0, 1].item()
+        # Dont use 0-std genes for ll
+        std_filter = target_x_std > 0
+        gll = torch.distributions.Normal(loc=target_x_m[std_filter], scale=target_x_std[std_filter]
+                                         ).log_prob(pred_x[:, std_filter]).mean(axis=1).mean()
+        return {'correlation': corr, 'GaussianLL': gll}
 
 
 def _get_dict_if_none(param):

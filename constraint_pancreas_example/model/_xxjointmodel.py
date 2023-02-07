@@ -58,7 +58,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             prior: Literal["standard_normal", "vamp"] = 'standard_normal',
             n_prior_components=100,
             pseudoinputs_data_init: bool = True,
-            pseudoinputs_data_indices:Optional[np.array]=None,
+            pseudoinputs_data_indices: Optional[np.array] = None,
             adata_eval: Optional[AnnData] = None,
             **model_kwargs,
     ):
@@ -119,8 +119,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             eval_genes = set(eval_case_info['genes'])
             eval_genes_bool = torch.tensor([g in eval_genes for g in adata.var_names])
             eval_case_data['genes'] = eval_genes_bool
-            eval_case_data['target_x'] = torch.tensor(adata[eval_case_info['cells_target'], :].to_df().values
-                                                      )[:, eval_genes_bool].mean(axis=0)
+            eval_case_data['target_x_m'] = torch.tensor(adata[eval_case_info['cells_target'], :].to_df().values
+                                                        )[:, eval_genes_bool].mean(axis=0)
+            eval_case_data['target_x_std'] = torch.tensor(adata[eval_case_info['cells_target'], :].to_df().values
+                                                          )[:, eval_genes_bool].std(axis=0)
             eval_data[metric_name] = eval_case_data
         return eval_data
 
