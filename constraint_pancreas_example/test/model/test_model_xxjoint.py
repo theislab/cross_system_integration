@@ -68,7 +68,8 @@ def test_model():
                          mixup_alpha=None,
                          system_decoders=False,
                          z_dist_metric='KL',
-                         adata_eval=adata_training
+                         adata_eval=adata_training,
+                         out_var_mode='linear',
                          )
     model.train(max_epochs=2,
                 log_every_n_steps=1,

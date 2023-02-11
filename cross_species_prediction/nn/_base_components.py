@@ -49,12 +49,13 @@ class VarEncoder(Module):
     Encode variance (strictly positive).
     """
 
-    def __init__(self, n_hidden, n_output, mode: str, eps: float = 1e4):
+    def __init__(self, n_hidden, n_output, mode: str, eps: float = 1e-6):
+        # NOTE: Changed eps
         """
 
         :param n_hidden:
         :param n_output:
-        :param mode: How to ocmpute var
+        :param mode: How to compute var
         'sample_feature' - learn per sample and feature
         'feature' - learn per feature, constant across samples
         :param eps:
@@ -67,17 +68,31 @@ class VarEncoder(Module):
             self.encoder = Linear(n_hidden, n_output)
         elif self.mode == 'feature':
             self.var_param = Parameter(torch.zeros(1, n_output))
+        elif self.mode == 'linear':
+            self.var_param_a1 = Parameter(torch.tensor([1.0]))
+            self.var_param_a0 = Parameter(torch.tensor([self.eps]))
         else:
             raise ValueError('Mode not recognised.')
         self.activation = torch.exp
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, x_m: torch.Tensor):
+        """
+
+        :param x: Used to encode var if mode is sample_feature
+        :param x_m: Used to predict var instead of x if mode is linear
+        :return:
+        """
         # var on ln scale
         if self.mode == 'sample_feature':
             v = self.encoder(x)
+            v = self.activation(v) + self.eps  # Ensure that var is strictly positive
         elif self.mode == 'feature':
-            v = self.var_param.expand(x.shape[0], -1) # Broadcast to input size
-        v = self.activation(v) + self.eps  # Ensure that var is strictly positive and on exp scale
+            v = self.var_param.expand(x.shape[0], -1)  # Broadcast to input size
+            v = self.activation(v) + self.eps  # Ensure that var is strictly positive
+        elif self.mode == 'linear':
+            v = self.var_param_a1 * x_m + self.var_param_a0
+            # TODO come up with a better way to constrain this to positive while having lin  relationship
+            v = torch.clamp(v, min=self.eps)
         return v
 
 

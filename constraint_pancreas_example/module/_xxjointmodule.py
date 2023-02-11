@@ -66,6 +66,7 @@ class XXJointModule(BaseModuleClass):
             n_layers: int = 2,
             dropout_rate: float = 0.1,
             data_eval=None,
+            out_var_mode: str = 'feature',
             **kwargs
     ):
         super().__init__()
@@ -104,7 +105,7 @@ class XXJointModule(BaseModuleClass):
                 n_layers=n_layers,
                 dropout_rate=dropout_rate,
                 sample=True,
-                var_mode='feature',
+                var_mode=out_var_mode,
                 **kwargs
             )
         else:
@@ -118,7 +119,7 @@ class XXJointModule(BaseModuleClass):
                 n_layers=n_layers,
                 dropout_rate=dropout_rate,
                 sample=True,
-                var_mode='feature',
+                var_mode=out_var_mode,
                 **kwargs
             )
             self.decoder_1 = EncoderDecoder(
@@ -129,7 +130,7 @@ class XXJointModule(BaseModuleClass):
                 n_layers=n_layers,
                 dropout_rate=dropout_rate,
                 sample=True,
-                var_mode='feature',
+                var_mode=out_var_mode,
                 **kwargs
             )
             # Which decoder belongs to which system

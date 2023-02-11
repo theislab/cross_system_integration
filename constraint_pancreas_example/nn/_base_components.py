@@ -47,7 +47,7 @@ class EncoderDecoder(Module):
     def forward(self, x, cov: Union[torch.Tensor, None] = None):
         y = self.decoder_y(x=x, cov=cov)
         y_m = self.mean_encoder(y)
-        y_v = self.var_encoder(y)
+        y_v = self.var_encoder(y, x_m=y_m)
 
         outputs = dict(y_m=y_m, y_v=y_v)
 
