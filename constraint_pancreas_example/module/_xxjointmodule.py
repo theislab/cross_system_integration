@@ -423,21 +423,36 @@ class XXJointModule(BaseModuleClass):
                                             z=inference_outputs['z_cyc'])
 
         # Distance between modality latent space embeddings
-        def z_dist(z_x, z_y):
+        def z_dist(z_x_m, z_y_m, z_x_v, z_y_v):
+            """
+            If z_dist_metric is KL then KL(z_y|z_x) is computed
+            If NLL then z_y_m is compared to N(z_x_m, z_x_v)
+            :param z_x_m:
+            :param z_y_m:
+            :param z_x_v:
+            :param z_y_v:
+            :return:
+            """
 
             if self.z_dist_metric == 'MSE':
-                return torch.nn.MSELoss(reduction='none')(z_x, z_y).sum(dim=1)
+                return torch.nn.MSELoss(reduction='none')(z_x_m, z_y_m).sum(dim=1)
 
             elif self.z_dist_metric == 'MSE_standard':
                 # Standardise data (jointly both z-s) before MSE calculation
-                z = torch.concat([z_x, z_y])
+                z = torch.concat([z_x_m, z_y_m])
                 means = z.mean(dim=0, keepdim=True)
                 stds = z.std(dim=0, keepdim=True)
 
                 def standardize(x):
                     return (x - means) / stds
 
-                return torch.nn.MSELoss(reduction='none')(standardize(z_x), standardize(z_y)).sum(dim=1)
+                return torch.nn.MSELoss(reduction='none')(standardize(z_x_m), standardize(z_y_m)).sum(dim=1)
+
+            elif self.z_dist_metric == 'KL':
+                return kl_divergence(Normal(z_y_m, z_y_v.sqrt()), Normal(z_x_m, z_x_v.sqrt())).sum(dim=1)
+
+            elif self.z_dist_metric == 'NLL':
+                return reconst_loss_part(x_m=z_x_m, x=z_y_m, x_v=z_x_v)
 
             # elif self.z_dist_metric == 'cosine':
             #    return 1 - torch.nn.CosineSimilarity()(z_x, z_y)
@@ -448,7 +463,8 @@ class XXJointModule(BaseModuleClass):
         # TODO one issue with z distance loss in cycle could be that the encoders and decoders learn to cheat
         #  and encode all cells from one species to one z region, even if they are from the cycle (e.g.
         #  z_x and z_x_y have more similar embeddings and z_y and z_y_x as well)
-        z_distance_cyc = z_dist(z_x=inference_outputs['z_m'], z_y=inference_outputs['z_cyc_m'])
+        z_distance_cyc = z_dist(z_x_m=inference_outputs['z_m'], z_y_m=inference_outputs['z_cyc_m'],
+                                z_x_v=inference_outputs['z_v'], z_y_v=inference_outputs['z_cyc_v'])
 
         # Correlation between both decoded expression reconstructions
         # TODO This could be also NegLL of one prediction against the other, although unsure how well

@@ -67,7 +67,7 @@ def test_model():
     model = XXJointModel(adata=adata_training,
                          mixup_alpha=None,
                          system_decoders=False,
-                         z_dist_metric='MSE_standard',
+                         z_dist_metric='KL',
                          adata_eval=adata_training
                          )
     model.train(max_epochs=2,
