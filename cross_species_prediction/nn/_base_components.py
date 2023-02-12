@@ -90,7 +90,7 @@ class VarEncoder(Module):
             v = self.var_param.expand(x.shape[0], -1)  # Broadcast to input size
             v = self.activation(v) + self.eps  # Ensure that var is strictly positive
         elif self.mode == 'linear':
-            v = self.var_param_a1 * x_m + self.var_param_a0
+            v = self.var_param_a1 * x_m.detach().clone() + self.var_param_a0
             # TODO come up with a better way to constrain this to positive while having lin  relationship
             v = torch.clamp(v, min=self.eps)
         return v
