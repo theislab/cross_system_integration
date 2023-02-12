@@ -49,7 +49,7 @@ class VarEncoder(Module):
     Encode variance (strictly positive).
     """
 
-    def __init__(self, n_hidden, n_output, mode: str, eps: float = 1e-6):
+    def __init__(self, n_hidden, n_output, mode: str, eps: float = 1e-4):
         # NOTE: Changed eps
         """
 
