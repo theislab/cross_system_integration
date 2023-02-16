@@ -2,7 +2,7 @@
 seml:
   executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
   name: csp_eval_test
-  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/logs
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/test/logs
   project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
   conda_environment: csp
   
@@ -16,20 +16,20 @@ slurm:
 
 fixed:
   path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad
-  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/test/
   system_key: system
   system_translate: 1
   group_key: cell_type_final
   group_translate: beta
   batch_key: study_sample
-  max_epochs: 2
   testing: 1
-  name: 'test'
+  #name: 'test'
+  seed: 1
   
 grid:
     eval_type:
       type: choice
       options:
-        #- translation
+        - translation
         - integration
 

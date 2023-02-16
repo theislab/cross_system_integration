@@ -1,0 +1,69 @@
+# Test efefct of zdist metric type on integration and translation at different weight vals
+seml:
+  executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
+  name: csp_eval
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/zdist_metric/logs # CHANGE! OUT!
+  project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
+  conda_environment: csp
+  
+slurm:
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-01:30     # max time, D-HH:MM, for pancreas with 50 epochs this could be 1h
+    nice: 10000
+
+fixed:
+  path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/zdist_metric/ # CHANGE! OUT!
+  system_key: system
+  system_translate: 1
+  group_key: cell_type_final
+  group_translate: beta
+  batch_key: study_sample
+  max_epochs: 50
+       
+  
+grid:
+  eval_type:
+    type: choice
+    options:
+      - translation
+      - integration
+  seed_num:
+    type: choice
+    options:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5 
+zdcw_mse:
+    fixed:
+      z_dist_metric: MSE
+      params_opt: MSE
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 50
+          - 100      
+zdcw_mse_st:
+    fixed:
+      z_dist_metric: MSE_standard
+      params_opt: MSE_standard
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 0.5
+          - 1
+          - 1.5 
+          - 2
+          - 5
+          - 10

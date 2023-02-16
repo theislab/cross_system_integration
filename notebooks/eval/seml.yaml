@@ -4,7 +4,7 @@
 seml:
   executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
   name: csp_eval
-  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/logs # CHANGE! OUT!
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v1/logs # CHANGE! OUT!
   project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
   conda_environment: csp
   
@@ -18,7 +18,7 @@ slurm:
 
 fixed:
   path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad
-  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v0/ # CHANGE! OUT!
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_example_v1/ # CHANGE! OUT!
   system_key: system
   system_translate: 1
   group_key: cell_type_final
@@ -31,8 +31,8 @@ grid:
     eval_type:
       type: choice
       options:
-        - translation
-        #- integration
+        #- translation
+        - integration
     system_decoders:
       type: choice
       options:
@@ -125,15 +125,15 @@ grid:
 #           - 10
 #           - 50
 #           - 100
-me_opt:
-    fixed:
-      params_opt: max_epochs
-    grid:
-      max_epochs:
-        type: choice
-        options:
-          - 100
-          - 200
+# me_opt:
+#     fixed:
+#       params_opt: max_epochs
+#     grid:
+#       max_epochs:
+#         type: choice
+#         options:
+#           - 100
+#           - 200
 # combined_opt:
 #     grid:
 #       z_distance_cycle_weight:

@@ -816,6 +816,9 @@ g=sb.catplot(
 sb.set_style(style)
 
 # %% [markdown]
+# TODO: There was a bug in computing this metric so results were removed
+
+# %% [markdown]
 # C: Correlation on train and val set seems to perform similarly.
 
 # %% [markdown]
@@ -838,12 +841,12 @@ for dataset in res_tab['dataset'].unique():
 # ## LR optimisation
 
 # %%
-path_subset=path_eval+'lr/translation/'
+path_lr=path_eval+'lr/translation/'
 
 # %%
 # Load params and translation eval metric
 res=[]
-for run in glob.glob(path_subset+'*/'):
+for run in glob.glob(path_lr+'*/'):
     # Add this so that code can be tested while not all runs finished
     if os.path.exists(run+'args.pkl') and os.path.exists(run+'translation_correlation.tsv'):
         args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
@@ -865,6 +868,9 @@ res=pd.concat(res,axis=1).T
 res['dataset']=res['path_adata'].map({
     '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_orthologues.h5ad':'pancreas',
     '/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad':'pancreas+tabula'})
+
+# %% [markdown]
+# For pancreas dataset
 
 # %%
 params_opt=['lr','lr_patience', 'lr_factor', 'lr_min','lr_threshold']
@@ -890,10 +896,13 @@ sb.heatmap(res_sub_plot.sort_values('query-pred_query',ascending=False),yticklab
 rcParams['figure.figsize']=(5,7)
 sb.heatmap(res_sub_plot.sort_values('hisMin_loss_train'),yticklabels=False)
 
+# %% [markdown]
+# C: judging by loss values it seems that best combination is slow training and slow lr reduction.
+
 # %%
 # Plot relationship between training losses and metrics
 metrics_plot_loss=['ref-pred_ref','query-pred_query']
-fig,ax=plt.subplots(2,3,figsize=(3*3.5,2*3))
+fig,ax=plt.subplots(2,3,figsize=(3*3.7,2*3))
 for i,loss in enumerate(['hisEnd_loss', 'hisEnd_reconstruction_loss', 'hisEnd_kl_local']):
     res_loss_plot=[]
     for loss_type in ['train','validation']:
@@ -903,7 +912,7 @@ for i,loss in enumerate(['hisEnd_loss', 'hisEnd_reconstruction_loss', 'hisEnd_kl
         res_loss_plot.append(sub)
     res_loss_plot=pd.concat(res_loss_plot)
     for j,metric in enumerate(metrics_plot_loss):
-        sb.scatterplot(x=loss,y=metric,hue='loss_type',data=res_loss_plot, ax=ax[j,i])
+        sb.scatterplot(x=metric,y=loss,hue='loss_type',data=res_loss_plot, ax=ax[j,i])
         if i==2 and j==1:
             plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         else:
@@ -926,5 +935,247 @@ x=pd.DataFrame(minmax_scale(x),columns=x.columns,index=x.index).astype(float)
 # %%
 rcParams['figure.figsize']=(2,3)
 sb.heatmap(x.sort_values('query-pred_query'),yticklabels=False)
+
+# %%
+x=res.query('dataset=="pancreas"').groupby(
+    ['lr','lr_patience', 'lr_factor', 'lr_min','lr_threshold']
+).var()['hisEnd_reconstruction_loss_train'].reset_index()
+x=pd.DataFrame(minmax_scale(x),columns=x.columns,index=x.index).astype(float)
+
+# %%
+rcParams['figure.figsize']=(2,3)
+sb.heatmap(x.sort_values('hisEnd_reconstruction_loss_train'),yticklabels=False)
+
+# %% [markdown]
+# Example logg
+
+# %%
+# NEeeded for below query with negative value
+res['lr_threshold']=res['lr_threshold'].astype(float)
+
+# %%
+run = res.query('lr_patience==10 & lr_factor==0.5 & lr==0.01 & lr_threshold== (-0.005) & dataset=="pancreas"'
+               ).index[0]
+print(run)
+with plt.rc_context({'figure.figsize':(40,10)}):
+    path_run=path_lr+run+'/'
+    for img_fn in ['losses.png']:
+        img = mpimg.imread(path_run+img_fn)
+        imgplot = plt.imshow(img)
+        plt.show()
+
+# %% [markdown]
+# Also for pancreas+tabula
+
+# %%
+params_opt=['lr','lr_patience', 'lr_factor', 'lr_min','lr_threshold']
+losses_hist=['_'.join([h,l,t]) for h,l,t in itertools.product(['hisMin','hisEnd'],
+                              ['loss', 'reconstruction_loss','kl_local'],
+                              ['train','validation'])]
+res_sub_plot=res.query('dataset=="pancreas+tabula"')[
+       ['ref-pred_ref','query-pred_query']+losses_hist+params_opt]
+res_sub_plot[losses_hist+params_opt]=pd.DataFrame(
+    minmax_scale(res_sub_plot[losses_hist+params_opt]),
+    columns=losses_hist+params_opt,index=res_sub_plot.index)
+res_sub_plot=res_sub_plot.astype(float)
+
+# %%
+for p in params_opt:
+    print(p,sorted(res.query('dataset=="pancreas"')[p].unique()))
+
+# %%
+rcParams['figure.figsize']=(5,7)
+sb.heatmap(res_sub_plot.sort_values('query-pred_query',ascending=False),yticklabels=False)
+
+# %%
+rcParams['figure.figsize']=(5,7)
+sb.heatmap(res_sub_plot.sort_values('hisMin_loss_train'),yticklabels=False)
+
+# %% [markdown]
+# C: judging by loss values it seems that best combination is slow training and slow lr reduction.
+
+# %%
+# Plot relationship between training losses and metrics
+metrics_plot_loss=['ref-pred_ref','query-pred_query']
+fig,ax=plt.subplots(2,3,figsize=(3*3.7,2*3))
+for i,loss in enumerate(['hisEnd_loss', 'hisEnd_reconstruction_loss', 'hisEnd_kl_local']):
+    res_loss_plot=[]
+    for loss_type in ['train','validation']:
+        sub=res.query('dataset=="pancreas+tabula"')[metrics_plot_loss+[loss+'_'+loss_type]]
+        sub.rename({loss+'_'+loss_type:loss},axis=1,inplace=True)
+        sub['loss_type']=loss_type
+        res_loss_plot.append(sub)
+    res_loss_plot=pd.concat(res_loss_plot)
+    for j,metric in enumerate(metrics_plot_loss):
+        sb.scatterplot(x=metric,y=loss,hue='loss_type',data=res_loss_plot, ax=ax[j,i])
+        if i==2 and j==1:
+            plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        else:
+            ax[j,i].get_legend().remove()
+plt.tight_layout()
+
+# %% [markdown]
+# C: high eval metric is present in some datasets with hig loss ...
+
+# %%
+rcParams['figure.figsize']=(3,3)
+sb.scatterplot(x='ref-pred_ref',y='query-pred_query',data=res.query('dataset=="pancreas+tabula"'))
+
+# %% [markdown]
+# C: At least it seems that query and ref prediction metrics match
+
+# %%
+x=res.query('dataset=="pancreas+tabula"').groupby(
+    ['lr','lr_patience', 'lr_factor', 'lr_min','lr_threshold']
+).var()['hisEnd_reconstruction_loss_train'].reset_index()
+x=pd.DataFrame(minmax_scale(x),columns=x.columns,index=x.index).astype(float)
+
+# %%
+rcParams['figure.figsize']=(2,3)
+sb.heatmap(x.sort_values('hisEnd_reconstruction_loss_train'),yticklabels=False)
+
+# %% [markdown]
+# C: maybe the starting loss, patience and factor should be small and threshold a bit larger - slow training loss reduction.
+
+# %% [markdown]
+# ## Z_distance metric
+
+# %% [markdown]
+# ### Integration
+
+# %%
+path_zdist_met_integration=path_eval+'zdist_metric/integration/'
+
+# %%
+# Load integration results - params and metrics
+res=[]
+for run in glob.glob(path_zdist_met_integration+'*/'):
+    if os.path.exists(run+'args.pkl') and os.path.exists(run+'scib_metrics.pkl'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
+        data=pd.concat([args,metrics])
+        data.name=run.split('/')[-2]
+        res.append(data)
+res=pd.concat(res,axis=1).T
+
+# %%
+sb.catplot( x='z_distance_cycle_weight', y="asw_group",  col='z_dist_metric',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.2)
+
+# %%
+sb.catplot( x='z_distance_cycle_weight', y="ilisi_system",  col='z_dist_metric',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.2)
+
+# %% [markdown]
+# C: MSE-standard reaches better performance in some cases, but also have a lot of completely failed outliers. May be because most dimensions are  noise which affects z_standardisation more than MSE directly on z (as noise dimensions may be smaller anyways). So can reduce loss by reducting just unimportant dimensions more (as they have same scale as non-noise ones).
+
+# %%
+for w  in sorted(
+    res.query('z_dist_metric=="MSE_standard"')['z_distance_cycle_weight'].unique()):
+    for rank,run in [
+        ('worst', res.query(
+            'z_dist_metric=="MSE_standard" & z_distance_cycle_weight==@w'
+        ).sort_values('ilisi_system').index[0]),
+        ('best', res.query(
+            'z_dist_metric=="MSE_standard" & z_distance_cycle_weight==@w'
+        ).sort_values('ilisi_system').index[-1])
+    ]:
+        print(w,rank,run)
+        with plt.rc_context({'figure.figsize':(40,10)}):
+            path_run=path_zdist_met_integration+run+'/'
+            for img_fn in ['losses.png','umap.png']:
+                img = mpimg.imread(path_run+img_fn)
+                imgplot = plt.imshow(img)
+                plt.show()
+
+# %% [markdown]
+# C: Unclear why variable results with MSE_standard
+
+# %% [markdown]
+# ### Translation
+
+# %%
+path_zdist_met_translation=path_eval+'zdist_metric/translation/'
+
+# %%
+# Load integration results - params and metrics
+res=[]
+for run in glob.glob(path_zdist_met_translation+'*/'):
+    if os.path.exists(run+'args.pkl') and os.path.exists(run+'translation_correlation.tsv'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        transl_corr=pd.read_table(run+'translation_correlation.tsv',index_col=0)
+        transl_corr=pd.Series({'ref-pred_ref':transl_corr.at['ref','pred_ref'],
+                          'query-pred_query':transl_corr.at['query','pred_query'],
+                              'ref-pred_query':transl_corr.at['ref','pred_query'],
+                              'query-pred_ref':transl_corr.at['query','pred_ref'],})
+        data=pd.concat([args,transl_corr])
+        data.name=run.split('/')[-2]
+        res.append(data)
+res=pd.concat(res,axis=1).T
+
+# %%
+sb.catplot( x='z_distance_cycle_weight', y="ref-pred_ref",  col='z_dist_metric',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.2)
+
+# %%
+sb.catplot( x='z_distance_cycle_weight', y="query-pred_query",  col='z_dist_metric',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.2)
+
+# %% [markdown]
+# C: Here it actually seems that using MSE_standard may be better than normal MSE.
+
+# %%
+w=100
+for rank,run in [
+    ('worst', res.query(
+        'z_dist_metric=="MSE" & z_distance_cycle_weight==@w'
+    ).sort_values('query-pred_query').index[0]),
+    ('best', res.query(
+        'z_dist_metric=="MSE" & z_distance_cycle_weight==@w'
+    ).sort_values('query-pred_query').index[-1])
+]:
+    print(w,rank,run)
+    with plt.rc_context({'figure.figsize':(40,10)}):
+        path_run=path_zdist_met_translation+run+'/'
+        for img_fn in ['losses.png']:
+            img = mpimg.imread(path_run+img_fn)
+            imgplot = plt.imshow(img)
+            plt.show()
+
+# %% [markdown]
+# C: Losses of best and worst model are similar, but performance based on correl metric is very different. 
+#
+# C: maybe correl isnt good metric? It is very high already after 1st epoch... Or if good metric it is not aligned with loss.
+
+# %% [markdown]
+# ## losses when logging on step
+
+# %%
+for fn in glob.glob(path_eval+'log_step/translation/*/losses.png'):
+    print(fn.split('/')[-2])
+    with plt.rc_context({'figure.figsize':(40,10)}):
+        img = mpimg.imread(fn)
+        imgplot = plt.imshow(img)
+        plt.show()
+
+# %% [markdown]
+# C: The loss jumps quite a lot, but the eval metric not so much (maybe less sensitive?). Also no clear pattern in moves. 
+
+# %% [markdown]
+# ## Metrics on train and val set
+#
+# TODO maybe update with a newer example
+
+# %%
+# Example trainval correlation metric from single run
+cor=pd.read_table('/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/swa/translation/ST1GTbetaMANoneSDFalseKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_7LsTnBRP/prediction_correlation_trainval.tsv',
+                 index_col=0)
+
+# %%
+sb.violinplot(y='corr',x='set', data=cor)
 
 # %%

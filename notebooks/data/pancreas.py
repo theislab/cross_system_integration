@@ -89,7 +89,25 @@ adata_mm.shape
 adata_mm
 
 # %%
-adata_mm.write(path_save+'mouse.h5ad')
+### Add raw counts
+
+adata_mm_raw=sc.read(path_mm+'adata.h5ad').raw.to_adata()
+adata_hs_raw=sc.read(path_hs+'T1D_T2D_public.h5ad').raw.to_adata()
+adata_hs_raw.var_names=adata_hs_raw.var['features'].values
+
+# Subset raw
+adata_mm_raw=adata_mm_raw[adata[adata.obs.system==0].obs_names,adata.var_names]
+adata_hs_raw=adata_hs_raw[adata[adata.obs.system==1].obs_names,adata.var.gs_hs]
+adata_hs_raw.var_names=adata.var_names
+# make single raw
+adata_raw=sc.concat([adata_mm_raw,adata_hs_raw])
+
+# Add counts
+adata.layers['counts']=adata_raw[adata.obs_names,adata.var_names].X
+
+### Save
+
+display(adata)adata_mm.write(path_save+'mouse.h5ad')
 
 # %%
 del adata_mm
@@ -352,8 +370,43 @@ gc.collect()
 
 display(adata)
 
+# %% [markdown]
+# #### Add raw counts
+
+# %%
+adata_mm_raw=sc.read(path_mm+'data_integrated_analysed.h5ad').raw.to_adata()
+adata_hs_raw=sc.read(fn_hs).raw.to_adata()
+
+# %%
+# Mouse var names to hs adata
+oto_orthologues_sub=oto_orthologues.copy()
+oto_orthologues_sub.index=oto_orthologues_sub.eid_hs
+gs=set(adata_hs_raw.var_names)
+adata_hs_raw=adata_hs_raw[:,[g for g in oto_orthologues_sub.index if g in gs]]
+adata_hs_raw.var_names=oto_orthologues_sub.loc[adata_hs_raw.var_names,'eid_mm']
+
+# %%
+# Subset raw
+adata_mm_raw=adata_mm_raw[adata[adata.obs.system==0].obs_names,adata.var_names]
+adata_hs_raw=adata_hs_raw[adata[adata.obs.system==1].obs_names,adata.var_names]
+# make single raw
+adata_raw=sc.concat([adata_mm_raw,adata_hs_raw])
+
+# %%
+# Add counts
+adata.layers['counts']=adata_raw[adata.obs_names,adata.var_names].X
+
+# %% [markdown]
+# ### Save
+
+# %%
+display(adata)
+
 # %%
 adata.write(path_save+'combined_orthologues.h5ad')
+
+# %%
+#adata=sc.read(path_save+'combined_orthologues.h5ad')
 
 # %% [markdown]
 # ### Human mouse correlation on integration genes
@@ -410,5 +463,69 @@ sb.clustermap(cors,vmin=-1,vmax=1,cmap='coolwarm',figsize=(5,5))
 
 # %% [markdown]
 # Another similar analysis in the xybiomodel notebook
+
+# %% [markdown]
+# ## Mean vs var 
+# Mean vs var of gene per sample and cell type
+
+# %%
+n_col=adata.obs.cell_type_final.nunique()
+n_row=adata.obs.study_sample.nunique()
+fig,axs=plt.subplots(n_row,n_col,figsize=(3*n_col,3*n_row),sharex=True,sharey=True,
+                    subplot_kw={'xscale':'log','yscale':'log'})
+for i, sample in enumerate(sorted(adata.obs.study_sample.unique())):
+    for j, ct in enumerate(sorted(adata.obs.cell_type_final.unique())):
+        cells=adata.obs.query('study_sample==@sample & cell_type_final==@ct').index
+        if len(cells)>100:
+            # Filter out all 0 genes
+            genes=adata[cells,:].X.sum(axis=0)>0
+            x2_m=np.array((adata[cells,genes].X.multiply(adata[cells,genes].X)
+                          ).mean(axis=0)).ravel()
+            x_m=np.array(adata[cells,genes].X.mean(axis=0)).ravel()
+            x_var=x2_m-x_m**2
+            ax=axs[i,j]
+            ax.scatter(x=x_m,y=x_var,s=2)
+            ax.set_title(sample+' '+ct)
+fig.tight_layout()
+
+# %% [markdown]
+# C: The relationship between gene mean and var is similar for all genes. It is almost linear.
+
+# %%
+# For all genes/cells compute mean and var
+genes=adata.X.sum(axis=0)>0
+x2_m=np.array((adata[:,genes].X.multiply(adata[:,genes].X)).mean(axis=0)).ravel()
+x_m=np.array(adata[:,genes].X.mean(axis=0)).ravel()
+x_var=x2_m-x_m**2
+
+# %%
+# Degree 1 fit
+a,b=np.polyfit(x_m,x_var,deg=1)
+print(a,b)
+plt.scatter(x_m,x_var,s=1)
+plt.xscale('log')
+plt.yscale('log')
+x=np.linspace(0, x_m.max(), num=100000)
+plt.scatter(x,x*a+b,s=0.1)
+
+# %%
+# Degree 2 fit
+a1,a2,b=np.polyfit(x_m,x_var,deg=2)
+print(a1,a2,b)
+plt.scatter(x_m,x_var,s=1)
+plt.xscale('log')
+plt.yscale('log')
+x=np.linspace(0, x_m.max(), num=100000)
+plt.scatter(x,x**2*a1+x*a2+b,s=0.1)
+
+# %%
+# Degree 3 fit
+a1,a2,a3,b=np.polyfit(x_m,x_var,deg=3)
+print(a1,a2,a3,b)
+plt.scatter(x_m,x_var,s=1)
+plt.xscale('log')
+plt.yscale('log')
+x=np.linspace(0, x_m.max(), num=100000)
+plt.scatter(x,x**3*a1+x**2*a2+x*a3+b,s=0.1)
 
 # %%

@@ -1,0 +1,45 @@
+# Run selected params (worked well or for comparison) for presentation plots & eval
+seml:
+  executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
+  name: csp_eval
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pretrain/logs # CHANGE! OUT!
+  project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
+  conda_environment: csp
+  
+slurm:
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-02:00     # max time, D-HH:MM, set to 0-08:00, for pancreas this could be 1h
+    nice: 10000
+
+fixed:
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pretrain/ # CHANGE! OUT!
+  system_key: system
+  system_translate: 1
+  max_epochs: 30
+  max_epochs_pretrain: 40
+  epochs_detail_plot: 50
+  # Model params
+  system_decoders: 0
+  path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad
+  group_key: cell_type
+  group_translate: type B pancreatic cell
+  batch_key: batch
+  cells_eval: eval_cells
+  genes_eval: eval_genes
+  eval_type: translation
+  pretrain_key: dataset
+  pretrain_value: tabula
+  
+grid:
+  seed_num:
+    type: choice
+    options:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5 
+        

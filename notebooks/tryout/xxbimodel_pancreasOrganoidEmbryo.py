@@ -170,8 +170,14 @@ sc.tl.umap(embed)
 # Make cell type column per dataset since annotationb is not unified accross datasets
 # so it will be easier to look at
 for ds in embed.obs.dataset.unique():
-    embed.obs['cell_type_'+ds]=embed.obs.apply(
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
         lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
 
 # %%
 rcParams['figure.figsize']=(6,6)
@@ -182,7 +188,7 @@ sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
 # TODO: Change z distance, add to model init `z_dist_metric = 'MSE_standard'`
 
 # %% [markdown]
-# ## cVAE + VampPrior
+# ## cVAE + VampPrior (n=100)
 
 # %%
 model = XXJointModel(adata=adata_training, 
@@ -250,6 +256,474 @@ sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
 
 # %% [markdown]
 # C: Here the VampPrior alone does not work that well - not integrating one organoid sample?! But it integrates the other sample and embryo well. Maybe would need also datast as batch besides sample?
+
+# %% [markdown]
+# ## cVAE + VampPrior (n=500)
+# Integration works better with higher VampPrior n components
+
+# %%
+model = XXJointModel(adata=adata_training, 
+                     prior='vamp', 
+                     n_prior_components=500,
+                     pseudoinputs_data_init=True)
+model.train(max_epochs=50,
+            check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':dict(
+            kl_weight= 1.0,
+            kl_cycle_weight = 0,
+            reconstruction_weight= 1.0,
+            reconstruction_mixup_weight = 0,
+            reconstruction_cycle_weight= 0,
+            z_distance_cycle_weight = 0,
+            translation_corr_weight = 0,
+            z_contrastive_weight = 0,
+           )})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[10:],
+            model.trainer.logger.history[l][l][10:],c=c)
+fig.tight_layout()
+
+# %%
+embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+
+# %%
+random_indices=np.random.permutation(list(range(embed_full.shape[0])))[:10000]
+embed=sc.AnnData(embed_full[random_indices,:],obs=adata_training[random_indices,:].obs)
+embed.obs['system_name']=embed.obs.system.map({0:'organoid',1:'embryo'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+# Make cell type column per dataset since annotationb is not unified accross datasets
+# so it will be easier to look at
+for ds in embed.obs.dataset.unique():
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
+        lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
+
+# %%
+rcParams['figure.figsize']=(6,6)
+sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
+           ['cell_type_'+ds for ds in embed.obs.dataset.unique()],s=30,wspace=0.8,ncols=3)
+
+# %% [markdown]
+# ## cVAE + VampPrior (n=1000)
+
+# %%
+model = XXJointModel(adata=adata_training, 
+                     prior='vamp', 
+                     n_prior_components=1000,
+                     pseudoinputs_data_init=True)
+model.train(max_epochs=50,
+            check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':dict(
+            kl_weight= 1.0,
+            kl_cycle_weight = 0,
+            reconstruction_weight= 1.0,
+            reconstruction_mixup_weight = 0,
+            reconstruction_cycle_weight= 0,
+            z_distance_cycle_weight = 0,
+            translation_corr_weight = 0,
+            z_contrastive_weight = 0,
+           )})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[10:],
+            model.trainer.logger.history[l][l][10:],c=c)
+fig.tight_layout()
+
+# %%
+embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+
+# %%
+random_indices=np.random.permutation(list(range(embed_full.shape[0])))[:10000]
+embed=sc.AnnData(embed_full[random_indices,:],obs=adata_training[random_indices,:].obs)
+embed.obs['system_name']=embed.obs.system.map({0:'organoid',1:'embryo'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+# Make cell type column per dataset since annotationb is not unified accross datasets
+# so it will be easier to look at
+for ds in embed.obs.dataset.unique():
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
+        lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
+
+# %%
+rcParams['figure.figsize']=(6,6)
+sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
+           ['cell_type_'+ds for ds in embed.obs.dataset.unique()],s=30,wspace=0.8,ncols=3)
+
+# %% [markdown]
+# ## cVAE + VampPrior (n=500) + pseudoinputs from hs only
+# Try using pseudinputs 
+
+# %%
+npc=500
+pdi=np.random.permutation(np.argwhere((adata_training.obs['system']==1).ravel()).ravel())[:npc]
+model = XXJointModel(adata=adata_training, 
+                     prior='vamp', 
+                     n_prior_components=npc,
+                     pseudoinputs_data_init=True,
+                     pseudoinputs_data_indices=pdi
+                    )
+model.train(max_epochs=50,
+            check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':dict(
+            kl_weight= 1.0,
+            kl_cycle_weight = 0,
+            reconstruction_weight= 1.0,
+            reconstruction_mixup_weight = 0,
+            reconstruction_cycle_weight= 0,
+            z_distance_cycle_weight = 0,
+            translation_corr_weight = 0,
+            z_contrastive_weight = 0,
+           )})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[10:],
+            model.trainer.logger.history[l][l][10:],c=c)
+fig.tight_layout()
+
+# %%
+embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+
+# %%
+random_indices=np.random.permutation(list(range(embed_full.shape[0])))[:10000]
+embed=sc.AnnData(embed_full[random_indices,:],obs=adata_training[random_indices,:].obs)
+embed.obs['system_name']=embed.obs.system.map({0:'organoid',1:'embryo'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+# Make cell type column per dataset since annotationb is not unified accross datasets
+# so it will be easier to look at
+for ds in embed.obs.dataset.unique():
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
+        lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
+
+# %%
+rcParams['figure.figsize']=(6,6)
+sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
+           ['cell_type_'+ds for ds in embed.obs.dataset.unique()],s=30,wspace=0.8,ncols=3)
+
+# %% [markdown]
+# C: indeed, having prior inputs from single system improves integration
+
+# %% [markdown]
+# ## cVAE + VampPrior (n=500) + pseudoinputs from mm only
+# Try using pseudinputs 
+
+# %%
+npc=500
+pdi=np.random.permutation(np.argwhere((adata_training.obs['system']==0).ravel()).ravel())[:npc]
+model = XXJointModel(adata=adata_training, 
+                     prior='vamp', 
+                     n_prior_components=npc,
+                     pseudoinputs_data_init=True,
+                     pseudoinputs_data_indices=pdi
+                    )
+model.train(max_epochs=50,
+            check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':dict(
+            kl_weight= 1.0,
+            kl_cycle_weight = 0,
+            reconstruction_weight= 1.0,
+            reconstruction_mixup_weight = 0,
+            reconstruction_cycle_weight= 0,
+            z_distance_cycle_weight = 0,
+            translation_corr_weight = 0,
+            z_contrastive_weight = 0,
+           )})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[10:],
+            model.trainer.logger.history[l][l][10:],c=c)
+fig.tight_layout()
+
+# %%
+embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+
+# %%
+random_indices=np.random.permutation(list(range(embed_full.shape[0])))[:10000]
+embed=sc.AnnData(embed_full[random_indices,:],obs=adata_training[random_indices,:].obs)
+embed.obs['system_name']=embed.obs.system.map({0:'organoid',1:'embryo'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+# Make cell type column per dataset since annotationb is not unified accross datasets
+# so it will be easier to look at
+for ds in embed.obs.dataset.unique():
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
+        lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
+
+# %%
+rcParams['figure.figsize']=(6,6)
+sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
+           ['cell_type_'+ds for ds in embed.obs.dataset.unique()],s=30,wspace=0.8,ncols=3)
+
+# %% [markdown]
+# C: choosing the reference for pseudoinputs seems to be important. Human may work better than mouse as thetwo s5 and s6 samples seem to be very different
+
+# %% [markdown]
+# ## cVAE + VampPrior (n=500) + pseudoinputs from mm s5 only
+
+# %%
+npc=500
+pdi=np.random.permutation(np.argwhere((adata_training.obs['dataset']=='organoid_s5'
+                                      ).ravel()).ravel())[:npc]
+model = XXJointModel(adata=adata_training, 
+                     prior='vamp', 
+                     n_prior_components=npc,
+                     pseudoinputs_data_init=True,
+                     pseudoinputs_data_indices=pdi
+                    )
+model.train(max_epochs=50,
+            check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':dict(
+            kl_weight= 1.0,
+            kl_cycle_weight = 0,
+            reconstruction_weight= 1.0,
+            reconstruction_mixup_weight = 0,
+            reconstruction_cycle_weight= 0,
+            z_distance_cycle_weight = 0,
+            translation_corr_weight = 0,
+            z_contrastive_weight = 0,
+           )})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[10:],
+            model.trainer.logger.history[l][l][10:],c=c)
+fig.tight_layout()
+
+# %%
+embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+
+# %%
+random_indices=np.random.permutation(list(range(embed_full.shape[0])))[:10000]
+embed=sc.AnnData(embed_full[random_indices,:],obs=adata_training[random_indices,:].obs)
+embed.obs['system_name']=embed.obs.system.map({0:'organoid',1:'embryo'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+# Make cell type column per dataset since annotationb is not unified accross datasets
+# so it will be easier to look at
+for ds in embed.obs.dataset.unique():
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
+        lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
+
+# %%
+rcParams['figure.figsize']=(6,6)
+sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
+           ['cell_type_'+ds for ds in embed.obs.dataset.unique()],s=30,wspace=0.8,ncols=3)
+
+# %% [markdown]
+# C: Using s5 as reference (which had problems mapping) is a bad idea.
+
+# %% [markdown]
+# ## cVAE + VampPrior (n=500) + pseudoinputs from mm s6 only
+
+# %%
+npc=500
+pdi=np.random.permutation(np.argwhere((adata_training.obs['dataset']=='organoid_s6'
+                                      ).ravel()).ravel())[:npc]
+model = XXJointModel(adata=adata_training, 
+                     prior='vamp', 
+                     n_prior_components=npc,
+                     pseudoinputs_data_init=True,
+                     pseudoinputs_data_indices=pdi
+                    )
+model.train(max_epochs=50,
+            check_val_every_n_epoch=1,
+           plan_kwargs={'loss_weights':dict(
+            kl_weight= 1.0,
+            kl_cycle_weight = 0,
+            reconstruction_weight= 1.0,
+            reconstruction_mixup_weight = 0,
+            reconstruction_cycle_weight= 0,
+            z_distance_cycle_weight = 0,
+            translation_corr_weight = 0,
+            z_contrastive_weight = 0,
+           )})
+
+# %%
+# Plot all loses
+losses=[k for k in model.trainer.logger.history.keys() 
+        if '_step' not in k and '_epoch' not in k and 'validation' not in k]
+fig,axs=plt.subplots(2,len(losses),figsize=(len(losses)*3,4))
+for ax_i,l_train in enumerate(losses):
+    l_val=l_train.replace('_train','_validation')
+    l_name=l_train.replace('_train','')
+    for l,c in [(l_train,'tab:blue'),(l_val,'tab:orange')]:
+        axs[0,ax_i].plot(
+            model.trainer.logger.history[l].index,
+            model.trainer.logger.history[l][l],c=c)
+        axs[0,ax_i].set_title(l_name)
+        axs[1,ax_i].plot(
+            model.trainer.logger.history[l].index[10:],
+            model.trainer.logger.history[l][l][10:],c=c)
+fig.tight_layout()
+
+# %%
+embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+
+# %%
+random_indices=np.random.permutation(list(range(embed_full.shape[0])))[:10000]
+embed=sc.AnnData(embed_full[random_indices,:],obs=adata_training[random_indices,:].obs)
+embed.obs['system_name']=embed.obs.system.map({0:'organoid',1:'embryo'})
+
+# %%
+sc.pp.neighbors(embed, use_rep='X')
+sc.tl.umap(embed)
+
+# %%
+# Make cell type column per dataset since annotationb is not unified accross datasets
+# so it will be easier to look at
+for ds in embed.obs.dataset.unique():
+    name='cell_type_'+ds
+    embed.obs[name]=embed.obs.apply(
+        lambda x: x['cell_type'] if x['dataset']==ds else np.nan, axis=1)
+    embed.uns[name+'_colors']=['tab:blue',  'tab:orange','tab:green','tab:red', 'tab:purple',
+                'tab:brown','tab:pink',  'tab:olive','tab:cyan',
+                'lightsteelblue','bisque','limegreen','lightcoral','plum',
+                'peru','pink','yellowgreen','black',
+                'gold','brown','navy','lightsalmon','teal','olive']
+
+# %%
+rcParams['figure.figsize']=(6,6)
+sc.pl.umap(embed,color=['system_name', 'dataset', 'sample']+
+           ['cell_type_'+ds for ds in embed.obs.dataset.unique()],s=30,wspace=0.8,ncols=3)
 
 # %% [markdown]
 # ## cVAE + VampPrior + z_dist_cycle

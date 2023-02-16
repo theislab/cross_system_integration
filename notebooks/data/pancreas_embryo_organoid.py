@@ -107,7 +107,13 @@ sc.pl.embedding(adata_e,'scVI_nodoub_umap_1',
            wspace=0.4)
 
 # %%
+sc.pl.embedding(adata_e,'scVI_nodoub_umap_1',color=['Batch'],wspace=0.4)
+
+# %%
 adata_e.obs.groupby(['Batch','Sample'],observed=True).size()
+
+# %%
+pd.crosstab(adata_e.obs['annotation_nodoub_2'],adata_e.obs.Batch)
 
 # %% [markdown]
 # ## Combine objects
