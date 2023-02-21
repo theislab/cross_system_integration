@@ -49,7 +49,7 @@ class EncoderDecoder(Module):
         # The nan_to_num should be temporary solution until figured out what is happening
         # TODO Here var eps was added so results would need to be re-run
         y_m = torch.nan_to_num(self.mean_encoder(y))
-        y_v = torch.nan_to_num(self.var_encoder(y, x_m=y_m))+self.var_eps
+        y_v = self.var_encoder(y, x_m=y_m)
 
         outputs = dict(y_m=y_m, y_v=y_v)
 

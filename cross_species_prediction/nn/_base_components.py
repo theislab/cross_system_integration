@@ -83,16 +83,17 @@ class VarEncoder(Module):
         :return:
         """
         # var on ln scale
+        # Force to be non nan - TODO come up with better way to do so
         if self.mode == 'sample_feature':
             v = self.encoder(x)
-            v = self.activation(v) + self.eps  # Ensure that var is strictly positive
+            v = torch.nan_to_num(self.activation(v)) + self.eps  # Ensure that var is strictly positive
         elif self.mode == 'feature':
             v = self.var_param.expand(x.shape[0], -1)  # Broadcast to input size
-            v = self.activation(v) + self.eps  # Ensure that var is strictly positive
+            v = torch.nan_to_num(self.activation(v)) + self.eps  # Ensure that var is strictly positive
         elif self.mode == 'linear':
             v = self.var_param_a1 * x_m.detach().clone() + self.var_param_a0
             # TODO come up with a better way to constrain this to positive while having lin  relationship
-            v = torch.clamp(v, min=self.eps)
+            v = torch.clamp(torch.nan_to_num(v), min=self.eps)
         return v
 
 
