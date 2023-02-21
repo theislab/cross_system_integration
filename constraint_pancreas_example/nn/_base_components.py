@@ -46,16 +46,16 @@ class EncoderDecoder(Module):
 
     def forward(self, x, cov: Union[torch.Tensor, None] = None):
         y = self.decoder_y(x=x, cov=cov)
-        y_m = self.mean_encoder(y)
-        y_v = self.var_encoder(y, x_m=y_m)
+        # The nan_to_num should be temporary solution until figured out what is happening
+        # TODO Here var eps was added so results would need to be re-run
+        y_m = torch.nan_to_num(self.mean_encoder(y))
+        y_v = torch.nan_to_num(self.var_encoder(y, x_m=y_m))+self.var_eps
 
         outputs = dict(y_m=y_m, y_v=y_v)
 
         # Sample from latent distribution
         if self.sample:
-            # The nan_to_num should be temporary solution until figured out what is happening
-            # TODO Here var eps was added so results would need to be re-run
-            y = reparameterize_gaussian(torch.nan_to_num(y_m), torch.nan_to_num(y_v)+self.var_eps)
+            y = reparameterize_gaussian(y_m, y_v)
             outputs['y'] = y
 
         return outputs
