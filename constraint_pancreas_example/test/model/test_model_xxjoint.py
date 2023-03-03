@@ -81,8 +81,8 @@ def test_model():
                     'log_on_step': True,
                     'loss_weights': {
                         'kl_weight': 2,
-                        'kl_cycle_weight': WeightScaling(weight_start=0, weight_end=1,
-                                                         point_start=0, point_end=2, update_on='step')
+                        'kl_cycle_weight': dict(weight_start=0, weight_end=1,
+                                                point_start=1, point_end=2, update_on='epoch')
                     }})
     # Test double decoder and mixup
     model = XXJointModel(adata=adata_training, mixup_alpha=0.4, system_decoders=True)

@@ -22,7 +22,7 @@ class WeightScaling:
                  weight_end: float,
                  point_start: int,
                  point_end: int,
-                 update_on: Literal['epoch', 'step'],
+                 update_on: Literal['epoch', 'step'] = 'epoch',
                  ):
         self.weight_start = weight_start
         self.weight_end = weight_end
@@ -115,7 +115,7 @@ class TrainingPlanMixin(TrainingPlan):
     loss_weights:
         Specifies how losses should be weighted and in which part of the training
         Dict with keys being loss names and values being loss weights.
-        Loss weights can be floats for constant weight or WeightScaling object
+        Loss weights can be floats for constant weight or dict of params passed to WeightScaling object
     **loss_kwargs
         Keyword args to pass to the loss method of the `module`.
         Loss weights should not be passed here and are handled via loss_weights param.
@@ -165,6 +165,10 @@ class TrainingPlanMixin(TrainingPlan):
         # automatic handling of loss component weights
         if loss_weights is None:
             loss_weights = {}
+        # Make weighting object
+        for loss, weight in loss_weights.items():
+            if isinstance(weight, dict):
+                loss_weights[loss] = WeightScaling(**weight)
         self.loss_weights = loss_weights
 
         # Ensure that all passed loss weight specifications are in available loss params
