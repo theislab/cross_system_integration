@@ -24,6 +24,14 @@ class WeightScaling:
                  point_end: int,
                  update_on: Literal['epoch', 'step'] = 'epoch',
                  ):
+        """
+        Since the epochs are counted after they are run start point must be set to 0 to represent 1st epoch
+        :param weight_start:
+        :param weight_end:
+        :param point_start:
+        :param point_end:
+        :param update_on:
+        """
         self.weight_start = weight_start
         self.weight_end = weight_end
         self.point_start = point_start
