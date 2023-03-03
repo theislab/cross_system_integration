@@ -22,7 +22,7 @@ class WeightScaling:
                  weight_end: float,
                  point_start: int,
                  point_end: int,
-                 update_on: Literal['epoch', 'step'] = 'epoch',
+                 update_on: Literal['epoch', 'step'] = 'step',
                  ):
         """
         Since the epochs are counted after they are run start point must be set to 0 to represent 1st epoch
