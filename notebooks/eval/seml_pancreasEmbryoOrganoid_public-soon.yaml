@@ -3,30 +3,30 @@
 seml:
   executable: /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/run_seml.py
   name: csp_eval
-  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_conditions_hpap2nd/logs # CHANGE! OUT!
+  output_dir: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_embryo_organoid_public-soon-long/logs # CHANGE! OUT!
   project_root_dir:  /lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval
   conda_environment: csp
   
 slurm:
   sbatch_options_template: GPU
   sbatch_options:
-    mem: 15G          # memory, set to 32, for pancreas this could be 10Gb
+    mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
     cpus-per-task: 4  # num cores, set to 4
     time: 0-03:00     # max time, D-HH:MM, set to 0-08:00
     nice: 10000
 
 fixed:
-  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_conditions_hpap2nd/ # CHANGE! OUT!
-  max_epochs: 50
-  epochs_detail_plot: 20
+  path_save: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/eval/pancreas_embryo_organoid_public-soon-long/ # CHANGE! OUT!
+  max_epochs: 200 # 80 in pancreas_embryo_organoid_public-soon
+  epochs_detail_plot: 50
   # Model params
   system_decoders: 0
   # Task
   eval_type: integration
   # Data
-  path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_conditions_orthologues_full_hpap2nd.h5ad
-  group_key: cell_type_eval
-  batch_key: batch
+  path_adata: /lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_organoid_embryo/organoid_embryo_public-soon.h5ad
+  group_key: cell_type
+  batch_key: sample
   system_key: system
   n_cells_eval: 100000
        
@@ -86,6 +86,46 @@ zdcw_opt_std:
           - 5 
           - 10
           - 50
+zdcw_opt_std_anneal:
+    fixed:
+      z_dist_metric: MSE_standard 
+      params_opt: z_distance_cycle_weight_std_anneal
+      kl_weight: w0_1_10000_20000
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - w0_2_10000_20000
+          - w0_5_10000_20000
+          - w0_10_10000_20000
+          - w0_50_10000_20000
+zdcw_opt_std_annealkl:
+    fixed:
+      z_dist_metric: MSE_standard 
+      params_opt: z_distance_cycle_weight_std_annealkl
+      kl_weight: w0_1_10000_20000
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50       
+zdcw_opt_std_vamp:
+    fixed:
+      z_dist_metric: MSE_standard 
+      params_opt: z_distance_cycle_weight_std_vamp
+      prior: vamp
+      n_prior_components: 500
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50  
 zdcw_opt_kl:
     fixed:
       z_dist_metric: KL 
@@ -95,12 +135,11 @@ zdcw_opt_kl:
         type: choice
         options:
           - 0.5
-          - 0.75
-          - 1.25
           - 1
           - 1.5
-          - 2
-          - 5  
+          - 2 
+          - 5
+          - 10
 zdcw_opt_nll:
     fixed:
       z_dist_metric: NLL 
