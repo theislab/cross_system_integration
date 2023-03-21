@@ -50,6 +50,16 @@ def str_to_float_zeronone(x):
         return None
     else:
         return float(x)
+def str_to_weight(x):
+    x=[float(i) for i in x.split(',')]
+    if len(x)==1:
+        x=x[0]
+    else:
+        x={'weight_start':x[0], 'weight_end':x[1],
+           'point_start':x[2], 'point_end':x[3], 
+           'update_on':'step'}
+    return x
+
 parser.add_argument('-n', '--name', required=False, type=str, default=None,
                     help='name of replicate, if unspecified set to rSEED if seed is given '+\
                     'and else to blank string')
@@ -99,23 +109,30 @@ parser.add_argument('-me', '--max_epochs', required=False, type=int,default=50,
                     help='max_epochs for training')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
                     help='Loss subplot from this epoch on')
-parser.add_argument('-kw', '--kl_weight', required=False, type=float,default=1,
+
+parser.add_argument('-kw', '--kl_weight', required=False, 
+                    type=str_to_weight,default=1,
                     help='kl_weight for training')
-parser.add_argument('-kcw', '--kl_cycle_weight', required=False, type=float,default=0,
+parser.add_argument('-kcw', '--kl_cycle_weight', required=False, 
+                    type=str_to_weight,default=0,
                     help='kl_cycle_weight for training')
-parser.add_argument('-rw', '--reconstruction_weight', required=False, type=float,default=1,
+parser.add_argument('-rw', '--reconstruction_weight', required=False, 
+                    type=str_to_weight,default=1,
                     help='reconstruction_weight for training')
 parser.add_argument('-rmw', '--reconstruction_mixup_weight', required=False, 
-                    type=float,default=0,
+                    type=str_to_weight,default=0,
                     help='kl_weight for training')
 parser.add_argument('-rcw', '--reconstruction_cycle_weight', required=False, 
-                    type=float,default=0,
+                    type=str_to_weight,default=0,
                     help='reconstruction_cycle_weight for training')
-parser.add_argument('-zdcw', '--z_distance_cycle_weight', required=False, type=float,default=0,
+parser.add_argument('-zdcw', '--z_distance_cycle_weight', required=False, 
+                    type=str_to_weight,default=0,
                     help='z_distance_cycle_weight for training')
-parser.add_argument('-tcw', '--translation_corr_weight', required=False, type=float,default=0,
+parser.add_argument('-tcw', '--translation_corr_weight', required=False, 
+                    type=str_to_weight,default=0,
                     help='translation_corr_weight for training')
-parser.add_argument('-zcw', '--z_contrastive_weight', required=False, type=float,default=0,
+parser.add_argument('-zcw', '--z_contrastive_weight', required=False, 
+                    type=str_to_weight,default=0,
                     help='z_contrastive_weight for training')
 
 parser.add_argument('-o', '--optimizer', required=False, type=str,default="Adam",
@@ -169,6 +186,9 @@ if False:
         '-me','2',
         '-edp','0',
         
+        '-kw','0,1,1,2',
+        '-rw','1',
+        
         '-s','1',
         
         # Lr testing
@@ -195,20 +215,28 @@ if args.name is None:
     if args.seed is not None:
         args.name='r'+str(args.seed)
 
+
 # %%
 # Make folder for saving
+def weight_to_str(x):
+    if isinstance(x,dict):
+        x='-'.join([str(x) for x in x.values() if not isinstance(x,str)])
+    else:
+        x=str(x)
+    return x
+
 path_save=args.path_save+\
     'MA'+str(args.mixup_alpha)+\
     'SD'+str(args.system_decoders)+\
     'OVM'+str(args.out_var_mode)+\
-    'KLW'+str(args.kl_weight)+\
-    'KLCW'+str(args.kl_cycle_weight)+\
-    'RW'+str(args.reconstruction_weight)+\
-    'RMW'+str(args.reconstruction_mixup_weight)+\
-    'RCW'+str(args.reconstruction_cycle_weight)+\
-    'ZDCW'+str(args.z_distance_cycle_weight)+\
-    'TCW'+str(args.translation_corr_weight)+\
-    'ZCW'+str(args.z_contrastive_weight)+\
+    'KLW'+weight_to_str(args.kl_weight)+\
+    'KLCW'+weight_to_str(args.kl_cycle_weight)+\
+    'RW'+weight_to_str(args.reconstruction_weight)+\
+    'RMW'+weight_to_str(args.reconstruction_mixup_weight)+\
+    'RCW'+weight_to_str(args.reconstruction_cycle_weight)+\
+    'ZDCW'+weight_to_str(args.z_distance_cycle_weight)+\
+    'TCW'+weight_to_str(args.translation_corr_weight)+\
+    'ZCW'+weight_to_str(args.z_contrastive_weight)+\
     'P'+str(''.join([i[0] for  i in args.prior.split('_')]))+\
     'NPC'+str(args.n_prior_components)+\
     'NL'+str(args.n_layers)+\
