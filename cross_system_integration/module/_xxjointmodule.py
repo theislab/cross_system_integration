@@ -151,6 +151,7 @@ class XXJointModule(BaseModuleClass):
         else:
             raise ValueError('Prior not recognised')
 
+    @auto_move_data
     def _get_inference_input(self, tensors, **kwargs):
         """Parse the dictionary to get appropriate args"""
         input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
@@ -160,6 +161,7 @@ class XXJointModule(BaseModuleClass):
         input_dict = dict(expr=expr, cov=cov, system=system)
         return input_dict
 
+    @auto_move_data
     def _get_inference_cycle_input(self, tensors, generative_outputs, **kwargs):
         """Parse the dictionary to get appropriate args"""
         input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
@@ -169,6 +171,7 @@ class XXJointModule(BaseModuleClass):
         input_dict = dict(expr=expr, cov=cov, system=system)
         return input_dict
 
+    @auto_move_data
     def _get_generative_input(self, tensors, inference_outputs, cov_replace: torch.Tensor = None, **kwargs):
         """
         Parse the dictionary to get appropriate args
@@ -184,6 +187,7 @@ class XXJointModule(BaseModuleClass):
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
 
+    @auto_move_data
     def _get_generative_cycle_input(self, tensors, inference_cycle_outputs, **kwargs):
         """Parse the dictionary to get appropriate args"""
         z = inference_cycle_outputs["z"]
@@ -193,6 +197,7 @@ class XXJointModule(BaseModuleClass):
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
 
+    @auto_move_data
     def _get_generative_mixup_input(self, tensors, inference_outputs, mixup_setting):
         z = mixup_data(x=inference_outputs["z"], **mixup_setting)
         cov = {'x': mixup_data(x=tensors['covariates'], **mixup_setting),
