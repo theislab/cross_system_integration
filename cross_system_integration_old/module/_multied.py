@@ -6,10 +6,10 @@ from torch.distributions import kl_divergence, Normal
 #from scvi import _CONSTANTS
 from scvi.module.base import BaseModuleClass, LossRecorder, auto_move_data
 
-from cross_species_prediction.nn._base_components import MultiDecoder, MultiEncoder
-from cross_species_prediction.model._gene_maps import GeneMap
-from cross_species_prediction.module.metrics import gaussian_nll_mask
-from cross_species_prediction.constants import FLOAT_NN
+from cross_system_integration_old.nn._base_components import MultiDecoder, MultiEncoder
+from cross_system_integration_old.model._gene_maps import GeneMap
+from cross_system_integration_old.module.metrics import gaussian_nll_mask
+from cross_system_integration_old.constants import FLOAT_NN
 
 torch.backends.cudnn.benchmark = True
 

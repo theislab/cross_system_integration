@@ -15,9 +15,9 @@ from scipy import sparse
 from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin
 from scvi.utils import setup_anndata_dsp
 
-from cross_species_prediction.module._multied import Multied
-from cross_species_prediction.model._gene_maps import GeneMap
-from cross_species_prediction.data._anndata import _check_anndata_setup_equivalence
+from cross_system_integration_old.module._multied import Multied
+from cross_system_integration_old.model._gene_maps import GeneMap
+from cross_system_integration_old.data._anndata import _check_anndata_setup_equivalence
 
 logger = logging.getLogger(__name__)
 
