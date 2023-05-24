@@ -9,5 +9,5 @@ with open('requirements.txt') as f:
 
 if __name__ == "__main__":
     setuptools.setup(name="cross_system_integration",
-                     packages=['cross_system_integration_old', 'cross_system_integration'],
+                     packages=[ 'cross_system_integration'],
                      install_requires=requirements)
