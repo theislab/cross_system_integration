@@ -8,6 +8,6 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 if __name__ == "__main__":
-    setuptools.setup(name="cross_species_prediction",
-                     packages=['cross_species_prediction', 'constraint_pancreas_example'],
+    setuptools.setup(name="cross_system_integration",
+                     packages=['cross_system_integration_old', 'cross_system_integration'],
                      install_requires=requirements)
