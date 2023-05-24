@@ -13,7 +13,7 @@ try:
 except ModuleNotFoundError:
     import importlib_metadata
 
-package_name = "cross_species_prediction"
+package_name = "cross_system_integration_old"
 __version__ = importlib_metadata.version(package_name)
 
 logger = logging.getLogger(__name__)
