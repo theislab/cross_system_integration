@@ -1,5 +1,6 @@
 import logging
-from typing import List, Optional, Union, Sequence, Dict, Literal
+from typing import List, Optional, Union, Sequence, Dict
+from typing_extensions import Literal
 import pandas as pd
 import numpy as np
 import torch
