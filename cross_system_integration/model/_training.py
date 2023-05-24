@@ -4,8 +4,8 @@ import numpy as np
 
 from scvi.train import TrainRunner
 
-from constraint_pancreas_example.train import TrainingPlanMixin
-from constraint_pancreas_example.dataloaders import DataSplitter
+from cross_system_integration.train import TrainingPlanMixin
+from cross_system_integration.dataloaders import DataSplitter
 
 
 class TrainingMixin:

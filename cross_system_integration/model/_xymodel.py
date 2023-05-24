@@ -16,8 +16,8 @@ from scvi.data.fields import (
 from scvi.model.base import BaseModelClass, UnsupervisedTrainingMixin, VAEMixin
 from scvi.utils import setup_anndata_dsp
 
-from constraint_pancreas_example.module._xymodule import XYModule
-from constraint_pancreas_example.model._gene_maps import GeneMapRegression
+from cross_system_integration.module._xymodule import XYModule
+from cross_system_integration.model._gene_maps import GeneMapRegression
 
 logger = logging.getLogger(__name__)
 

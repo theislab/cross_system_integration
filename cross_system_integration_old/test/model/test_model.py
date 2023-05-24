@@ -4,7 +4,7 @@ import pandas as pd
 
 from scipy import sparse
 
-from cross_species_prediction.model._multied import Model
+from cross_system_integration_old.model._multied import Model
 
 
 def mock_adata_processed():

@@ -10,9 +10,9 @@ from scvi.nn import DecoderSCVI, Encoder, one_hot
 from torch.distributions import Normal
 from torch.distributions import kl_divergence
 
-from constraint_pancreas_example.model._gene_maps import GeneMapEmbedding
-from constraint_pancreas_example.nn._base_components import DecoderLin, EncoderDecoder
-from cross_species_prediction.nn._base_components import Layers
+from cross_system_integration.model._gene_maps import GeneMapEmbedding
+from cross_system_integration.nn._base_components import DecoderLin, EncoderDecoder
+from cross_system_integration.nn._base_components import Layers
 
 torch.backends.cudnn.benchmark = True
 

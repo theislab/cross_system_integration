@@ -12,7 +12,7 @@ from scvi.module.base import BaseModuleClass
 # TODO could make new metric class to not be called elbo metric as used for other metrics as well
 from scvi.train._metrics import ElboMetric
 
-from constraint_pancreas_example.module._loss_recorder import LossRecorder
+from cross_system_integration.module._loss_recorder import LossRecorder
 
 
 class WeightScaling:

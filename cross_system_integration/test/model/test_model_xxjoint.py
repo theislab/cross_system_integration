@@ -6,8 +6,8 @@ import pandas as pd
 
 from scipy import sparse
 
-from constraint_pancreas_example.model._xxjointmodel import XXJointModel
-from constraint_pancreas_example.train import WeightScaling
+from cross_system_integration.model._xxjointmodel import XXJointModel
+from cross_system_integration.train import WeightScaling
 
 
 def mock_adata():

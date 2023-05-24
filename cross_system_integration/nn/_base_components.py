@@ -4,7 +4,7 @@ from typing import List, Union
 
 from scvi.nn._base_components import reparameterize_gaussian
 
-from cross_species_prediction.nn._base_components import Layers, VarEncoder
+from cross_system_integration_old.nn._base_components import Layers, VarEncoder
 
 
 class EncoderDecoder(Module):

@@ -6,9 +6,9 @@ from scvi.module.base import BaseModuleClass, auto_move_data
 from torch.distributions import Normal
 from torch.distributions import kl_divergence
 
-from constraint_pancreas_example.model._gene_maps import GeneMapXYBimodel
-from constraint_pancreas_example.nn._base_components import EncoderDecoder
-from constraint_pancreas_example.module._loss_recorder import LossRecorder
+from cross_system_integration.model._gene_maps import GeneMapXYBimodel
+from cross_system_integration.nn._base_components import EncoderDecoder
+from cross_system_integration.module._loss_recorder import LossRecorder
 
 torch.backends.cudnn.benchmark = True
 

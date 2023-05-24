@@ -4,7 +4,7 @@ import pandas as pd
 
 from scipy import sparse
 
-from constraint_pancreas_example.model._xybimodel import XYBiModel
+from cross_system_integration.model._xybimodel import XYBiModel
 
 
 def mock_adata():

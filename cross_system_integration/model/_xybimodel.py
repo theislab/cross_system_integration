@@ -13,10 +13,10 @@ from scvi.data.fields import (
 from scvi.model.base import BaseModelClass, VAEMixin
 from scvi.utils import setup_anndata_dsp
 
-from constraint_pancreas_example.model._training import TrainingMixin
-from constraint_pancreas_example.module._xybimodule import XYBiModule
-from constraint_pancreas_example.model._gene_maps import GeneMapXYBimodel
-from constraint_pancreas_example.model._utils import prepare_metadata
+from cross_system_integration.model._training import TrainingMixin
+from cross_system_integration.module._xybimodule import XYBiModule
+from cross_system_integration.model._gene_maps import GeneMapXYBimodel
+from cross_system_integration.model._utils import prepare_metadata
 
 logger = logging.getLogger(__name__)
 

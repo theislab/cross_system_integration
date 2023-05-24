@@ -1,7 +1,7 @@
 import numpy as np
 import torch as nn
 
-from cross_species_prediction.constants import INT_NN, FLOAT_NN
+from cross_system_integration_old.constants import INT_NN, FLOAT_NN
 
 
 class GeneMapConstraint:
