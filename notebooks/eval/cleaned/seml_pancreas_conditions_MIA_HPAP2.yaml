@@ -1,0 +1,92 @@
+# Pancreas conditions
+# Run selected params (worked well or for comparison) for presentation plots & eval
+seml:
+  executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
+  name: csi_eval
+  output_dir: /om2/user/khrovati/data/cross_system_integration/eval/pancreas_conditions_MIA_HPAP2/logs # CHANGE! OUT!
+  project_root_dir:  /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/
+  conda_environment: csi
+  
+slurm:
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 50G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-04:00     # max time, D-HH:MM, set to 0-08:00
+    nice: 10000
+
+fixed:
+  path_save: /om2/user/khrovati/data/cross_system_integration/eval/pancreas_conditions_MIA_HPAP2/ # CHANGE! OUT!
+  max_epochs: 20
+  epochs_detail_plot: 5
+  # Model params
+  system_decoders: 0
+  # Task
+  eval_type: integration
+  # Data
+  path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
+  group_key: cell_type_eval
+  batch_key: batch
+  system_key: system
+  n_cells_eval: 100000
+       
+  
+grid:
+  seed_num:
+    type: choice
+    options:
+      - 1
+      - 2
+      - 3 
+      
+klw_opt:
+    fixed:
+      params_opt: kl_weight
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
+          - 1.5
+          - 2
+          - 5
+vamp_opt:
+    fixed:
+      params_opt: vamp
+      prior: vamp
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 100
+          - 500
+          - 1000
+          - 5000
+zdcw_opt:
+    fixed:
+      z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
+      params_opt: z_distance_cycle_weight
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50
+zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      params_opt: z_distance_cycle_weight_std
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50       
+scvi:
+    fixed:
+      model: scvi
+      params_opt: scvi

@@ -1,0 +1,94 @@
+# Pancreas conditions
+# Run selected params (worked well or for comparison) for presentation plots & eval
+seml:
+  executable: /om2/user/khrovati/code/cross_system_integration/notebooks/data/brain_organoidDS_embryoGenus/integration/run_seml.py
+  name: csi_bEmbMmOrgHs
+  output_dir: /om2/user/khrovati/data/cross_system_integration/brain_mmEmbryo_hsOrganoid/integration_runs/search/logs # CHANGE! OUT!
+  project_root_dir:  /om2/user/khrovati/code/cross_system_integration/notebooks/data/brain_organoidDS_embryoGenus/integration
+  conda_environment: torch2 # For openmind
+  
+slurm:
+  #sbatch_options_template: GPU # For openmind
+  sbatch_options:
+    mem: 20G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-03:00     # max time, D-HH:MM, set to 0-08:00
+    #nice: 10000      # For openmind
+    constraint: any-gpu
+    partition: kellislab # For openmind
+    gres: gpu:1 
+
+fixed:
+  path_save: /om2/user/khrovati/data/cross_system_integration/brain_mmEmbryo_hsOrganoid/integration_runs/search/ # CHANGE! OUT!
+  max_epochs: 100
+  epochs_detail_plot: 20
+  # Model params
+  system_decoders: 0
+  # Task
+  eval_type: integration
+  # Data
+  batch_key: sample
+  path_adata: /om2/user/khrovati/data/cross_system_integration/brain_mmEmbryo_hsOrganoid/combined_orthologuesHVG.h5ad
+  system_key: system
+  script_dir: /om2/user/khrovati/code/cross_system_integration/notebooks/data/brain_organoidDS_embryoGenus/integration/
+       
+  
+grid:
+  seed_num:
+    type: choice
+    options:
+      - 1
+  use_batch_key:
+    type: choice
+    options:
+#      - 1
+      - 0
+      
+klw_opt:
+    fixed:
+      params_opt: kl_weight
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
+          - 1.5
+          - 2
+          - 5
+vamp_opt:
+    fixed:
+      params_opt: vamp
+      prior: vamp
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 50
+          - 100
+          - 500
+          - 1000
+zdcw_opt:
+    fixed:
+      z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
+      params_opt: z_distance_cycle_weight
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50
+          
+zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      params_opt: z_distance_cycle_weight_std
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50
