@@ -74,10 +74,25 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 
 
 
-parser.add_argument('--rel-gene-weight', required=False, type=float, default=1.,
-                    help='Weight to connect a gene to another relevant gene in scglue')
+parser.add_argument('--rel_gene_weight', required=False, type=float, default=1.,
+                    help='Weight to connect a gene to another relevant gene in scGLUE')
+parser.add_argument('--latent_dim', required=False, type=int, default=50,
+                    help='Latent dim in scGLUE')
+parser.add_argument('--h_depth', required=False, type=int, default=2,
+                    help='depth of encoder in scGLUE')
+parser.add_argument('--h_dim', required=False, type=int, default=256,
+                    help='Dim of hidden layers in encoder of scGLUE')
+
+parser.add_argument('--lam_data', required=False, type=float, default=1.0,
+                    help='lam_data in scGLUE')
+parser.add_argument('--lam_kl', required=False, type=float, default=1.0,
+                    help='lam_kl in scGLUE')
+parser.add_argument('--lam_graph', required=False, type=float, default=0.02,
+                    help='lam_graph in scGLUE')
+parser.add_argument('--lam_align', required=False, type=float, default=0.05,
+                    help='lam_align in scGLUE')
 # %%
-if False:
+if True:
     args= parser.parse_args(args=[
         '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         '-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
@@ -109,14 +124,15 @@ if args.name is None:
 
 # %%
 # scglue params
-latent_dim=50
-h_depth=2
-h_dim=256
+rel_gene_weight = args.rel_gene_weight
+latent_dim=args.latent_dim
+h_depth=args.h_depth
+h_dim=args.h_dim
 
-lam_data=1.0
-lam_kl=1.0
-lam_graph=0.02
-lam_align=0.05
+lam_data=args.lam_data
+lam_kl=args.lam_kl
+lam_graph=args.lam_graph
+lam_align=args.lam_align
 
 # %%
 # Make folder for saving
@@ -207,7 +223,7 @@ for mod in total_mods:
         adata_omod = mods_adata[omod]
         print(f"connecting {mod} to {omod}")
         for g in adata_mod.var.index:
-            my_guidance.add_edge(g, g.split("-")[0]+f"-{omod}", **{'weight': args.rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
+            my_guidance.add_edge(g, g.split("-")[0]+f"-{omod}", **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
 
 # %%
 filename = path_save + "scglue_model"
