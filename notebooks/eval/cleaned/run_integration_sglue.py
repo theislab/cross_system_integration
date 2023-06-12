@@ -92,7 +92,7 @@ parser.add_argument('--lam_graph', required=False, type=float, default=0.02,
 parser.add_argument('--lam_align', required=False, type=float, default=0.05,
                     help='lam_align in scGLUE')
 # %%
-if True:
+if False:
     args= parser.parse_args(args=[
         '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         '-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
