@@ -16,7 +16,7 @@ for file in $files
 done
 
 # Git add in the specified subdirs and specified file types
-main_folder=$WSCL/cross_ystem_integration/
+main_folder=$WSCL/cross_system_integration/
 cd $main_folder
 subdirs=`find . -type d -path "./notebooks*" ! \( -path "*git*" -o -path "*wandb*" -o -path "*.ipynb_checkpoints*" -o -path "*pycache*" -o -path "*egg-info*" \) -print`
 echo $subdirs
