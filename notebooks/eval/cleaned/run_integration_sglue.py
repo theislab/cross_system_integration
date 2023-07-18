@@ -54,7 +54,7 @@ parser.add_argument('-pa', '--path_adata', required=True, type=str,
 parser.add_argument('-pa2', '--path_adata_2', required=False, type=str, default="",
                     help='full path to second adata obj')
 parser.add_argument('-gg', '--gene_graph', required=False, type=str, default="",
-                    help='path to tsv containing gene graph. columns are accessed by numbers and in the same order as given adata files.')
+                    help='path to tsv containing gene graph. columns are accessed by numbers and in the same order as given system_key in adata files.')
 parser.add_argument('-ps', '--path_save', required=True, type=str,
                     help='directory path for saving, creates subdir within it')
 parser.add_argument('-sk', '--system_key', required=True, type=str,
@@ -99,11 +99,11 @@ parser.add_argument('--lam_align', required=False, type=float, default=0.05,
 if True:
     args= parser.parse_args(args=[
         # With one data with common vars
-        '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
+        # '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         # With two data with gene graph
-        # '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
-        # '-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
-        # '-gg','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
+        '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
+        '-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
+        '-gg','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
         '-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
         # '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
         # '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
@@ -203,7 +203,6 @@ if TESTING:
     adata=adata[random_idx,:].copy()
     # Set some groups to nan for testing if this works
     adata.obs[args.group_key]=[np.nan]*10+list(adata.obs[args.group_key].iloc[10:])
-    print(adata.shape)
 
     if not SINGLE_ADATA:
         adata=adata[:2500, :].copy()
@@ -211,7 +210,6 @@ if TESTING:
         adata_2=adata_2[random_idx,:].copy()
         # Set some groups to nan for testing if this works
         adata_2.obs[args.group_key]=[np.nan]*10+list(adata_2.obs[args.group_key].iloc[10:])
-        print(adata_2.shape)
 
 # %%
 if SINGLE_ADATA:
@@ -278,7 +276,7 @@ for i, mod in enumerate(total_mods):
             for g in adata_mod.var.index:
                 my_guidance.add_edge(g, g.split("-")[0]+f"-{omod}", **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
         else:
-            # Attention: we access columns of graph df by numbers (adatas should be given in the correct order)
+            # Attention: we access columns of graph df by numbers (system_key in adatas should be given in the correct order)
             edge_mod = given_gene_graph[given_gene_graph.columns[i]] + f"-{mod}"
             edge_omod = given_gene_graph[given_gene_graph.columns[j]] + f"-{omod}"
 
