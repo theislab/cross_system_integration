@@ -28,6 +28,7 @@ fixed:
   group_key: cell_type_eval
   batch_key: batch
   system_key: system
+  system_value: mouse,human
   n_cells_eval: 100000
        
   
@@ -103,3 +104,16 @@ scglue:
           - 0.5
           - 0.9
           - 1.0
+saturn:
+    fixed:
+      model: saturn
+      latent_dim: 32
+      params_opt: num_macrogenes
+    grid:
+      rel_gene_weight:
+        type: choice
+        options:
+          - 100
+          - 500
+          - 1000
+          - 1500

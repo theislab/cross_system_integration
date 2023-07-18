@@ -25,7 +25,7 @@ def config():
 # Seed must be given as seed_num not to clash?
 def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None, 
         log_on_epoch:str=None, params_opt:str=None,
-        path_adata:str=None, path_save:str=None, system_key:str=None, 
+        path_adata:str=None, path_save:str=None, system_key:str=None,  system_value:str=None,
         system_translate:str=None, group_key:str=None, group_translate:str=None, 
         batch_key:str=None, cells_eval:str=None, genes_eval:str=None, 
         pretrain_key:str=None, pretrain_value:str=None, train_size:str=None,
@@ -54,6 +54,7 @@ def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None,
                  "path_adata": path_adata, 
                  "path_save": path_save, 
                  "system_key": system_key, 
+                 "system_value": system_value, 
                  "system_translate": system_translate, 
                  "group_key": group_key, 
                  "group_translate": group_translate, 
@@ -121,12 +122,17 @@ def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None,
                     k in ['n_cells_eval']) and not(
                     model=='scvi' and k not in [
                         'name','seed','params_opt','path_adata','path_save',
-                        'system_key','group_key','batch_key',
+                        'system_key','system_value', 'group_key','batch_key',
                         'max_epochs','epochs_detail_plot',
                         'n_cells_eval','testing']) and not(
                     model=='scglue' and k not in [
                         'name','seed','params_opt','path_adata','path_save',
-                        'system_key','group_key','batch_key',
+                        'system_key', 'system_value', 'group_key','batch_key',
+                        'max_epochs','epochs_detail_plot',
+                        'n_cells_eval','testing'],
+                    model=='saturn' and k not in [
+                        'name','seed','params_opt','path_adata', 'path_adata_2','path_save',
+                        'system_key','system_value','group_key','batch_key',
                         'max_epochs','epochs_detail_plot',
                         'n_cells_eval','testing']):
                 # Set path save based on eval type
