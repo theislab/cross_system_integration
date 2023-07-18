@@ -51,6 +51,10 @@ parser.add_argument('-po', '--params_opt', required=False, type=str, default='',
                     help='name of optimized params/test purpose')
 parser.add_argument('-pa', '--path_adata', required=True, type=str,
                     help='full path to adata obj')
+parser.add_argument('-pa2', '--path_adata_2', required=False, type=str, default="",
+                    help='full path to second adata obj')
+parser.add_argument('-gg', '--gene_graph', required=False, type=str, default="",
+                    help='path to tsv containing gene graph. columns are accessed by numbers and in the same order as given adata files.')
 parser.add_argument('-ps', '--path_save', required=True, type=str,
                     help='directory path for saving, creates subdir within it')
 parser.add_argument('-sk', '--system_key', required=True, type=str,
@@ -92,9 +96,14 @@ parser.add_argument('--lam_graph', required=False, type=float, default=0.02,
 parser.add_argument('--lam_align', required=False, type=float, default=0.05,
                     help='lam_align in scGLUE')
 # %%
-if False:
+if True:
     args= parser.parse_args(args=[
+        # With one data with common vars
         '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
+        # With two data with gene graph
+        # '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
+        # '-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
+        # '-gg','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
         '-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
         # '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
         # '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
@@ -121,6 +130,12 @@ TESTING=args.testing
 if args.name is None:
     if args.seed is not None:
         args.name='r'+str(args.seed)
+
+# %%
+SINGLE_ADATA = True
+if args.path_adata_2 != "":
+    assert args.gene_graph != ""
+    SINGLE_ADATA = False
 
 # %%
 # scglue params
@@ -169,24 +184,60 @@ adata.obs[args.system_key] = adata.obs[args.system_key].astype("str")
 adata
 
 # %%
+adata_2 = None
+if not SINGLE_ADATA:
+    adata_2=sc.read(args.path_adata_2)
+    adata_2.obs[args.system_key] = adata_2.obs[args.system_key].astype("str")
+adata_2
+
+# %%
+given_gene_graph = None
+if not SINGLE_ADATA:
+    given_gene_graph = pd.read_csv(args.gene_graph, sep="\t")
+given_gene_graph
+
+# %%
 if TESTING:
     # Make data smaller if testing the script
     random_idx=np.random.permutation(adata.obs_names)[:5000]
     adata=adata[random_idx,:].copy()
-    print(adata.shape)
     # Set some groups to nan for testing if this works
     adata.obs[args.group_key]=[np.nan]*10+list(adata.obs[args.group_key].iloc[10:])
+    print(adata.shape)
+
+    if not SINGLE_ADATA:
+        adata=adata[:2500, :].copy()
+        random_idx=np.random.permutation(adata_2.obs_names)[:2500]
+        adata_2=adata_2[random_idx,:].copy()
+        # Set some groups to nan for testing if this works
+        adata_2.obs[args.group_key]=[np.nan]*10+list(adata_2.obs[args.group_key].iloc[10:])
+        print(adata_2.shape)
 
 # %%
-total_mods = list(adata.obs[args.system_key].unique())
+if SINGLE_ADATA:
+    total_mods = list(adata.obs[args.system_key].unique())
+else:
+    total_mods = list(sorted(
+        list(adata.obs[args.system_key].unique()) +
+        list(adata_2.obs[args.system_key].unique())))
+
 total_mods
 
 # %%
 mods_adata = {}
-for mod in total_mods:
-    mods_adata[mod] = adata[adata.obs[args.system_key] == mod].copy()
-    mods_adata[mod].var.index = mods_adata[mod].var.index + f'-{mod}'
-    print(f"mod: {mod}\n", mods_adata[mod])
+if SINGLE_ADATA:
+    for mod in total_mods:
+        mods_adata[mod] = adata[adata.obs[args.system_key] == mod]
+        mods_adata[mod].var['original_index'] = mods_adata[mod].var.index
+        mods_adata[mod].var.index = mods_adata[mod].var.index + f'-{mod}'
+        print(f"mod: {mod}\n", mods_adata[mod])
+else:
+    for adata_current in [adata, adata_2]:
+        mod = adata_current.obs[args.system_key].unique()[0]
+        mods_adata[mod] = adata_current
+        mods_adata[mod].var['original_index'] = mods_adata[mod].var.index
+        mods_adata[mod].var.index = mods_adata[mod].var.index + f'-{mod}'
+        print(f"mod: {mod}\n", mods_adata[mod])
 
 # %% [markdown]
 # ### Training
@@ -216,14 +267,27 @@ for mod in total_mods:
         my_guidance.add_node(g)
         my_guidance.add_edge(g, g, **{'weight': 1.0, 'sign': 1, 'type': 'loop', 'id': '0'})
 
-for mod in total_mods:
+for i, mod in enumerate(total_mods):
     adata_mod = mods_adata[mod]
-    other_mods = [m for m in total_mods if m != mod]
-    for omod in other_mods:
+    for j, omod in enumerate(total_mods):
+        if i == j:
+            continue
         adata_omod = mods_adata[omod]
         print(f"connecting {mod} to {omod}")
-        for g in adata_mod.var.index:
-            my_guidance.add_edge(g, g.split("-")[0]+f"-{omod}", **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
+        if SINGLE_ADATA:
+            for g in adata_mod.var.index:
+                my_guidance.add_edge(g, g.split("-")[0]+f"-{omod}", **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
+        else:
+            # Attention: we access columns of graph df by numbers (adatas should be given in the correct order)
+            edge_mod = given_gene_graph[given_gene_graph.columns[i]] + f"-{mod}"
+            edge_omod = given_gene_graph[given_gene_graph.columns[j]] + f"-{omod}"
+
+            assert np.all(edge_mod.isin(adata_mod.var.index))
+            assert np.all(edge_omod.isin(adata_omod.var.index))
+
+            for g1, g2 in zip(list(edge_mod), list(edge_omod)):
+                my_guidance.add_edge(g1, g2, **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
+print("Done")
 
 # %%
 filename = path_save + "scglue_model"
@@ -256,12 +320,6 @@ except Exception as e:
 
 # %%
 
-# %%
-
-# %%
-
-# %%
-
 # %% [markdown]
 # ### Eval
 
@@ -283,8 +341,13 @@ combined = ad.concat(mods_adata.values())
 
 # %%
 # Compute embedding
-cells_eval=adata.obs_names if args.n_cells_eval==-1 else \
-    np.random.RandomState(seed=0).permutation(adata.obs_names)[:args.n_cells_eval]
+if SINGLE_ADATA:
+    all_obs_names = list(adata.obs_names)
+else:
+    all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
+
+cells_eval = all_obs_names if args.n_cells_eval==-1 else \
+    np.random.RandomState(seed=0).permutation(all_obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
 embed = sc.AnnData(combined[cells_eval].obsm['X_glue'], obs=combined[cells_eval,:].obs.copy())
 
@@ -309,6 +372,8 @@ fig,axs=plt.subplots(len(cols),1,figsize=(8,8*len(cols)))
 for col,ax in zip(cols,axs):
     sc.pl.umap(embed,color=col,s=10,ax=ax,show=False,sort_order=False)
 plt.savefig(path_save+'umap.png',dpi=300,bbox_inches='tight')
+
+# %%
 
 # %% [markdown]
 # #### Integration metrics
