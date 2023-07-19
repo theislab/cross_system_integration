@@ -123,6 +123,11 @@ def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None,
                         'name','seed','params_opt','path_adata','path_save',
                         'system_key','group_key','batch_key',
                         'max_epochs','epochs_detail_plot',
+                        'n_cells_eval','testing']) and not(
+                    model=='scglue' and k not in [
+                        'name','seed','params_opt','path_adata','path_save',
+                        'system_key','group_key','batch_key',
+                        'max_epochs','epochs_detail_plot',
                         'n_cells_eval','testing']):
                 # Set path save based on eval type
                 # Expects that dirs were created before
