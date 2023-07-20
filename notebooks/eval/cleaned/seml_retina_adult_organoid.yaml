@@ -25,6 +25,7 @@ fixed:
   eval_type: integration
   # Data
   path_adata: /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad
+  fn_moransi: /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG_moransiGenes.pkl
   group_key: cell_type
   batch_key: sample_id
   system_key: system
@@ -90,3 +91,16 @@ scvi:
     fixed:
       model: scvi
       params_opt: scvi
+# scglue:
+#     fixed:
+#       model: scglue
+#       latent_dim: 50
+#       params_opt: rel_gene_weight
+#     grid:
+#       rel_gene_weight:
+#         type: choice
+#         options:
+#           - 0.1
+#           - 0.5
+#           - 0.9
+#           - 1.0

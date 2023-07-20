@@ -22,18 +22,14 @@ def config():
         ex.observers.append(seml.create_mongodb_observer(db_collection, overwrite=overwrite))
 
 @ex.automain
-def run(path_save:str=None,subdir:str=None, fn_expr:str=None, fn_moransi:str=None,
+def run(path_save:str=None,subdir:str=None,
         group_key:str=None,batch_key:str=None,system_key:str=None,
-        scaled:str=None,
        ):
     params_info={
                  "path":path_save+subdir+'/',
-                 "fn_expr": fn_expr, 
-                 "fn_moransi": fn_moransi, 
                  "system_key": system_key, 
                  "group_key": group_key, 
                  "batch_key": batch_key, 
-                 "scaled":scaled,
     }
     #print('All params:')
     #print(params_info)
@@ -49,7 +45,7 @@ def run(path_save:str=None,subdir:str=None, fn_expr:str=None, fn_moransi:str=Non
     logging.info(str(args))
     
     # Script to run - based on eval_type
-    script=f'run_metrics.py' 
+    script=f'run_neighbors.py' 
     logging.info('Running script')
     logging.info(script)
     

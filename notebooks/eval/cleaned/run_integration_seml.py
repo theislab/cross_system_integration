@@ -23,25 +23,61 @@ def config():
 
 @ex.automain
 # Seed must be given as seed_num not to clash?
-def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None, 
-        log_on_epoch:str=None, params_opt:str=None,
-        path_adata:str=None, path_save:str=None, system_key:str=None, 
-        system_translate:str=None, group_key:str=None, group_translate:str=None, 
-        batch_key:str=None, cells_eval:str=None, genes_eval:str=None, 
-        pretrain_key:str=None, pretrain_value:str=None, train_size:str=None,
-        mixup_alpha:str=None, system_decoders:str=None, out_var_mode:str=None,
-        prior:str=None, n_prior_components:str=None, prior_components_system:str=None,
+def run(eval_type:str, 
+        model:str=None, 
+        name:str=None, 
+        seed_num:str=None, 
+        log_on_epoch:str=None, 
+        params_opt:str=None,
+        path_adata:str=None, 
+        fn_expr:str=None, 
+        fn_moransi:str=None,
+        path_save:str=None, 
+        system_key:str=None, 
+        system_value:str=None,
+        system_translate:str=None, 
+        group_key:str=None, 
+        group_translate:str=None, 
+        batch_key:str=None, 
+        cells_eval:str=None, 
+        genes_eval:str=None, 
+        pretrain_key:str=None, 
+        pretrain_value:str=None, 
+        train_size:str=None,
+        mixup_alpha:str=None, 
+        system_decoders:str=None, 
+        out_var_mode:str=None,
+        prior:str=None, 
+        n_prior_components:str=None, 
+        prior_components_system:str=None,
         z_dist_metric:str=None,
-        n_layers:str=None, n_hidden:str=None,
-        max_epochs:str=None,max_epochs_pretrain:str=None, epochs_detail_plot:str=None,
-        kl_weight:str=None, kl_cycle_weight:str=None, 
-        reconstruction_weight:str=None, reconstruction_mixup_weight:str=None, 
-        reconstruction_cycle_weight:str=None, z_distance_cycle_weight:str=None, 
-        translation_corr_weight:str=None, z_contrastive_weight:str=None, testing:str=None,
-        optimizer:str=None,lr:str=None,reduce_lr_on_plateau:str=None,
-        lr_scheduler_metric:str=None,lr_patience:str=None,lr_factor:str=None,
-        lr_min:str=None,lr_threshold_mode:str=None,lr_threshold:str=None,
-        swa:str=None,swa_lr:str=None,swa_epoch_start:str=None,swa_annealing_epochs:str=None,
+        n_layers:str=None, 
+        n_hidden:str=None,
+        max_epochs:str=None,
+        max_epochs_pretrain:str=None, 
+        epochs_detail_plot:str=None,
+        kl_weight:str=None, 
+        kl_cycle_weight:str=None, 
+        reconstruction_weight:str=None, 
+        reconstruction_mixup_weight:str=None, 
+        reconstruction_cycle_weight:str=None, 
+        z_distance_cycle_weight:str=None, 
+        translation_corr_weight:str=None, 
+        z_contrastive_weight:str=None, 
+        testing:str=None,
+        optimizer:str=None,
+        lr:str=None,
+        reduce_lr_on_plateau:str=None,
+        lr_scheduler_metric:str=None,
+        lr_patience:str=None,
+        lr_factor:str=None,
+        lr_min:str=None,
+        lr_threshold_mode:str=None,
+        lr_threshold:str=None,
+        swa:str=None,
+        swa_lr:str=None,
+        swa_epoch_start:str=None,
+        swa_annealing_epochs:str=None,
         n_cells_eval:str=None,
        ):
     params_info={
@@ -52,8 +88,11 @@ def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None,
                  "log_on_epoch":log_on_epoch,
                  "params_opt":params_opt,
                  "path_adata": path_adata, 
+                 "fn_expr": fn_expr, 
+                 "fn_moransi": fn_moransi, 
                  "path_save": path_save, 
                  "system_key": system_key, 
+                 "system_value": system_value, 
                  "system_translate": system_translate, 
                  "group_key": group_key, 
                  "group_translate": group_translate, 
@@ -111,25 +150,13 @@ def run(eval_type:str, model:str=None, name:str=None, seed_num:str=None,
     # Prepare args for running script
     args=[]
     for k,v in params_info.items():
-        if k!='eval_type' and v is not None:
-            # Integration does not have the translation specific args
-            # For now also not params that define which genes/cells to use for eval
-            if not (eval_type=='integration' and 
-                    k in ['system_translate','group_translate',
-                         'cells_eval','genes_eval']) and not (
-                    eval_type=='translation' and 
-                    k in ['n_cells_eval']) and not(
-                    model=='scvi' and k not in [
-                        'name','seed','params_opt','path_adata','path_save',
-                        'system_key','group_key','batch_key',
-                        'max_epochs','epochs_detail_plot',
-                        'n_cells_eval','testing']):
-                # Set path save based on eval type
-                # Expects that dirs were created before
-                if k=='path_save':
-                    v=v+eval_type+'/'
-                args.append('--'+k)
-                args.append(str(v))
+        if k!='eval_type' and k!='model' and v is not None:
+            # Set path save based on eval type
+            # Expects that dirs were created before
+            if k=='path_save':
+                v=v+eval_type+'/'
+            args.append('--'+k)
+            args.append(str(v))
     #print('Script args:')
     #print(args)
     logging.info('Using the following args for the script')

@@ -1,3 +1,4 @@
 pynndescent>=0.5.5
 scanpy>=1.8.1
 scvi-tools==0.17.3
+scglue==0.3.2
