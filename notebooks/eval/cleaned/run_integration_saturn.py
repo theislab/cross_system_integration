@@ -70,8 +70,8 @@ parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
-parser.add_argument('-me', '--max_epochs', required=False, type=int,default=200,
-                    help='max_epochs for training')
+parser.add_argument('-me', '--max_epochs', required=False, type=int,default=250,
+                    help='max_epochs for training. For large data 60 for small data 250.')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=60,
                     help='Loss subplot from this epoch on')
 
@@ -96,7 +96,7 @@ parser.add_argument('--latent_dim', required=False, type=int, default=32,
 parser.add_argument('--hidden_dim', required=False, type=int, default=256,
                     help='Dim of hidden layers in SATURN')
 parser.add_argument('--pretrain_epochs', required=False, type=int, default=50,
-                    help='Pretrain Epochs')
+                    help='Pretrain Epochs. For large data 50, for small data 200.')
 # %%
 if True:
     args= parser.parse_args(args=[

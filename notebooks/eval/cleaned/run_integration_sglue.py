@@ -63,8 +63,8 @@ parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
-parser.add_argument('-me', '--max_epochs', required=False, type=int,default=200,
-                    help='max_epochs for training')
+parser.add_argument('-me', '--max_epochs', required=False, type=int, default=-1,
+                    help='max_epochs for training. -1 for AUTO detection by scGLUE.')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
                     help='Loss subplot from this epoch on')
 
@@ -291,10 +291,14 @@ print("Done")
 filename = path_save + "scglue_model"
 
 # %%
+max_epochs = args.max_epochs
+if max_epochs == -1:
+    max_epochs = scglue.utils.AUTO
+
 glue = scglue.models.fit_SCGLUE(
     mods_adata, my_guidance,
     init_kws=dict(latent_dim=latent_dim, h_depth=h_depth, h_dim=h_dim),
-    fit_kws={"directory": "glue", "max_epochs": args.max_epochs},
+    fit_kws={"directory": "glue", "max_epochs": max_epochs},
     compile_kws=dict(lam_data=lam_data, lam_kl=lam_kl, lam_graph=lam_graph, lam_align=lam_align), 
     balance_kws=None,
 )
