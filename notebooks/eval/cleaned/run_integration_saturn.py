@@ -348,11 +348,12 @@ else:
     all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
     obs = pd.concat([adata.obs, adata_2.obs], axis=0)
 
+embed_full = sc.AnnData(latent[all_obs_names].X, obs=obs.loc[all_obs_names,:].copy())
+embed_full.obs[args.system_key] = embed_full.obs[args.system_key].str.split("spc_").str[1]
 cells_eval = all_obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(all_obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
-embed = sc.AnnData(latent[cells_eval].X, obs=obs.loc[cells_eval,:].copy())
-embed.obs[args.system_key] = embed.obs[args.system_key].str.split("spc_").str[1]
+embed = embed_full[cells_eval].copy()
 
 # %%
 # Use 90 neighbours so that this can be also used for lisi metrics
@@ -362,10 +363,12 @@ sc.tl.umap(embed)
 # %%
 # Make system categorical, also for metrics below
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
+embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
 
 # %%
 # Save embed
 embed.write(path_save+'embed.h5ad')
+embed_full.write(path_save+'embed_full.h5ad')
 
 # %%
 # Plot embedding

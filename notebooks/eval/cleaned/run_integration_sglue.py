@@ -306,7 +306,7 @@ glue = scglue.models.fit_SCGLUE(
 glue.save(filename)
 
 # %%
-glue = scglue.models.load_model(filename)
+# glue = scglue.models.load_model(filename)
 
 # %%
 try:
@@ -348,10 +348,11 @@ if SINGLE_ADATA:
 else:
     all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
 
+embed_full = sc.AnnData(combined[all_obs_names].obsm['X_glue'], obs=combined[all_obs_names,:].obs.copy())
 cells_eval = all_obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(all_obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
-embed = sc.AnnData(combined[cells_eval].obsm['X_glue'], obs=combined[cells_eval,:].obs.copy())
+embed = embed_full[cells_eval].copy()
 
 # %%
 # Use 90 neighbours so that this can be also used for lisi metrics
@@ -361,10 +362,12 @@ sc.tl.umap(embed)
 # %%
 # Make system categorical, also for metrics below
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
+embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
 
 # %%
 # Save embed
 embed.write(path_save+'embed.h5ad')
+embed_full.write(path_save+'embed_full.h5ad')
 
 # %%
 # Plot embedding
