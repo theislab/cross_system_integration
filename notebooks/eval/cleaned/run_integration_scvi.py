@@ -102,7 +102,7 @@ if False:
     ])
 # Read command line args
 else:
-    args = parser.parse_args()
+    args, args_unknown = parser.parse_known_args()
     
 print(args)
 
