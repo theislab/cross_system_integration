@@ -230,6 +230,7 @@ def prepare_adata(adata_mod, normalize_again=False, leiden_resolution=1., n_neig
         adata_mod.X = adata_mod.layers['counts'].copy()
         sc.pp.normalize_total(adata_mod)
         sc.pp.log1p(adata_mod)
+        sc.pp.scale(adata_mod)
     sc.pp.pca(adata_mod)
     sc.pp.neighbors(adata_mod, n_neighbors=n_neighbors, use_rep='X_pca')
     sc.tl.leiden(adata_mod, resolution=leiden_resolution)
