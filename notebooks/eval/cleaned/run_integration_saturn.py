@@ -23,6 +23,8 @@ import argparse
 import os
 import string
 import subprocess
+from pathlib import Path
+import glob
 
 from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
@@ -32,6 +34,11 @@ import torch
 import random
 import scglue
 import networkx as nx
+
+# %%
+SATURN_EMB_PATH = os.path.expanduser("~/Downloads/protein_embeddings_export/ESM2/")
+SATURN_GIT_LOCATION = os.path.expanduser("~/projects/clones/SATURN/")
+SATURN_CONDA_ENV = "cs_integration_saturn"
 
 # %%
 parser = argparse.ArgumentParser()
@@ -53,19 +60,19 @@ parser.add_argument('-pa', '--path_adata', required=True, type=str,
                     help='full path to adata obj')
 parser.add_argument('-pa2', '--path_adata_2', required=False, type=str, default="",
                     help='full path to second adata obj')
-parser.add_argument('-gg', '--gene_graph', required=False, type=str, default="",
-                    help='path to tsv containing gene graph. columns are accessed by numbers and in the same order as given system_key in adata files.')
 parser.add_argument('-ps', '--path_save', required=True, type=str,
                     help='directory path for saving, creates subdir within it')
 parser.add_argument('-sk', '--system_key', required=True, type=str,
                     help='obs col with system info')
+parser.add_argument('-sv', '--system_value', required=True, type=str,
+                    help='real titles corresponding to system indicators')
 parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
 parser.add_argument('-me', '--max_epochs', required=False, type=int,default=200,
                     help='max_epochs for training')
-parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
+parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=60,
                     help='Loss subplot from this epoch on')
 
 parser.add_argument('-nce', '--n_cells_eval', required=False, type=int, default=-1,  
@@ -78,36 +85,31 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 
 
 
-parser.add_argument('--rel_gene_weight', required=False, type=float, default=1.,
-                    help='Weight to connect a gene to another relevant gene in scGLUE')
-parser.add_argument('--latent_dim', required=False, type=int, default=50,
-                    help='Latent dim in scGLUE')
-parser.add_argument('--h_depth', required=False, type=int, default=2,
-                    help='depth of encoder in scGLUE')
-parser.add_argument('--h_dim', required=False, type=int, default=256,
-                    help='Dim of hidden layers in encoder of scGLUE')
-
-parser.add_argument('--lam_data', required=False, type=float, default=1.0,
-                    help='lam_data in scGLUE')
-parser.add_argument('--lam_kl', required=False, type=float, default=1.0,
-                    help='lam_kl in scGLUE')
-parser.add_argument('--lam_graph', required=False, type=float, default=0.02,
-                    help='lam_graph in scGLUE')
-parser.add_argument('--lam_align', required=False, type=float, default=0.05,
-                    help='lam_align in scGLUE')
+parser.add_argument('--num_macrogenes', required=False, type=int, default=1500,
+                    help='Number of macrogenes')
+parser.add_argument('--hv_genes', required=False, type=int, default=6000,
+                    help='Number of HVG genes to be limited to in SATURN')
+parser.add_argument('--hv_span', required=False, type=float, default=0.3,
+                    help='hv_span parameter for seurat_v3 HVG selection.')
+parser.add_argument('--latent_dim', required=False, type=int, default=32,
+                    help='Latent dim in SATURN')
+parser.add_argument('--hidden_dim', required=False, type=int, default=256,
+                    help='Dim of hidden layers in SATURN')
+parser.add_argument('--pretrain_epochs', required=False, type=int, default=50,
+                    help='Pretrain Epochs')
 # %%
 if True:
     args= parser.parse_args(args=[
         # With one data with common vars
         # '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         # With two data with gene graph
-        '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
-        '-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
-        '-gg','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
+        '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
+        '-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
         '-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
         # '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
         # '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
         '-sk','system',
+        '-sv','mouse,human',
         '-gk','cell_type_eval',
         '-bk','batch',
         '-me','2',
@@ -117,7 +119,12 @@ if True:
                 
         '-nce','1000',
         
-        '-t','1'
+        '-t','1',
+
+        '--pretrain_epochs', '1',
+        '--hv_genes', '1000',
+        '--num_macrogenes', '500',
+        '--hv_span', '1.',  # Otherwise we get error on sc.pp.highly_variable_genes in SATURN because some batches have a few cells
     ])
 # Read command line args
 else:
@@ -134,29 +141,27 @@ if args.name is None:
 # %%
 SINGLE_ADATA = True
 if args.path_adata_2 != "":
-    assert args.gene_graph != ""
     SINGLE_ADATA = False
 
 # %%
-# scglue params
-rel_gene_weight = args.rel_gene_weight
-latent_dim=args.latent_dim
-h_depth=args.h_depth
-h_dim=args.h_dim
+# saturn params
+num_macrogenes = args.num_macrogenes
+hv_genes = args.hv_genes
+latent_dim = args.latent_dim
+hidden_dim = args.hidden_dim
 
-lam_data=args.lam_data
-lam_kl=args.lam_kl
-lam_graph=args.lam_graph
-lam_align=args.lam_align
+pretrain_epochs = args.pretrain_epochs
+epochs = args.max_epochs - pretrain_epochs
+assert epochs > 0
 
 # %%
 # Make folder for saving
-path_save=args.path_save+'scglue'+\
+path_save=args.path_save+'saturn'+\
     '_'+''.join(np.random.permutation(list(string.ascii_letters)+list(string.digits))[:8])+\
     ('-TEST' if TESTING else '')+\
     os.sep
 
-os.mkdir(path_save)
+Path(path_save).mkdir(parents=True, exist_ok=False)
 print(path_save)
 
 # %%
@@ -178,23 +183,20 @@ pkl.dump(args,open(path_save+'args.pkl','wb'))
 # ### Prepare data
 
 # %%
-# Load data
 adata=sc.read(args.path_adata)
-adata.obs[args.system_key] = adata.obs[args.system_key].astype("str")
-adata
-
-# %%
-adata_2 = None
-if not SINGLE_ADATA:
-    adata_2=sc.read(args.path_adata_2)
-    adata_2.obs[args.system_key] = adata_2.obs[args.system_key].astype("str")
-adata_2
-
-# %%
-given_gene_graph = None
-if not SINGLE_ADATA:
-    given_gene_graph = pd.read_csv(args.gene_graph, sep="\t")
-given_gene_graph
+# Since SATURN interface is csv file and it only accepts str as species, we have to change this column.
+adata.obs[args.system_key] = "spc_" + adata.obs[args.system_key].astype("str")
+if SINGLE_ADATA:
+    adata_2 = None
+    system_val_dict = dict(zip(sorted(adata.obs[args.system_key].unique()), args.system_value.split(",")))
+else:
+    adata_2 = sc.read(args.path_adata_2)
+    adata_2.obs[args.system_key] = "spc_" + adata_2.obs[args.system_key].astype("str")
+    system_val_dict = {
+        adata.obs[args.system_key].unique()[0]: args.system_value.split(",")[0],
+        adata_2.obs[args.system_key].unique()[0]: args.system_value.split(",")[1],
+    }
+adata, adata_2, system_val_dict
 
 # %%
 if TESTING:
@@ -203,7 +205,7 @@ if TESTING:
     adata=adata[random_idx,:].copy()
     # Set some groups to nan for testing if this works
     adata.obs[args.group_key]=[np.nan]*10+list(adata.obs[args.group_key].iloc[10:])
-
+    
     if not SINGLE_ADATA:
         adata=adata[:2500, :].copy()
         random_idx=np.random.permutation(adata_2.obs_names)[:2500]
@@ -221,102 +223,103 @@ else:
 
 total_mods
 
+
+# %%
+def prepare_adata(adata_mod, normalize_again=False, leiden_resolution=1., n_neighbors=15):
+    if normalize_again:
+        adata_mod.X = adata_mod.layers['counts'].copy()
+        sc.pp.normalize_total(adata_mod)
+        sc.pp.log1p(adata_mod)
+    sc.pp.pca(adata_mod)
+    sc.pp.neighbors(adata_mod, n_neighbors=n_neighbors, use_rep='X_pca')
+    sc.tl.leiden(adata_mod, resolution=leiden_resolution)
+    adata_mod.obs['leiden'] = adata_mod.obs['leiden'].astype(str).astype('category')
+    adata_mod.X = adata_mod.layers['counts'].copy()
+    # Attention: we assume var.index of dataframes have correct gene symbols
+    # assert adata_mod.var['gs_mm'].is_unique
+    # adata_mod.var.index = adata_mod.var['gs_mm']
+
+
 # %%
 mods_adata = {}
 if SINGLE_ADATA:
     for mod in total_mods:
         mods_adata[mod] = adata[adata.obs[args.system_key] == mod]
-        mods_adata[mod].var['original_index'] = mods_adata[mod].var.index
-        mods_adata[mod].var.index = mods_adata[mod].var.index + f'-{mod}'
         print(f"mod: {mod}\n", mods_adata[mod])
 else:
     for adata_current in [adata, adata_2]:
         mod = adata_current.obs[args.system_key].unique()[0]
         mods_adata[mod] = adata_current
-        mods_adata[mod].var['original_index'] = mods_adata[mod].var.index
-        mods_adata[mod].var.index = mods_adata[mod].var.index + f'-{mod}'
         print(f"mod: {mod}\n", mods_adata[mod])
+
+# %%
+species = []
+paths = []
+prot_embs = []
+for mod in total_mods:
+    adata_mod = mods_adata[mod]
+    prepare_adata(adata_mod)
+    print(f"mod: {mod}\n", adata_mod)
+    save_path = os.path.join(path_save, f"mod_{mod}.h5ad")
+    adata_mod.write(save_path)
+    mods_adata[mod] = adata_mod
+    species.append(mod)
+    paths.append(save_path)
+    prot_embs.append(os.path.join(SATURN_EMB_PATH, f"{system_val_dict[mod]}_embedding.torch"))
+
+df = pd.DataFrame(columns=["path", "species", "embedding_path"])
+df["species"] = species
+df["path"] = paths
+df["embedding_path"] = prot_embs
+df
+
+# %%
+run_info_path = os.path.join(path_save, "run_info_for_saturn.csv")
+df.to_csv(run_info_path, index=False)
 
 # %% [markdown]
 # ### Training
 
 # %%
+# The following lines are changes in SATURN:
+# 1. https://github.com/snap-stanford/SATURN/blame/main/model/saturn_model.py#L215
+# >> idx1 = torch.randint(low=0, high=embeddings.shape[1], size=(x1.shape[0],)) 
+# << idx1 = torch.randint(low=0, high=x1.shape[0], size=(x1.shape[0],)) 
+
+# %%
 print('Train')
 
 # %%
-for adata_spc in mods_adata.values():
-    adata_spc.X = adata_spc.layers['counts'].copy()
-    sc.pp.normalize_total(adata_spc)
-    sc.pp.log1p(adata_spc)
-    sc.pp.scale(adata_spc)
-    sc.tl.pca(adata_spc)
-    
-    scglue.models.configure_dataset(
-        adata_spc, "NB", use_highly_variable=False, use_batch=args.batch_key,
-        use_layer="counts", use_rep="X_pca"
-    )
-
-# %%
-my_guidance = nx.DiGraph()
-for mod in total_mods:
-    adata_mod = mods_adata[mod]
-    print(f"connecting {mod} to itself")
-    for g in adata_mod.var.index:
-        my_guidance.add_node(g)
-        my_guidance.add_edge(g, g, **{'weight': 1.0, 'sign': 1, 'type': 'loop', 'id': '0'})
-
-for i, mod in enumerate(total_mods):
-    adata_mod = mods_adata[mod]
-    for j, omod in enumerate(total_mods):
-        if i == j:
-            continue
-        adata_omod = mods_adata[omod]
-        print(f"connecting {mod} to {omod}")
-        if SINGLE_ADATA:
-            for g in adata_mod.var.index:
-                my_guidance.add_edge(g, g.split("-")[0]+f"-{omod}", **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
-        else:
-            # Attention: we access columns of graph df by numbers (system_key in adatas should be given in the correct order)
-            edge_mod = given_gene_graph[given_gene_graph.columns[i]] + f"-{mod}"
-            edge_omod = given_gene_graph[given_gene_graph.columns[j]] + f"-{omod}"
-
-            assert np.all(edge_mod.isin(adata_mod.var.index))
-            assert np.all(edge_omod.isin(adata_omod.var.index))
-
-            for g1, g2 in zip(list(edge_mod), list(edge_omod)):
-                my_guidance.add_edge(g1, g2, **{'weight': rel_gene_weight, 'sign': 1, 'type': 'normal', 'id': '0'})
-print("Done")
-
-# %%
-filename = path_save + "scglue_model"
-
-# %%
-glue = scglue.models.fit_SCGLUE(
-    mods_adata, my_guidance,
-    init_kws=dict(latent_dim=latent_dim, h_depth=h_depth, h_dim=h_dim),
-    fit_kws={"directory": "glue", "max_epochs": args.max_epochs},
-    compile_kws=dict(lam_data=lam_data, lam_kl=lam_kl, lam_graph=lam_graph, lam_align=lam_align), 
-    balance_kws=None,
+saturn_label_key = "leiden"
+saturn_wcd = os.path.join(path_save, "saturn_wcd")
+Path(saturn_wcd).mkdir(parents=True, exist_ok=True)
+command = (
+    f"conda run -n {SATURN_CONDA_ENV} --live-stream".split(" ") +
+    ["python", "train-saturn.py", 
+     "--in_data", run_info_path, "--in_label_col", saturn_label_key, "--ref_label_col", saturn_label_key, 
+     "--non_species_batch_col", args.batch_key,
+     "--work_dir", saturn_wcd,
+     "--centroids_init_path", os.path.join(saturn_wcd, "centroids_init_path.pkl"),
+     "--num_macrogenes", str(num_macrogenes), "--hv_genes", str(hv_genes), "--hv_span", str(args.hv_span), 
+     "--model_dim", str(latent_dim), "--hidden_dim", str(hidden_dim),
+     "--pretrain_epochs", str(pretrain_epochs), "--epochs", str(epochs),
+     *(["--pretrain"] if pretrain_epochs > 0 else []), '--seed', str(args.seed)]
 )
 
-glue.save(filename)
+# %%
+" ".join(command)
 
 # %%
-glue = scglue.models.load_model(filename)
+subprocess.run(command,
+               cwd=SATURN_GIT_LOCATION,
+               capture_output=True)
 
 # %%
-try:
-    dx = scglue.models.integration_consistency(
-        glue, mods_adata, my_guidance
-    )
-    _ = sns.lineplot(x="n_meta", y="consistency", data=dx).axhline(y=0.05, c="darkred", ls="--")
-    print(dx)
-    with open(path_save + "integration_consistency", 'wb') as f:
-        pkl.dump(dx, f)
-except Exception as e:
-    print("Error:", e)
-
-# %%
+h5ad_output_filename = glob.glob(os.path.join(saturn_wcd, "saturn_results", f"*_seed_{args.seed}.h5ad"))
+assert len(h5ad_output_filename) == 1
+h5ad_output_filename = h5ad_output_filename[0]
+run_name = h5ad_output_filename.split("/")[-1].split(".h5ad")[0]
+run_name
 
 # %% [markdown]
 # ### Eval
@@ -333,21 +336,23 @@ except Exception as e:
 print('Plot embedding')
 
 # %%
-for mod, adata_mod in mods_adata.items():
-    adata_mod.obsm["X_glue"] = glue.encode_data(mod, adata_mod)
-combined = ad.concat(mods_adata.values())
+latent = ad.read(h5ad_output_filename)
+latent
 
 # %%
 # Compute embedding
 if SINGLE_ADATA:
     all_obs_names = list(adata.obs_names)
+    obs = adata.obs
 else:
     all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
+    obs = pd.concat([adata.obs, adata_2.obs], axis=0)
 
 cells_eval = all_obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(all_obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
-embed = sc.AnnData(combined[cells_eval].obsm['X_glue'], obs=combined[cells_eval,:].obs.copy())
+embed = sc.AnnData(latent[cells_eval].X, obs=obs.loc[cells_eval,:].copy())
+embed.obs[args.system_key] = embed.obs[args.system_key].str.split("spc_").str[1]
 
 # %%
 # Use 90 neighbours so that this can be also used for lisi metrics
