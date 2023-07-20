@@ -1,0 +1,66 @@
+import pandas as pd
+import numpy as np
+
+from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics import jaccard_score
+
+import scib_metrics as sm
+
+def asw_label(X,labels):
+    asw=sm.utils.silhouette_samples(
+        X=X, 
+        labels=labels, 
+        chunk_size=256)
+    asw=(asw + 1) / 2
+    asw_micro= np.mean(asw)
+    asw_label=pd.DataFrame({'asw':asw,'label':labels}).groupby('label')['asw'].mean()
+    asw_macro=asw_label.mean()
+    return asw_micro, asw_macro, asw_label
+
+
+def clisi(X, labels):
+    labels_code = np.asarray(pd.Categorical(labels).codes)
+    clisi = sm.lisi_knn(X, labels_code, perplexity=None)
+    nlabels = len(np.unique(labels))
+    clisi = (nlabels - clisi) / (nlabels - 1)
+    clisi_micro = np.nanmedian(clisi)
+    clisi_label=pd.DataFrame({'clisi':clisi,'label':labels}).groupby('label').apply(
+        lambda x: np.nanmedian(x))
+    clisi_macro=clisi_label.mean()
+    return clisi_micro, clisi_macro, clisi_label
+
+
+def ilisi(X, labels, batches):
+    batches_code = np.asarray(pd.Categorical(batches).codes)
+    ilisi = sm.lisi_knn(X, batches_code, perplexity=None)
+    nbatches = len(np.unique(batches))
+    ilisi = (ilisi - 1) / (nbatches - 1)
+    ilisi_micro = np.nanmedian(ilisi)
+    ilisi_label=pd.DataFrame({'ilisi':ilisi,'label':labels}).groupby('label').apply(
+        lambda x: np.nanmedian(x))
+    ilisi_macro = ilisi_label.mean()
+    return ilisi_micro, ilisi_macro, ilisi_label
+
+
+def cluster_classification(labels,clusters):
+
+    # Map clusters to labels by mode-label assignment
+    labels_df=pd.DataFrame({'labels':labels,'clusters':clusters})
+    cluster_map=labels_df.groupby('clusters')['labels'].agg(lambda x: pd.Series.mode(x)[0]).to_dict()
+    labels_df['labels_pred']=labels_df['clusters'].map(cluster_map)
+
+    # Micro metrics computed with sklearn
+    nmi = normalized_mutual_info_score(
+        labels_df['labels'], labels_df['labels_pred'], average_method="arithmetic")
+    ari = adjusted_rand_score(labels_df['labels'], labels_df['labels_pred'])
+    jaccard_micro=jaccard_score(labels_df['labels'], labels_df['labels_pred'], average='micro')
+
+    # Class-wise jaccard index implementation
+    jaccard_label=dict()
+    for label in labels_df['labels'].unique():
+        is_label=labels_df[['labels','labels_pred']]==label
+        jaccard_label[label]=is_label.all(axis=1).sum()/is_label.any(axis=1).sum()
+    jaccard_label=pd.Series(jaccard_label)
+    jaccard_macro=jaccard_label.mean() # Was cheched to match sklearn
+    
+    return nmi, ari, jaccard_micro, jaccard_macro, jaccard_label

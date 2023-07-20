@@ -3,31 +3,31 @@
 seml:
   executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
   name: csi_eval
-  output_dir: /om2/user/khrovati/data/cross_system_integration/eval/pancreas_conditions_MIA_HPAP2/logs # CHANGE! OUT!
+  output_dir: /om2/user/khrovati/data/cross_system_integration/eval/adipose_sc_sn_updated/logs # CHANGE! OUT!
   project_root_dir:  /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/
   conda_environment: csi
   
 slurm:
   sbatch_options_template: GPU
   sbatch_options:
-    mem: 50G          # memory, set to 32, for pancreas this could be 10Gb
+    mem: 20G          # memory, set to 32, for pancreas this could be 10Gb
     cpus-per-task: 4  # num cores, set to 4
-    time: 0-04:00     # max time, D-HH:MM, set to 0-08:00
+    time: 0-03:00     # max time, D-HH:MM, set to 0-08:00
     nice: 10000
 
 fixed:
-  path_save: /om2/user/khrovati/data/cross_system_integration/eval/pancreas_conditions_MIA_HPAP2/ # CHANGE! OUT!
-  max_epochs: 20
-  epochs_detail_plot: 5
+  path_save: /om2/user/khrovati/data/cross_system_integration/eval/adipose_sc_sn_updated/ # CHANGE! OUT!
+  max_epochs: 110
+  epochs_detail_plot: 40
   # Model params
   system_decoders: 0
   # Task
   eval_type: integration
   # Data
-  path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
-  fn_moransi: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG_moransiGenes.pkl
-  group_key: cell_type_eval
-  batch_key: batch
+  path_adata: /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad
+  fn_moransi: /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn_moransiGenes.pkl
+  group_key: cluster
+  batch_key: donor_id
   system_key: system
   n_cells_eval: 100000
        

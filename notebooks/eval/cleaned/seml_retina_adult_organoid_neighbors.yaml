@@ -1,14 +1,13 @@
 # Pancreas conditions
 # Run selected params (worked well or for comparison) for presentation plots & eval
 seml:
-  executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_metrics_seml.py
+  executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_neighbors_seml.py
   name: csi_eval
   output_dir: /om2/user/khrovati/data/cross_system_integration/eval/retina_adult_organoid/logs # CHANGE! OUT!
   project_root_dir:  /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/
   conda_environment: csi
   
 slurm:
-  sbatch_options_template: GPU
   sbatch_options:
     mem: 10G          # memory, set to 32, for pancreas this could be 10Gb
     cpus-per-task: 4  # num cores, set to 4
@@ -17,19 +16,12 @@ slurm:
 
 fixed:
   path_save: /om2/user/khrovati/data/cross_system_integration/eval/retina_adult_organoid/integration/ # CHANGE! OUT!
-  fn_expr: /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad
-  fn_moransi: /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG_moransiGenes.pkl
   group_key: cell_type
   batch_key: sample_id
   system_key: system
        
   
 grid:
-  scaled:
-    type: choice
-    options:
-      - 0
-      - 1
   subdir:
     type: choice
     options:

@@ -72,6 +72,11 @@ parser.add_argument('-po', '--params_opt', required=False, type=str, default='',
                     help='name of optimized params/test purpose')
 parser.add_argument('-pa', '--path_adata', required=True, type=str,
                     help='full path to adata obj')
+parser.add_argument('-fe', '--fn_expr', required=False, type=str,
+                    help='For eval metrics: file name for reading '+\
+                    'adata with expression information')
+parser.add_argument('-fmi', '--fn_moransi', required=True, type=str,
+                    help='For eval metrics: file name for reading Morans I information')
 parser.add_argument('-ps', '--path_save', required=True, type=str,
                     help='directory path for saving, creates subdir within it')
 parser.add_argument('-sk', '--system_key', required=True, type=str,
@@ -177,6 +182,7 @@ if False:
     args= parser.parse_args(args=[
         #'-pa','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad',
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
+        '-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
         '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
         '-sk','system',
         #'-gk','cell_type',
@@ -410,10 +416,25 @@ plt.savefig(path_save+'losses.png',dpi=300,bbox_inches='tight')
 # #### Embedding
 
 # %%
-print('Plot embedding')
+print('Get embedding')
 
 # %%
-# Compute embedding
+# Compute and save whole embedding
+if args.n_cells_eval!=-1:
+    embed_full = model.embed(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True)
+    embed_full=sc.AnnData(embed_full,obs=adata_training.obs)
+    # Make system categorical for eval as below
+    embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
+    # Save full embed
+    embed_full.write(path_save+'embed_full.h5ad')
+    del embed_full
+
+# %%
+# Compute embedding for eval
 cells_eval=adata_training.obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(adata_training.obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
@@ -424,28 +445,52 @@ embed = model.embed(
         as_numpy=True)
 
 embed=sc.AnnData(embed,obs=adata_training[cells_eval,:].obs)
-
-# %%
-# Use 90 neighbours so that this can be also used for lisi metrics
-sc.pp.neighbors(embed, use_rep='X', n_neighbors=90)
-sc.tl.umap(embed)
-
-# %%
-# Make system categorical, also for metrics below
+# Make system categorical for metrics and plotting
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
-
-# %%
 # Save embed
 embed.write(path_save+'embed.h5ad')
+del embed
 
 # %%
-# Plot embedding
-rcParams['figure.figsize']=(8,8)
-cols=[args.system_key,args.group_key,args.batch_key]
-fig,axs=plt.subplots(len(cols),1,figsize=(8,8*len(cols)))
-for col,ax in zip(cols,axs):
-    sc.pl.umap(embed,color=col,s=10,ax=ax,show=False,sort_order=False)
-plt.savefig(path_save+'umap.png',dpi=300,bbox_inches='tight')
+del adata
+del adata_training
+
+# %% [markdown]
+# #### Neighbours, UMAP, clusters
+
+# %%
+print('Run neighbours script')
+
+# %%
+if TESTING:
+    args_neigh=[
+        '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
+        '-sk','system',
+        '-gk','cell_type',
+        '-bk','sample',
+    ]
+
+else:
+    args_neigh=[
+        '--path',path_save,
+        '--system_key',args.system_key,
+        '--group_key',args.group_key,
+        '--batch_key',args.batch_key,
+    ]
+    
+print('Computing neighbors, UMAP, and clusters')
+process = subprocess.Popen(['python','run_neighbors.py']+args_neigh, 
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+# Make sure that process has finished
+res=process.communicate()
+# Save stdout from the child script
+for line in res[0].decode(encoding='utf-8').split('\n'):
+     print(line)
+# Check that child process did not fail - if this was not checked then
+# the status of the whole job would be succesfull 
+# even if the child failed as error wouldn be passed upstream
+if process.returncode != 0:
+    raise ValueError('Process failed with', process.returncode)
 
 # %% [markdown]
 # #### Integration metrics
@@ -459,7 +504,10 @@ if TESTING:
         '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
         '-sk','system',
         '-gk','cell_type',
-        '-bk','sample'
+        '-bk','sample',
+        '-fe','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
+        '-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
+
     ]
 
 else:
@@ -467,20 +515,26 @@ else:
         '--path',path_save,
         '--system_key',args.system_key,
         '--group_key',args.group_key,
-        '--batch_key',args.batch_key
+        '--batch_key',args.batch_key,
+        '--fn_expr',args.fn_expr if args.fn_expr is not None else args.path_adata,
+        '--fn_moransi',args.fn_moransi,
     ]
-process = subprocess.Popen(['python','run_metrics.py']+args_metrics, 
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-# Make sure that process has finished
-res=process.communicate()
-# Save stdout from the child script
-for line in res[0].decode(encoding='utf-8').split('\n'):
-     print(line)
-# Check that child process did not fail - if this was not checked then
-# the status of the whole job would be succesfull 
-# even if the child failed as error wouldn be passed upstream
-if process.returncode != 0:
-    raise ValueError('Process failed with', process.returncode)
+for scaled in ['0','1']:
+    print('Computing metrics with param scaled='+scaled)
+    args_metrics_sub=args_metrics.copy()
+    args_metrics_sub.extend(['--scaled',scaled])
+    process = subprocess.Popen(['python','run_metrics.py']+args_metrics_sub, 
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Make sure that process has finished
+    res=process.communicate()
+    # Save stdout from the child script
+    for line in res[0].decode(encoding='utf-8').split('\n'):
+         print(line)
+    # Check that child process did not fail - if this was not checked then
+    # the status of the whole job would be succesfull 
+    # even if the child failed as error wouldn be passed upstream
+    if process.returncode != 0:
+        raise ValueError('Process failed with', process.returncode)
 
 # %% [markdown]
 # # End
