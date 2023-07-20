@@ -70,6 +70,8 @@ parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
+parser.add_argument('-ck', '--clusters_key', required=True, type=str,
+                    help='key to obs that contains clusters for each system.')
 parser.add_argument('-me', '--max_epochs', required=False, type=int,default=250,
                     help='max_epochs for training. For large data 60 for small data 250.')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=60,
@@ -225,16 +227,19 @@ total_mods
 
 
 # %%
-def prepare_adata(adata_mod, normalize_again=False, leiden_resolution=1., n_neighbors=15):
-    if normalize_again:
+def prepare_adata(adata_mod, clusters_key="", leiden_resolution=1., n_neighbors=15):
+    if clusters_key == "":
         adata_mod.X = adata_mod.layers['counts'].copy()
         sc.pp.normalize_total(adata_mod)
         sc.pp.log1p(adata_mod)
         sc.pp.scale(adata_mod)
-    sc.pp.pca(adata_mod)
-    sc.pp.neighbors(adata_mod, n_neighbors=n_neighbors, use_rep='X_pca')
-    sc.tl.leiden(adata_mod, resolution=leiden_resolution)
-    adata_mod.obs['leiden'] = adata_mod.obs['leiden'].astype(str).astype('category')
+        sc.pp.pca(adata_mod)
+        sc.pp.neighbors(adata_mod, n_neighbors=n_neighbors, use_rep='X_pca')
+        sc.tl.leiden(adata_mod, resolution=leiden_resolution)
+        adata_mod.obs['leiden'] = (
+            adata_mod.obs[args.system_key].astype(str) +
+            adata_mod.obs['leiden'].astype(str)).astype('category')
+        
     adata_mod.X = adata_mod.layers['counts'].copy()
     # Attention: we assume var.index of dataframes have correct gene symbols
     # assert adata_mod.var['gs_mm'].is_unique
@@ -258,8 +263,8 @@ species = []
 paths = []
 prot_embs = []
 for mod in total_mods:
-    adata_mod = mods_adata[mod]
-    prepare_adata(adata_mod)
+    adata_mod = mods_adata[mod].copy()
+    prepare_adata(adata_mod, clusters_key=args.clusters_key)
     print(f"mod: {mod}\n", adata_mod)
     save_path = os.path.join(path_save, f"mod_{mod}.h5ad")
     adata_mod.write(save_path)
@@ -291,7 +296,7 @@ df.to_csv(run_info_path, index=False)
 print('Train')
 
 # %%
-saturn_label_key = "leiden"
+saturn_label_key = args.clusters_key or "leiden"
 saturn_wcd = os.path.join(path_save, "saturn_wcd")
 Path(saturn_wcd).mkdir(parents=True, exist_ok=True)
 command = (

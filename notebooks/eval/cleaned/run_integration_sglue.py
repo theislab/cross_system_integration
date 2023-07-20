@@ -63,6 +63,8 @@ parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
+parser.add_argument('-pk', '--pca_key', required=False, type=str, default="",
+                    help='key to obsm that contains X_pca calculated to each system.')
 parser.add_argument('-me', '--max_epochs', required=False, type=int, default=-1,
                     help='max_epochs for training. -1 for AUTO detection by scGLUE.')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
@@ -245,15 +247,19 @@ print('Train')
 
 # %%
 for adata_spc in mods_adata.values():
-    adata_spc.X = adata_spc.layers['counts'].copy()
-    sc.pp.normalize_total(adata_spc)
-    sc.pp.log1p(adata_spc)
-    sc.pp.scale(adata_spc)
-    sc.tl.pca(adata_spc)
+    if args.pca_key == "":
+        adata_spc.X = adata_spc.layers['counts'].copy()
+        sc.pp.normalize_total(adata_spc)
+        sc.pp.log1p(adata_spc)
+        sc.pp.scale(adata_spc)
+        sc.tl.pca(adata_spc)
+        pca_key = "X_pca"
+    else:
+        pca_key = args.pca_key
     
     scglue.models.configure_dataset(
         adata_spc, "NB", use_highly_variable=False, use_batch=args.batch_key,
-        use_layer="counts", use_rep="X_pca"
+        use_layer="counts", use_rep=pca_key,
     )
 
 # %%
