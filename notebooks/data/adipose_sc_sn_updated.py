@@ -283,7 +283,7 @@ plt.xscale('log')
 selected=list()
 for group,data_sub in data.groupby(['group','system','batch']):
     group=dict(zip(['group','system','batch'],group))
-    group['genes']=data_sub.query('morans_i>=@thr_mi')['morans_i']
+    group['genes']=(data_sub.query('morans_i>=@thr_mi')['morans_i']+1)/2
     selected.append(group)
 
 # %%

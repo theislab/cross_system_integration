@@ -70,8 +70,10 @@ parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
-parser.add_argument('-me', '--max_epochs', required=False, type=int,default=200,
-                    help='max_epochs for training')
+parser.add_argument('-ck', '--clusters_key', required=True, type=str,
+                    help='key to obs that contains clusters for each system.')
+parser.add_argument('-me', '--max_epochs', required=False, type=int,default=250,
+                    help='max_epochs for training. For large data 60 for small data 250.')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=60,
                     help='Loss subplot from this epoch on')
 
@@ -96,7 +98,7 @@ parser.add_argument('--latent_dim', required=False, type=int, default=32,
 parser.add_argument('--hidden_dim', required=False, type=int, default=256,
                     help='Dim of hidden layers in SATURN')
 parser.add_argument('--pretrain_epochs', required=False, type=int, default=50,
-                    help='Pretrain Epochs')
+                    help='Pretrain Epochs. For large data 50, for small data 200.')
 # %%
 if True:
     args= parser.parse_args(args=[
@@ -225,15 +227,19 @@ total_mods
 
 
 # %%
-def prepare_adata(adata_mod, normalize_again=False, leiden_resolution=1., n_neighbors=15):
-    if normalize_again:
+def prepare_adata(adata_mod, clusters_key="", leiden_resolution=1., n_neighbors=15):
+    if clusters_key == "":
         adata_mod.X = adata_mod.layers['counts'].copy()
         sc.pp.normalize_total(adata_mod)
         sc.pp.log1p(adata_mod)
-    sc.pp.pca(adata_mod)
-    sc.pp.neighbors(adata_mod, n_neighbors=n_neighbors, use_rep='X_pca')
-    sc.tl.leiden(adata_mod, resolution=leiden_resolution)
-    adata_mod.obs['leiden'] = adata_mod.obs['leiden'].astype(str).astype('category')
+        sc.pp.scale(adata_mod)
+        sc.pp.pca(adata_mod)
+        sc.pp.neighbors(adata_mod, n_neighbors=n_neighbors, use_rep='X_pca')
+        sc.tl.leiden(adata_mod, resolution=leiden_resolution)
+        adata_mod.obs['leiden'] = (
+            adata_mod.obs[args.system_key].astype(str) +
+            adata_mod.obs['leiden'].astype(str)).astype('category')
+        
     adata_mod.X = adata_mod.layers['counts'].copy()
     # Attention: we assume var.index of dataframes have correct gene symbols
     # assert adata_mod.var['gs_mm'].is_unique
@@ -257,8 +263,8 @@ species = []
 paths = []
 prot_embs = []
 for mod in total_mods:
-    adata_mod = mods_adata[mod]
-    prepare_adata(adata_mod)
+    adata_mod = mods_adata[mod].copy()
+    prepare_adata(adata_mod, clusters_key=args.clusters_key)
     print(f"mod: {mod}\n", adata_mod)
     save_path = os.path.join(path_save, f"mod_{mod}.h5ad")
     adata_mod.write(save_path)
@@ -290,7 +296,7 @@ df.to_csv(run_info_path, index=False)
 print('Train')
 
 # %%
-saturn_label_key = "leiden"
+saturn_label_key = args.clusters_key or "leiden"
 saturn_wcd = os.path.join(path_save, "saturn_wcd")
 Path(saturn_wcd).mkdir(parents=True, exist_ok=True)
 command = (
@@ -348,11 +354,12 @@ else:
     all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
     obs = pd.concat([adata.obs, adata_2.obs], axis=0)
 
+embed_full = sc.AnnData(latent[all_obs_names].X, obs=obs.loc[all_obs_names,:].copy())
+embed_full.obs[args.system_key] = embed_full.obs[args.system_key].str.split("spc_").str[1]
 cells_eval = all_obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(all_obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
-embed = sc.AnnData(latent[cells_eval].X, obs=obs.loc[cells_eval,:].copy())
-embed.obs[args.system_key] = embed.obs[args.system_key].str.split("spc_").str[1]
+embed = embed_full[cells_eval].copy()
 
 # %%
 # Use 90 neighbours so that this can be also used for lisi metrics
@@ -362,10 +369,12 @@ sc.tl.umap(embed)
 # %%
 # Make system categorical, also for metrics below
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
+embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
 
 # %%
 # Save embed
 embed.write(path_save+'embed.h5ad')
+embed_full.write(path_save+'embed_full.h5ad')
 
 # %%
 # Plot embedding
