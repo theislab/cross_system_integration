@@ -157,7 +157,7 @@ path_save=args.path_save+'scglue'+\
     os.sep
 
 os.mkdir(path_save)
-print(path_save)
+print("PATH_SAVE=",path_save)
 
 # %%
 # Set seed for eval

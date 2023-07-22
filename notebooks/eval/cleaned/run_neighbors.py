@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 
 # %%
 parser = argparse.ArgumentParser()
+def intstr_to_bool(x):
+    return bool(int(x))
 parser.add_argument('-p', '--path', required=True, type=str,
                     help='directory path for reading embed from and saving results')
 parser.add_argument('-sk', '--system_key', required=True, type=str,
@@ -30,6 +32,8 @@ parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
+parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,default='0',
+                    help='Testing mode')
 
 # %%
 if False:
@@ -37,12 +41,13 @@ if False:
         '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
         '-sk','system',
         '-gk','cell_type',
-        '-bk','sample'
+        '-bk','sample',
+        '-t','1',
     ])
 # Read command line args
 else:
     args = parser.parse_args()
-    
+TESTING=args.testing  
 print(args)
 
 # %%
@@ -97,7 +102,7 @@ if 'scaled_neighbors' not in embed.uns:
     for col,ax in zip(cols,axs):
         sc.pl.embedding(embed,'X_umap_scaled',color=col,s=10,ax=ax,show=False,sort_order=False)
     plt.savefig(args.path+'umap_scaled.png',dpi=300,bbox_inches='tight')
-    
+
 
 # %%
 # Compute clusters

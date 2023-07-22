@@ -23,7 +23,8 @@ def config():
 
 @ex.automain
 # Seed must be given as seed_num not to clash?
-def run(eval_type:str, 
+def run(eval_type:str,
+        conda_env:str,
         model:str=None, 
         name:str=None, 
         seed_num:str=None, 
@@ -162,28 +163,86 @@ def run(eval_type:str,
     logging.info('Using the following args for the script')
     logging.info(str(args))
     
+    # Run integration script
+    
     # Script to run - based on eval_type
     #script_dir='/lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/'
     model_fn_part='_'+model if model is not None else ''
     #script=f'{script_dir}eval_{eval_type}{model_fn_part}.py' 
     script=f'run_{eval_type}{model_fn_part}.py' 
-    logging.info('Running script')
+    logging.info('Running integration script')
     logging.info(script)
     
-    # Run eval script
     # Send stderr to stdout and stdout pipe to output to save in log 
     # (print statements from the child script would else not be saved)
-    process = subprocess.Popen(['python',script]+args, 
+    process_integration = subprocess.Popen('conda run -n'.split()+[conda_env, 'python',script]+args, 
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     # Make sure that process has finished
-    res=process.communicate()
+    res=process_integration.communicate()
+    # Save stdout from the child script
+    for line in res[0].decode(encoding='utf-8').split('\n'):
+        if line.startswith('PATH_SAVE='):
+            path_save=line.replace('PATH_SAVE=','')
+        logging.info(line)
+    # Check that child process did not fail - if this was not checked then
+    # the status of the whole job would be succesfull 
+    # even if the child failed as error wouldn be passed upstream
+    if process_integration.returncode != 0:
+        raise ValueError('Process integration failed with', process_integration.returncode)
+    
+    # Run neighbours script
+    logging.info('Run neighbours script')
+
+    # %%
+    args_neigh=[
+        '--path',path_save,
+        '--system_key',system_key,
+        '--group_key',group_key,
+        '--batch_key',batch_key,
+    ]
+    process_neigh = subprocess.Popen(['python','run_neighbors.py']+args_neigh, 
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Make sure that process has finished
+    res=process_neigh.communicate()
     # Save stdout from the child script
     for line in res[0].decode(encoding='utf-8').split('\n'):
          logging.info(line)
     # Check that child process did not fail - if this was not checked then
     # the status of the whole job would be succesfull 
     # even if the child failed as error wouldn be passed upstream
-    if process.returncode != 0:
-        raise ValueError('Process failed with', process.returncode)
-        
+    if process_neigh.returncode != 0:
+        raise ValueError('Process neighbours failed with', process_neigh.returncode)
+
+    
+    # #### Integration metrics
+
+    # %%
+    logging.info('Run integration metrics script')
+
+    # %%
+    args_metrics=[
+            '--path',path_save,
+            '--system_key',system_key,
+            '--group_key',group_key,
+            '--batch_key',batch_key,
+            '--fn_expr',fn_expr if fn_expr is not None else path_adata,
+            '--fn_moransi',fn_moransi,
+        ]
+    for scaled in ['0','1']:
+        logging.info('Computing metrics with param scaled='+scaled)
+        args_metrics_sub=args_metrics.copy()
+        args_metrics_sub.extend(['--scaled',scaled])
+        process_metrics = subprocess.Popen(['python','run_metrics.py']+args_metrics_sub, 
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        # Make sure that process has finished
+        res=process_metrics.communicate()
+        # Save stdout from the child script
+        for line in res[0].decode(encoding='utf-8').split('\n'):
+             logging.info(line)
+        # Check that child process did not fail - if this was not checked then
+        # the status of the whole job would be succesfull 
+        # even if the child failed as error wouldn be passed upstream
+        if process_metrics.returncode != 0:
+            raise ValueError('Process failed with', process.returncode)
+    
     logging.info('Finished wrapper script!')

@@ -162,7 +162,7 @@ path_save=args.path_save+'saturn'+\
     os.sep
 
 Path(path_save).mkdir(parents=True, exist_ok=False)
-print(path_save)
+print("PATH_SAVE=",path_save)
 
 # %%
 # Set seed for eval

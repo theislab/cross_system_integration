@@ -47,6 +47,8 @@ parser.add_argument('-s', '--scaled', required=False, type=intstr_to_bool, defau
                     help='Should scaled X be used. Assumes X in embed data is still unscaled. '+
                     'Assumes there are neighbors with prefix '+
                     'scaled_ (for dist, conn) in the embedding.')
+parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,default='0',
+                    help='Testing mode')
 
 # %%
 if False:
@@ -58,13 +60,12 @@ if False:
         '-gk','cell_type',
         '-bk','sample',
         '-s','1',
+        '-t','0',
     ])
-    TESTING=True
 # Read command line args
 else:
     args = parser.parse_args()
-    TESTING=False
-    
+TESTING=args.testing    
 print(args)
 
 # %%
