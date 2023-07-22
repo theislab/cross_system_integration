@@ -303,7 +303,7 @@ if max_epochs == -1:
 
 glue = scglue.models.fit_SCGLUE(
     mods_adata, my_guidance,
-    init_kws=dict(latent_dim=latent_dim, h_depth=h_depth, h_dim=h_dim),
+    init_kws=dict(latent_dim=latent_dim, h_depth=h_depth, h_dim=h_dim, random_seed=args.seed),
     fit_kws={"directory": "glue", "max_epochs": max_epochs},
     compile_kws=dict(lam_data=lam_data, lam_kl=lam_kl, lam_graph=lam_graph, lam_align=lam_align), 
     balance_kws=None,
@@ -320,8 +320,8 @@ try:
         glue, mods_adata, my_guidance
     )
     _ = sns.lineplot(x="n_meta", y="consistency", data=dx).axhline(y=0.05, c="darkred", ls="--")
-    print(dx)
-    with open(path_save + "integration_consistency", 'wb') as f:
+    print('Consistency score',dx)
+    with open(path_save + "integration_consistency.pkl", 'wb') as f:
         pkl.dump(dx, f)
 except Exception as e:
     print("Error:", e)
@@ -340,7 +340,6 @@ except Exception as e:
 # #### Embedding
 
 # %%
-print('Plot embedding')
 
 # %%
 for mod, adata_mod in mods_adata.items():
@@ -361,11 +360,6 @@ print('N cells for eval:',cells_eval.shape[0])
 embed = embed_full[cells_eval].copy()
 
 # %%
-# Use 90 neighbours so that this can be also used for lisi metrics
-sc.pp.neighbors(embed, use_rep='X', n_neighbors=90)
-sc.tl.umap(embed)
-
-# %%
 # Make system categorical, also for metrics below
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
 embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
@@ -375,55 +369,7 @@ embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
 embed.write(path_save+'embed.h5ad')
 embed_full.write(path_save+'embed_full.h5ad')
 
-# %%
-# Plot embedding
-rcParams['figure.figsize']=(8,8)
-cols=[args.system_key,args.group_key,args.batch_key]
-fig,axs=plt.subplots(len(cols),1,figsize=(8,8*len(cols)))
-for col,ax in zip(cols,axs):
-    sc.pl.umap(embed,color=col,s=10,ax=ax,show=False,sort_order=False)
-plt.savefig(path_save+'umap.png',dpi=300,bbox_inches='tight')
-
-# %%
-
-# %% [markdown]
-# #### Integration metrics
-
-# %%
-print('Run integration metrics')
-
-# %%
-if TESTING:
-    args_metrics=[
-        '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
-        '-sk','system',
-        '-gk','cell_type',
-        '-bk','sample'
-    ]
-
-else:
-    args_metrics=[
-        '--path',path_save,
-        '--system_key',args.system_key,
-        '--group_key',args.group_key,
-        '--batch_key',args.batch_key
-    ]
-process = subprocess.Popen(['python','run_metrics.py']+args_metrics, 
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-# Make sure that process has finished
-res=process.communicate()
-# Save stdout from the child script
-for line in res[0].decode(encoding='utf-8').split('\n'):
-     print(line)
-# Check that child process did not fail - if this was not checked then
-# the status of the whole job would be succesfull 
-# even if the child failed as error wouldn be passed upstream
-if process.returncode != 0:
-    raise ValueError('Process failed with', process.returncode)
-
-# %% [markdown]
-# # End
-
+# 
 # %%
 print('Finished integration!')
 

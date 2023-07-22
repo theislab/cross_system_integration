@@ -339,7 +339,6 @@ run_name
 # #### Embedding
 
 # %%
-print('Plot embedding')
 
 # %%
 latent = ad.read(h5ad_output_filename)
@@ -362,11 +361,6 @@ print('N cells for eval:',cells_eval.shape[0])
 embed = embed_full[cells_eval].copy()
 
 # %%
-# Use 90 neighbours so that this can be also used for lisi metrics
-sc.pp.neighbors(embed, use_rep='X', n_neighbors=90)
-sc.tl.umap(embed)
-
-# %%
 # Make system categorical, also for metrics below
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
 embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
@@ -375,55 +369,6 @@ embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
 # Save embed
 embed.write(path_save+'embed.h5ad')
 embed_full.write(path_save+'embed_full.h5ad')
-
-# %%
-# Plot embedding
-rcParams['figure.figsize']=(8,8)
-cols=[args.system_key,args.group_key,args.batch_key]
-fig,axs=plt.subplots(len(cols),1,figsize=(8,8*len(cols)))
-for col,ax in zip(cols,axs):
-    sc.pl.umap(embed,color=col,s=10,ax=ax,show=False,sort_order=False)
-plt.savefig(path_save+'umap.png',dpi=300,bbox_inches='tight')
-
-# %%
-
-# %% [markdown]
-# #### Integration metrics
-
-# %%
-print('Run integration metrics')
-
-# %%
-if TESTING:
-    args_metrics=[
-        '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
-        '-sk','system',
-        '-gk','cell_type',
-        '-bk','sample'
-    ]
-
-else:
-    args_metrics=[
-        '--path',path_save,
-        '--system_key',args.system_key,
-        '--group_key',args.group_key,
-        '--batch_key',args.batch_key
-    ]
-process = subprocess.Popen(['python','run_metrics.py']+args_metrics, 
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-# Make sure that process has finished
-res=process.communicate()
-# Save stdout from the child script
-for line in res[0].decode(encoding='utf-8').split('\n'):
-     print(line)
-# Check that child process did not fail - if this was not checked then
-# the status of the whole job would be succesfull 
-# even if the child failed as error wouldn be passed upstream
-if process.returncode != 0:
-    raise ValueError('Process failed with', process.returncode)
-
-# %% [markdown]
-# # End
 
 # %%
 print('Finished integration!')
