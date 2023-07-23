@@ -100,7 +100,7 @@ parser.add_argument('--saturn_emb', required=True, type=str,
                     help='Path to saturn emb. For example: .../protein_embeddings_export/ESM2/...')
 parser.add_argument('--saturn_code', required=True, type=str,
                     help='Path to saturn cloned code from git. Please use the fixed repo.')
-parser.add_argument('--saturn_env', required=True, type=str,
+parser.add_argument('--conda_env', required=True, type=str,
                     help='Path to the conda env saturn is runnable in.')
 # %%
 if True:
@@ -134,7 +134,7 @@ if True:
 
         '--saturn_emb', os.path.expanduser("~/Downloads/protein_embeddings_export/ESM2/"),
         '--saturn_code', os.path.expanduser("~/projects/clones/SATURN/"),
-        '--saturn_env', "cs_integration_saturn",
+        '--conda_env', "cs_integration_saturn",
     ])
 # Read command line args
 else:
@@ -151,7 +151,7 @@ if args.name is None:
 # %%
 SATURN_EMB_PATH = args.saturn_emb
 SATURN_GIT_LOCATION = args.saturn_code
-SATURN_CONDA_ENV = args.saturn_env
+SATURN_CONDA_ENV = args.conda_env
 
 # %%
 SINGLE_ADATA = True
