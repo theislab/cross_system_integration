@@ -72,11 +72,6 @@ parser.add_argument('-po', '--params_opt', required=False, type=str, default='',
                     help='name of optimized params/test purpose')
 parser.add_argument('-pa', '--path_adata', required=True, type=str,
                     help='full path to adata obj')
-parser.add_argument('-fe', '--fn_expr', required=False, type=str,
-                    help='For eval metrics: file name for reading '+\
-                    'adata with expression information')
-parser.add_argument('-fmi', '--fn_moransi', required=True, type=str,
-                    help='For eval metrics: file name for reading Morans I information')
 parser.add_argument('-ps', '--path_save', required=True, type=str,
                     help='directory path for saving, creates subdir within it')
 parser.add_argument('-sk', '--system_key', required=True, type=str,
@@ -454,87 +449,6 @@ del embed
 # %%
 del adata
 del adata_training
-
-# %% [markdown]
-# #### Neighbours, UMAP, clusters
-
-# %%
-print('Run neighbours script')
-
-# %%
-if TESTING:
-    args_neigh=[
-        '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
-        '-sk','system',
-        '-gk','cell_type',
-        '-bk','sample',
-    ]
-
-else:
-    args_neigh=[
-        '--path',path_save,
-        '--system_key',args.system_key,
-        '--group_key',args.group_key,
-        '--batch_key',args.batch_key,
-    ]
-    
-print('Computing neighbors, UMAP, and clusters')
-process = subprocess.Popen(['python','run_neighbors.py']+args_neigh, 
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-# Make sure that process has finished
-res=process.communicate()
-# Save stdout from the child script
-for line in res[0].decode(encoding='utf-8').split('\n'):
-     print(line)
-# Check that child process did not fail - if this was not checked then
-# the status of the whole job would be succesfull 
-# even if the child failed as error wouldn be passed upstream
-if process.returncode != 0:
-    raise ValueError('Process failed with', process.returncode)
-
-# %% [markdown]
-# #### Integration metrics
-
-# %%
-print('Run integration metrics')
-
-# %%
-if TESTING:
-    args_metrics=[
-        '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
-        '-sk','system',
-        '-gk','cell_type',
-        '-bk','sample',
-        '-fe','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
-        '-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
-
-    ]
-
-else:
-    args_metrics=[
-        '--path',path_save,
-        '--system_key',args.system_key,
-        '--group_key',args.group_key,
-        '--batch_key',args.batch_key,
-        '--fn_expr',args.fn_expr if args.fn_expr is not None else args.path_adata,
-        '--fn_moransi',args.fn_moransi,
-    ]
-for scaled in ['0','1']:
-    print('Computing metrics with param scaled='+scaled)
-    args_metrics_sub=args_metrics.copy()
-    args_metrics_sub.extend(['--scaled',scaled])
-    process = subprocess.Popen(['python','run_metrics.py']+args_metrics_sub, 
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    # Make sure that process has finished
-    res=process.communicate()
-    # Save stdout from the child script
-    for line in res[0].decode(encoding='utf-8').split('\n'):
-         print(line)
-    # Check that child process did not fail - if this was not checked then
-    # the status of the whole job would be succesfull 
-    # even if the child failed as error wouldn be passed upstream
-    if process.returncode != 0:
-        raise ValueError('Process failed with', process.returncode)
 
 # %% [markdown]
 # # End

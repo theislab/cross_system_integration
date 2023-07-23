@@ -339,6 +339,7 @@ run_name
 # #### Embedding
 
 # %%
+print('Get embedding')
 
 # %%
 latent = ad.read(h5ad_output_filename)

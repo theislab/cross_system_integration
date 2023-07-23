@@ -340,6 +340,7 @@ except Exception as e:
 # #### Embedding
 
 # %%
+print('Get embedding')
 
 # %%
 for mod, adata_mod in mods_adata.items():

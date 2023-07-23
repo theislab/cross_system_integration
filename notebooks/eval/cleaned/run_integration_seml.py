@@ -81,68 +81,72 @@ def run(eval_type:str,
         swa_annealing_epochs:str=None,
         n_cells_eval:str=None,
        ):
-    params_info={
-                 "eval_type": eval_type,
-                 "model":model,
-                 "name": name, 
-                 "seed": seed_num,
-                 "log_on_epoch":log_on_epoch,
-                 "params_opt":params_opt,
-                 "path_adata": path_adata, 
-                 "fn_expr": fn_expr, 
-                 "fn_moransi": fn_moransi, 
-                 "path_save": path_save, 
-                 "system_key": system_key, 
-                 "system_value": system_value, 
-                 "system_translate": system_translate, 
-                 "group_key": group_key, 
-                 "group_translate": group_translate, 
-                 "batch_key": batch_key, 
-                 "cells_eval": cells_eval,
-                 "genes_eval": genes_eval,
-                 "pretrain_key":pretrain_key,
-                 "pretrain_value":pretrain_value,
-                 "train_size":train_size,
-                 "mixup_alpha": mixup_alpha, 
-                 "system_decoders": system_decoders, 
-                 "out_var_mode":out_var_mode,
-                 "prior":prior,
-                 "n_prior_components":n_prior_components,
-                 "prior_components_system":prior_components_system,
-                 "z_dist_metric":z_dist_metric,
-                 "n_layers":n_layers,
-                 "n_hidden":n_hidden,
-                 "max_epochs": max_epochs, 
-                 "max_epochs_pretrain":max_epochs_pretrain,
-                 "epochs_detail_plot": epochs_detail_plot,
-                 "kl_weight": kl_weight, 
-                 "kl_cycle_weight": kl_cycle_weight, 
-                 "reconstruction_weight": reconstruction_weight, 
-                 "reconstruction_mixup_weight": reconstruction_mixup_weight, 
-                 "reconstruction_cycle_weight": reconstruction_cycle_weight, 
-                 "z_distance_cycle_weight": z_distance_cycle_weight, 
-                 "translation_corr_weight": translation_corr_weight, 
-                 "z_contrastive_weight": z_contrastive_weight,
+    
+    params_info=locals()
+    params_info['seed']=params_info['seed_num']
+    del params_info['seed_num']
+#     params_info={
+#                  "eval_type": eval_type,
+#                  "model":model,
+#                  "name": name, 
+#                  "seed": seed_num,
+#                  "log_on_epoch":log_on_epoch,
+#                  "params_opt":params_opt,
+#                  "path_adata": path_adata, 
+#                  "fn_expr": fn_expr, 
+#                  "fn_moransi": fn_moransi, 
+#                  "path_save": path_save, 
+#                  "system_key": system_key, 
+#                  "system_value": system_value, 
+#                  "system_translate": system_translate, 
+#                  "group_key": group_key, 
+#                  "group_translate": group_translate, 
+#                  "batch_key": batch_key, 
+#                  "cells_eval": cells_eval,
+#                  "genes_eval": genes_eval,
+#                  "pretrain_key":pretrain_key,
+#                  "pretrain_value":pretrain_value,
+#                  "train_size":train_size,
+#                  "mixup_alpha": mixup_alpha, 
+#                  "system_decoders": system_decoders, 
+#                  "out_var_mode":out_var_mode,
+#                  "prior":prior,
+#                  "n_prior_components":n_prior_components,
+#                  "prior_components_system":prior_components_system,
+#                  "z_dist_metric":z_dist_metric,
+#                  "n_layers":n_layers,
+#                  "n_hidden":n_hidden,
+#                  "max_epochs": max_epochs, 
+#                  "max_epochs_pretrain":max_epochs_pretrain,
+#                  "epochs_detail_plot": epochs_detail_plot,
+#                  "kl_weight": kl_weight, 
+#                  "kl_cycle_weight": kl_cycle_weight, 
+#                  "reconstruction_weight": reconstruction_weight, 
+#                  "reconstruction_mixup_weight": reconstruction_mixup_weight, 
+#                  "reconstruction_cycle_weight": reconstruction_cycle_weight, 
+#                  "z_distance_cycle_weight": z_distance_cycle_weight, 
+#                  "translation_corr_weight": translation_corr_weight, 
+#                  "z_contrastive_weight": z_contrastive_weight,
                 
-                'optimizer':optimizer,
-                'lr':lr,
-                'reduce_lr_on_plateau':reduce_lr_on_plateau,
-                'lr_scheduler_metric':lr_scheduler_metric,
-                'lr_patience':lr_patience,
-                'lr_factor':lr_factor,
-                'lr_min':lr_min,
-                'lr_threshold_mode':lr_threshold_mode,
-                'lr_threshold':lr_threshold,
+#                 'optimizer':optimizer,
+#                 'lr':lr,
+#                 'reduce_lr_on_plateau':reduce_lr_on_plateau,
+#                 'lr_scheduler_metric':lr_scheduler_metric,
+#                 'lr_patience':lr_patience,
+#                 'lr_factor':lr_factor,
+#                 'lr_min':lr_min,
+#                 'lr_threshold_mode':lr_threshold_mode,
+#                 'lr_threshold':lr_threshold,
         
-                'swa':swa,
-                'swa_lr':swa_lr,
-                'swa_epoch_start':swa_epoch_start,
-                'swa_annealing_epochs':swa_annealing_epochs,
+#                 'swa':swa,
+#                 'swa_lr':swa_lr,
+#                 'swa_epoch_start':swa_epoch_start,
+#                 'swa_annealing_epochs':swa_annealing_epochs,
                 
-                'n_cells_eval':n_cells_eval,
+#                 'n_cells_eval':n_cells_eval,
         
-                 "testing":testing,
-    }
+#                  "testing":testing,
+#     }
     logging.info('Received the following configuration:')
     logging.info(str(params_info))
     #print('All params:')
@@ -182,7 +186,7 @@ def run(eval_type:str,
     # Save stdout from the child script
     for line in res[0].decode(encoding='utf-8').split('\n'):
         if line.startswith('PATH_SAVE='):
-            path_save=line.replace('PATH_SAVE=','')
+            path_save=line.replace('PATH_SAVE=','').strip(' ')
         logging.info(line)
     # Check that child process did not fail - if this was not checked then
     # the status of the whole job would be succesfull 
@@ -193,12 +197,12 @@ def run(eval_type:str,
     # Run neighbours script
     logging.info('Run neighbours script')
 
-    # %%
     args_neigh=[
         '--path',path_save,
         '--system_key',system_key,
         '--group_key',group_key,
         '--batch_key',batch_key,
+        '--testing',str(testing),
     ]
     process_neigh = subprocess.Popen(['python','run_neighbors.py']+args_neigh, 
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -214,12 +218,10 @@ def run(eval_type:str,
         raise ValueError('Process neighbours failed with', process_neigh.returncode)
 
     
-    # #### Integration metrics
+    # Integration metrics
 
-    # %%
     logging.info('Run integration metrics script')
 
-    # %%
     args_metrics=[
             '--path',path_save,
             '--system_key',system_key,
@@ -227,6 +229,7 @@ def run(eval_type:str,
             '--batch_key',batch_key,
             '--fn_expr',fn_expr if fn_expr is not None else path_adata,
             '--fn_moransi',fn_moransi,
+            '--testing',str(testing),
         ]
     for scaled in ['0','1']:
         logging.info('Computing metrics with param scaled='+scaled)
@@ -243,6 +246,6 @@ def run(eval_type:str,
         # the status of the whole job would be succesfull 
         # even if the child failed as error wouldn be passed upstream
         if process_metrics.returncode != 0:
-            raise ValueError('Process failed with', process.returncode)
+            raise ValueError('Process failed with', process_metrics.returncode)
     
     logging.info('Finished wrapper script!')

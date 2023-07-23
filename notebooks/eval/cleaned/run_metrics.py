@@ -59,8 +59,8 @@ if False:
         '-sk','system',
         '-gk','cell_type',
         '-bk','sample',
-        '-s','1',
-        '-t','0',
+        '-s','0',
+        '-t','1',
     ])
 # Read command line args
 else:
@@ -82,12 +82,21 @@ else:
     neigh_prefix=''
 
 # %%
-# Which cells have group info - if nan dont use them for metrics computation
+# Which cells have group info - if nan dont use them for metrics computation      
 if embed.obs[args.group_key].isna().any():
-    # This shouldnt really happen in the current eval settings as may become inefficient
-    print('Recomputting neighbours as adata was subsetted to annotated cells')
-    embed_group=embed[~embed.obs[args.group_key].isna(),:].copy()
-    sc.pp.neighbors(embed_group, use_rep='X', n_neighbors=90,key_added=neigh_prefix.rstrip('_'))
+    # This shouldnt really happen in the current eval settings as may become inefficient - e
+    # print('Recomputting neighbours as adata was subsetted to annotated cells')
+    # embed_group=embed[~embed.obs[args.group_key].isna(),:].copy()
+    # neigh_key_added=neigh_prefix.rstrip('_')
+    # sc.pp.neighbors(embed_group, use_rep='X', n_neighbors=90,key_added=neigh_key_added)
+    # neigh_key_uns=(neigh_key_added+'_' if len(neigh_key_added)>0 else '')+'neighbors'
+    # embed_group.uns[neigh_key_uns]=embed_group.uns[neigh_key_added]
+    # del embed_group.uns[neigh_key_added]
+    if TESTING:
+        embed_group=embed
+        embed_group.obs[args.group_key]=embed_group.obs[args.group_key].astype(str).fillna('NA')
+    else:
+        raise ValueError('nan group cells in adata')
 else:
     embed_group=embed
 
@@ -198,15 +207,17 @@ if MORANSI or TESTING:
             (embed_full.obs[args.group_key]==group_mi['group']).values&
             (embed_full.obs[args.system_key]==str(group_mi['system'])).values&
             (embed_full.obs[args.batch_key]==group_mi['batch']).values,:].copy()
-        sc.pp.neighbors(embed_sub, use_rep='X')
-        genes=group_mi['genes'].index
-        res['moransi_genes']=pd.Series(
-            (sc.metrics._morans_i._morans_i(
-                g=embed_sub.obsp['connectivities'],
-                vals=adata_expr[embed_sub.obs_names,genes].X.T)+1)/2,
-            index=genes)
-        res['moransi_diff']=(res['moransi_genes']/group_mi['genes']).mean()
-        moransi_data.append(res)
+        # Check that there are enough cells for testing
+        if not TESTING or embed_sub.shape[0]>50:
+            sc.pp.neighbors(embed_sub, use_rep='X')
+            genes=group_mi['genes'].index
+            res['moransi_genes']=pd.Series(
+                (sc.metrics._morans_i._morans_i(
+                    g=embed_sub.obsp['connectivities'],
+                    vals=adata_expr[embed_sub.obs_names,genes].X.T)+1)/2,
+                index=genes)
+            res['moransi_diff']=(res['moransi_genes']/group_mi['genes']).mean()
+            moransi_data.append(res)
     metrics_data['moransi_data']=moransi_data
 
     # Average MI diffs across samples per cell type
