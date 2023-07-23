@@ -36,11 +36,6 @@ import scglue
 import networkx as nx
 
 # %%
-SATURN_EMB_PATH = os.path.expanduser("~/Downloads/protein_embeddings_export/ESM2/")
-SATURN_GIT_LOCATION = os.path.expanduser("~/projects/clones/SATURN/")
-SATURN_CONDA_ENV = "cs_integration_saturn"
-
-# %%
 parser = argparse.ArgumentParser()
 def intstr_to_bool(x):
     return bool(int(x))
@@ -99,6 +94,14 @@ parser.add_argument('--hidden_dim', required=False, type=int, default=256,
                     help='Dim of hidden layers in SATURN')
 parser.add_argument('--pretrain_epochs', required=False, type=int, default=50,
                     help='Pretrain Epochs. For large data 50, for small data 200.')
+
+# SATURN INDEPENDENT CODE & ENV INFO
+parser.add_argument('--saturn_emb', required=True, type=str,
+                    help='Path to saturn emb. For example: .../protein_embeddings_export/ESM2/...')
+parser.add_argument('--saturn_code', required=True, type=str,
+                    help='Path to saturn cloned code from git. Please use the fixed repo.')
+parser.add_argument('--saturn_env', required=True, type=str,
+                    help='Path to the conda env saturn is runnable in.')
 # %%
 if True:
     args= parser.parse_args(args=[
@@ -114,6 +117,7 @@ if True:
         '-sv','mouse,human',
         '-gk','cell_type_eval',
         '-bk','batch',
+        '-ck', '',
         '-me','2',
         '-edp','0',
         
@@ -127,6 +131,10 @@ if True:
         '--hv_genes', '1000',
         '--num_macrogenes', '500',
         '--hv_span', '1.',  # Otherwise we get error on sc.pp.highly_variable_genes in SATURN because some batches have a few cells
+
+        '--saturn_emb', os.path.expanduser("~/Downloads/protein_embeddings_export/ESM2/"),
+        '--saturn_code', os.path.expanduser("~/projects/clones/SATURN/"),
+        '--saturn_env', "cs_integration_saturn",
     ])
 # Read command line args
 else:
@@ -139,6 +147,11 @@ TESTING=args.testing
 if args.name is None:
     if args.seed is not None:
         args.name='r'+str(args.seed)
+
+# %%
+SATURN_EMB_PATH = args.saturn_emb
+SATURN_GIT_LOCATION = args.saturn_code
+SATURN_CONDA_ENV = args.saturn_env
 
 # %%
 SINGLE_ADATA = True
@@ -313,7 +326,7 @@ command = (
 )
 
 # %%
-" ".join(command)
+print(" ".join(command))
 
 # %%
 subprocess.run(command,
