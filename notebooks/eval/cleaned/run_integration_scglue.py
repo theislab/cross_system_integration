@@ -317,12 +317,17 @@ if max_epochs == -1:
 glue = scglue.models.fit_SCGLUE(
     mods_adata, my_guidance,
     init_kws=dict(latent_dim=latent_dim, h_depth=h_depth, h_dim=h_dim, random_seed=args.seed),
-    fit_kws={"directory": "glue", "max_epochs": max_epochs},
+    fit_kws={
+        # Setting dir causes error as multiple runs want to be saved in the same dir
+        #"directory": "glue", 
+        # The below would likely work
+        "directory": path_save+'glue_logs',
+        "max_epochs": max_epochs},
     compile_kws=dict(lam_data=lam_data, lam_kl=lam_kl, lam_graph=lam_graph, lam_align=lam_align), 
     balance_kws=None,
 )
 
-glue.save(filename)
+#glue.save(filename)
 
 # %%
 # glue = scglue.models.load_model(filename)
