@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.6
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: cs_integration
+#     display_name: scglue
 #     language: python
-#     name: cs_integration
+#     name: scglue
 # ---
 
 # %%
@@ -82,11 +82,11 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 
 parser.add_argument('--rel_gene_weight', required=False, type=float, default=1.,
                     help='Weight to connect a gene to another relevant gene in scGLUE')
-parser.add_argument('--latent_dim', required=False, type=int, default=50,
+parser.add_argument('--n_latent', required=False, type=int, default=50,
                     help='Latent dim in scGLUE')
-parser.add_argument('--h_depth', required=False, type=int, default=2,
+parser.add_argument('--n_layers', required=False, type=int, default=2,
                     help='depth of encoder in scGLUE')
-parser.add_argument('--h_dim', required=False, type=int, default=256,
+parser.add_argument('--n_hidden', required=False, type=int, default=256,
                     help='Dim of hidden layers in encoder of scGLUE')
 
 parser.add_argument('--lam_data', required=False, type=float, default=1.0,
@@ -98,17 +98,27 @@ parser.add_argument('--lam_graph', required=False, type=float, default=0.02,
 parser.add_argument('--lam_align', required=False, type=float, default=0.05,
                     help='lam_align in scGLUE')
 # %%
-if True:
+if False:
     args= parser.parse_args(args=[
+        # Amir
         # With one data with common vars
         # '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         # With two data with gene graph
-        '-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
-        '-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
-        '-gg','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
-        '-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
-        # '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
-        # '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
+        #'-pa','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad',
+        #'-pa2','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad',
+        #'-gg','/Users/amirali.moinfar/Downloads/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
+        #'-ps','/Users/amirali.moinfar/tmp/cross_species_prediction/eval/test/integration/',
+        
+        # Karin
+        '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
+        # 1 adata
+        '-pa','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/test/combined_orthologuesHVG.h5ad',
+        '-gg','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG_geneMapping.tsv',
+        # 2 adatas
+        # '-pa','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/test/combined-mmPart_nonortholHVG.h5ad',
+        # '-pa2','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/test/combined-hsPart_nonortholHVG.h5ad',
+        # '-gg','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv',
+        
         '-sk','system',
         '-gk','cell_type_eval',
         '-bk','batch',
@@ -142,9 +152,9 @@ if args.path_adata_2 != "":
 # %%
 # scglue params
 rel_gene_weight = args.rel_gene_weight
-latent_dim=args.latent_dim
-h_depth=args.h_depth
-h_dim=args.h_dim
+latent_dim=args.n_latent
+h_depth=args.n_layers
+h_dim=args.n_hidden
 
 lam_data=args.lam_data
 lam_kl=args.lam_kl
@@ -159,7 +169,7 @@ path_save=args.path_save+'scglue'+\
     os.sep
 
 os.mkdir(path_save)
-print(path_save)
+print("PATH_SAVE=",path_save)
 
 # %%
 # Set seed for eval
@@ -183,20 +193,22 @@ pkl.dump(args,open(path_save+'args.pkl','wb'))
 # Load data
 adata=sc.read(args.path_adata)
 adata.obs[args.system_key] = adata.obs[args.system_key].astype("str")
-adata
+# print('adata')
+# print(adata)
 
 # %%
 adata_2 = None
 if not SINGLE_ADATA:
     adata_2=sc.read(args.path_adata_2)
     adata_2.obs[args.system_key] = adata_2.obs[args.system_key].astype("str")
-adata_2
+# print('adata 2')
+# print(adata_2)
 
 # %%
 given_gene_graph = None
 if not SINGLE_ADATA:
     given_gene_graph = pd.read_csv(args.gene_graph, sep="\t")
-given_gene_graph
+#given_gene_graph
 
 # %%
 if TESTING:
@@ -221,7 +233,7 @@ else:
         list(adata.obs[args.system_key].unique()) +
         list(adata_2.obs[args.system_key].unique())))
 
-total_mods
+#total_mods
 
 # %%
 mods_adata = {}
@@ -248,9 +260,10 @@ print('Train')
 # %%
 for adata_spc in mods_adata.values():
     if args.pca_key == "":
-        adata_spc.X = adata_spc.layers['counts'].copy()
-        sc.pp.normalize_total(adata_spc)
-        sc.pp.log1p(adata_spc)
+        # X contains normalized+log data
+        # adata_spc.X = adata_spc.layers['counts'].copy()
+        # sc.pp.normalize_total(adata_spc)
+        # sc.pp.log1p(adata_spc)
         sc.pp.scale(adata_spc)
         sc.tl.pca(adata_spc)
         pca_key = "X_pca"
@@ -315,26 +328,31 @@ glue.save(filename)
 # glue = scglue.models.load_model(filename)
 
 # %%
-try:
-    dx = scglue.models.integration_consistency(
-        glue, mods_adata, my_guidance
-    )
-    _ = sns.lineplot(x="n_meta", y="consistency", data=dx).axhline(y=0.05, c="darkred", ls="--")
-    print('Consistency score',dx)
-    with open(path_save + "integration_consistency.pkl", 'wb') as f:
-        pkl.dump(dx, f)
-except Exception as e:
-    print("Error:", e)
-
-# %%
+if False:
+    try:
+        mods_adata_temp={}
+        for k, a in mods_adata.items():
+            a=a.copy()
+            a.X=a.layers['counts']
+            mods_adata_temp[k]=a
+        del a
+        dx = scglue.models.integration_consistency(
+            glue, mods_adata_temp, my_guidance
+        )
+        del mods_adata_temp
+        #_ = sns.lineplot(x="n_meta", y="consistency", data=dx).axhline(y=0.05, c="darkred", ls="--")
+        print('Consistency scores with min:', dx['consistency'].min())
+        print(dx)
+        with open(path_save + "integration_consistency.pkl", 'wb') as f:
+            pkl.dump(dx, f)
+    except Exception as e:
+        print("Error:", e)
 
 # %% [markdown]
 # ### Eval
 
 # %% [markdown]
 # #### Losses
-
-# %%
 
 # %% [markdown]
 # #### Embedding

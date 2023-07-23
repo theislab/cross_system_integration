@@ -29,7 +29,9 @@ fixed:
   group_key: cluster
   batch_key: donor_id
   system_key: system
-  n_cells_eval: 100000
+  n_cells_eval: 100000  
+  conda_env: csi
+  pca_key: X_pca_system
        
   
 grid:
@@ -40,54 +42,99 @@ grid:
       - 2
       - 3 
       
-klw_opt:
+# klw_opt:
+#     fixed:
+#       params_opt: kl_weight
+#     grid:
+#       kl_weight:
+#         type: choice
+#         options:
+#           - 1
+#           - 1.5
+#           - 2
+#           - 5
+# vamp_opt:
+#     fixed:
+#       params_opt: vamp
+#       prior: vamp
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 100
+#           - 500
+#           - 1000
+#           - 5000
+# zdcw_opt:
+#     fixed:
+#       z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
+#       params_opt: z_distance_cycle_weight
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 2
+#           - 5 
+#           - 10
+#           - 50
+# zdcw_opt_std:
+#     fixed:
+#       z_dist_metric: MSE_standard 
+#       params_opt: z_distance_cycle_weight_std
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 2
+#           - 5 
+#           - 10
+#           - 50       
+# scvi:
+#     fixed:
+#       model: scvi
+#       params_opt: scvi
+
+scglue_rgw:
     fixed:
-      params_opt: kl_weight
+      model: scglue
+      conda_env: scglue
+      params_opt: scglue_rel_gene_weight
+      max_epochs: -1
     grid:
-      kl_weight:
+      rel_gene_weight:
         type: choice
         options:
-          - 1
-          - 1.5
-          - 2
-          - 5
-vamp_opt:
+          - 0.4
+          - 0.6 
+          - 0.8
+          - 1       
+
+scglue_la:
     fixed:
-      params_opt: vamp
-      prior: vamp
+      model: scglue
+      conda_env: scglue
+      params_opt: scglue_lam_align
+      max_epochs: -1
     grid:
-      n_prior_components:
+      lam_align:
         type: choice
         options:
-          - 100
-          - 500
-          - 1000
-          - 5000
-zdcw_opt:
+          - 0.005
+          - 0.05
+          - 0.2
+          - 0.5
+
+scglue_lg:
     fixed:
-      z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
-      params_opt: z_distance_cycle_weight
+      model: scglue
+      conda_env: scglue
+      params_opt: scglue_lam_graph
+      max_epochs: -1
     grid:
-      z_distance_cycle_weight:
+      lam_graph:
         type: choice
         options:
-          - 2
-          - 5 
-          - 10
-          - 50
-zdcw_opt_std:
-    fixed:
-      z_dist_metric: MSE_standard 
-      params_opt: z_distance_cycle_weight_std
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 2
-          - 5 
-          - 10
-          - 50       
-scvi:
-    fixed:
-      model: scvi
-      params_opt: scvi
+          - 0.005
+          - 0.02
+          - 0.1
+          - 0.5
