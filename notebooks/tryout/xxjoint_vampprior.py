@@ -762,7 +762,7 @@ sc.pl.umap(embed_sub,
 del embed_sub
 
 # %% [markdown]
-# ### cVAE - change of pseudoinputs over training
+# ### VAMP - change of pseudoinputs over training
 
 # %%
 pis=[]
@@ -770,6 +770,7 @@ model = XXJointModel(adata=adata_training, prior='vamp', n_prior_components=100,
                     pseudoinputs_data_init=True)
 pis.append([model.module.prior.u.detach().cpu().numpy(),
           model.module.prior.u_cov.detach().cpu().numpy()])
+# Train for 1 epoch and see how PIs migrate
 for i in range(20):
     model.train(max_epochs=1,
             check_val_every_n_epoch=1,
@@ -786,6 +787,7 @@ for i in range(20):
           model.module.prior.u_cov.detach().cpu().numpy()])
 
 # %%
+# PIs are on level of data - thus they must be encoded to get them to latent space
 pis_z=[model.module.encoder(x=torch.tensor(x,device=model.module.device), 
                             cov=torch.tensor(cov,device=model.module.device)
                            )['y_m'].detach().cpu().numpy() 
@@ -808,7 +810,7 @@ embed_sub=sc.AnnData(embed_sub,obs=adata_training[random_indices,:].obs)
 embed_sub.obs['species']=embed_sub.obs.system.map({0:'mm',1:'hs'})
 
 # %%
-# Pseudoinput and data sub embedding
+# Pseudoinput and data sub joint embedding
 embed_sub_pin = sc.concat([embed_sub,embed_pis], 
                           merge='unique', join='outer')
 embed_sub_pin.obs['input_type']=['expr']*embed_sub.shape[0]+\
