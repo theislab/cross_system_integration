@@ -29,7 +29,7 @@ fixed:
   group_key: cluster
   batch_key: donor_id
   system_key: system
-  n_cells_eval: 100000  
+  n_cells_eval: 100000
   conda_env: csi
   pca_key: X_pca_system
        
@@ -61,6 +61,9 @@ grid:
 #       n_prior_components:
 #         type: choice
 #         options:
+#           - 1
+#           - 10
+#           - 50
 #           - 100
 #           - 500
 #           - 1000
@@ -88,53 +91,72 @@ grid:
 #           - 2
 #           - 5 
 #           - 10
-#           - 50       
+#           - 50    
+
+vamp_zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      prior: vamp
+      n_prior_components: 100
+      params_opt: vamp_z_distance_cycle_weight_std
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50  
+
 # scvi:
 #     fixed:
 #       model: scvi
 #       params_opt: scvi
 
-scglue_rgw:
-    fixed:
-      model: scglue
-      conda_env: scglue
-      params_opt: scglue_rel_gene_weight
-      max_epochs: -1
-    grid:
-      rel_gene_weight:
-        type: choice
-        options:
-          - 0.4
-          - 0.6 
-          - 0.8
-          - 1       
+# scglue_rgw:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_rel_gene_weight
+#       max_epochs: -1
+#     grid:
+#       rel_gene_weight:
+#         type: choice
+#         options:
+#           - 0.4
+#           - 0.6 
+#           - 0.8
+#           - 1       
 
-scglue_la:
-    fixed:
-      model: scglue
-      conda_env: scglue
-      params_opt: scglue_lam_align
-      max_epochs: -1
-    grid:
-      lam_align:
-        type: choice
-        options:
-          - 0.005
-          - 0.05
-          - 0.2
-          - 0.5
+# scglue_la:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_lam_align
+#       max_epochs: -1
+#     grid:
+#       lam_align:
+#         type: choice
+#         options:
+#           - 0.0005
+#           - 0.005
+#           - 0.05
+#           #- 0.2
+#           - 0.5
 
-scglue_lg:
-    fixed:
-      model: scglue
-      conda_env: scglue
-      params_opt: scglue_lam_graph
-      max_epochs: -1
-    grid:
-      lam_graph:
-        type: choice
-        options:
-          - 0.005
-          - 0.02
-          - 0.1
-          - 0.5
+# scglue_lg:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_lam_graph
+#       max_epochs: -1
+#     grid:
+#       lam_graph:
+#         type: choice
+#         options:
+#           - 0.005
+#           # - 0.02
+#           - 0.1
+#           - 0.5
+#           #- 1
+#           - 2

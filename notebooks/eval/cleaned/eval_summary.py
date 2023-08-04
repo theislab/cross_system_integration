@@ -32,6 +32,22 @@ import matplotlib.colors as mcolors
 # %%
 path_eval='/om2/user/khrovati/data/cross_system_integration/eval/'
 
+
+# %%
+def metrics_data_heatmap(metrics_data,res,metric='jaccard_label'):
+    metric='jaccard_label'
+    dat={}
+    for metrics_res in metrics_data:
+        dat[metrics_res['name']]=metrics_res[metric]
+    dat=pd.DataFrame(dat).T
+    dat['params_opt']=dat.index.map(lambda x: res.at[x,'params_opt'])
+    dat['param_opt_val']=dat.index.map(lambda x: res.at[x,'param_opt_val'])
+    dat=dat.groupby(['params_opt','param_opt_val']).mean()
+    dat.index=dat.index.map(lambda x: '-'.join([str(i) for i in x]))
+    dat=dat/np.clip(dat.max(axis=0),a_min=1e-3, a_max=None)
+    sb.clustermap(dat,row_cluster=False, xticklabels=True,yticklabels=True)
+
+
 # %% [markdown]
 # ## Pancreas conditions MIA HPAP2
 
@@ -41,24 +57,45 @@ path_integration=path_eval+'pancreas_conditions_MIA_HPAP2/integration/'
 # %%
 # Load integration results - params and metrics
 res=[]
+metrics_data=[]
 for run in glob.glob(path_integration+'*/'):
     if os.path.exists(run+'args.pkl') and \
         os.path.exists(run+'scib_metrics.pkl') and \
-        os.path.exists(run+'scib_metrics_scaled.pkl'):
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
         args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
         metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
         metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
         metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
         data=pd.concat([args,metrics,metrics_scl])
-        data.name=run.split('/')[-2]
+        name=run.split('/')[-2]
+        data.name=name
         res.append(data)
+        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+        metrics_data_sub['name']=name
+        metrics_data.append(metrics_data_sub)
 res=pd.concat(res,axis=1).T
 
 # %%
 #  Param that was optimised
+res['params_opt']=res.params_opt.replace(
+    {
+     'scglue_no_lam_graph':'scglue_lam_graph_no',
+     'scglue_no_rel_gene_weight':'scglue_rel_gene_weight_no', 
+     'scglue_no_lam_align':'scglue_lam_align_no',
+     'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no'})
 res['param_opt_col']=res.params_opt.replace(
     {'vamp':'n_prior_components',
      'z_distance_cycle_weight_std':'z_distance_cycle_weight',
+     'scglue_lam_graph':'lam_graph',
+     'scglue_rel_gene_weight':'rel_gene_weight', 
+     'scglue_lam_align':'lam_align',
+     'scglue_lam_graph_no':'lam_graph',
+     'scglue_rel_gene_weight_no':'rel_gene_weight', 
+     'scglue_lam_align_no':'lam_align',
+     'saturn_pe_sim_penalty':'pe_sim_penalty',
+     'saturn_pe_sim_penalty_no':'pe_sim_penalty',
+     
      'scvi':None})
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
@@ -105,6 +142,12 @@ g=sb.catplot( x='param_opt_val', y="jaccard",  col='params_opt',
 g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
            kind="swarm", data=res,sharex=False,
           height=2.5,aspect=1.3,color='k')
+
+# %%
+metrics_data_heatmap(metrics_data=metrics_data,res=res,metric='jaccard_label')
+
+# %% [markdown]
+# C: For example scglue_cXxtBJm8 has mixing of acinar and immune.
 
 # %%
 g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
@@ -154,7 +197,16 @@ g=sb.scatterplot(x='ilisi_system',y='nmi',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='colorblind')
+                palette='tab20')
+sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))
+
+# %%
+rcParams['figure.figsize']=(2,2)
+g=sb.scatterplot(x='ilisi_system',y='moransi',
+               hue='params_opt',
+               data=res.groupby(['params_opt','param_opt_val'],observed=True
+                               ).mean().reset_index(),
+                palette='tab20')
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))
 
 # %% [markdown]
@@ -166,17 +218,23 @@ path_integration=path_eval+'retina_adult_organoid/integration/'
 # %%
 # Load integration results - params and metrics
 res=[]
+metrics_data=[]
 for run in glob.glob(path_integration+'*/'):
     if os.path.exists(run+'args.pkl') and \
         os.path.exists(run+'scib_metrics.pkl') and \
-        os.path.exists(run+'scib_metrics_scaled.pkl'):
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
         args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
         metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
         metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
         metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
         data=pd.concat([args,metrics,metrics_scl])
-        data.name=run.split('/')[-2]
+        name=run.split('/')[-2]
+        data.name=name
         res.append(data)
+        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+        metrics_data_sub['name']=name
+        metrics_data.append(metrics_data_sub)
 res=pd.concat(res,axis=1).T
 
 # %%
@@ -184,6 +242,9 @@ res=pd.concat(res,axis=1).T
 res['param_opt_col']=res.params_opt.replace(
     {'vamp':'n_prior_components',
      'z_distance_cycle_weight_std':'z_distance_cycle_weight',
+     'scglue_lam_graph':'lam_graph',
+     'scglue_rel_gene_weight':'rel_gene_weight', 
+     'scglue_lam_align':'lam_align',
      'scvi':None})
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
@@ -244,6 +305,9 @@ g=sb.catplot( x='param_opt_val', y="jaccard",  col='params_opt',
 g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
            kind="swarm", data=res,sharex=False,
           height=2.5,aspect=1.3,color='k')
+
+# %%
+metrics_data_heatmap(metrics_data=metrics_data,res=res,metric='jaccard_label')
 
 # %%
 g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
@@ -311,18 +375,27 @@ g=sb.scatterplot(x='ilisi_system',y='nmi',
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))
 
 # %%
+rcParams['figure.figsize']=(2,2)
+g=sb.scatterplot(x='ilisi_system',y='moransi',
+               hue='params_opt',
+               data=res.groupby(['params_opt','param_opt_val'],observed=True
+                               ).mean().reset_index(),
+                palette='colorblind')
+sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))
+
+# %%
 # Examples
-for params,run_dir in res.groupby(['params_opt','param_opt_val']).apply(
-    lambda x: x.sort_values('ilisi_system',ascending=True).index[0]).iteritems():
+# for params,run_dir in res.groupby(['params_opt','param_opt_val']).apply(
+#     lambda x: x.sort_values('ilisi_system',ascending=True).index[0]).iteritems():
     
-    print(params,run_dir)
-    display(res.loc[run_dir,['ilisi_system','asw_group']])
-    with plt.rc_context({'figure.figsize':(40,10)}):
-        path_run=path_integration+run_dir+'/'
-        for img_fn in ['umap.png','losses.png']:
-            img = mpimg.imread(path_run+img_fn)
-            imgplot = plt.imshow(img)
-            plt.show()
+#     print(params,run_dir)
+#     display(res.loc[run_dir,['ilisi_system','asw_group']])
+#     with plt.rc_context({'figure.figsize':(40,10)}):
+#         path_run=path_integration+run_dir+'/'
+#         for img_fn in ['umap.png','losses.png']:
+#             img = mpimg.imread(path_run+img_fn)
+#             imgplot = plt.imshow(img)
+#             plt.show()
 
 # %% [markdown]
 # ## Adipose sc sn updated
@@ -333,24 +406,36 @@ path_integration=path_eval+'adipose_sc_sn_updated/integration/'
 # %%
 # Load integration results - params and metrics
 res=[]
+metrics_data=[]
 for run in glob.glob(path_integration+'*/'):
     if os.path.exists(run+'args.pkl') and \
         os.path.exists(run+'scib_metrics.pkl') and \
-        os.path.exists(run+'scib_metrics_scaled.pkl'):
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
         args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
         metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
         metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
         metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
         data=pd.concat([args,metrics,metrics_scl])
-        data.name=run.split('/')[-2]
+        name=run.split('/')[-2]
+        data.name=name
         res.append(data)
+        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+        metrics_data_sub['name']=name
+        metrics_data.append(metrics_data_sub)
 res=pd.concat(res,axis=1).T
+
+# %%
+res.params_opt.unique()
 
 # %%
 #  Param that was optimised
 res['param_opt_col']=res.params_opt.replace(
     {'vamp':'n_prior_components',
      'z_distance_cycle_weight_std':'z_distance_cycle_weight',
+     'scglue_lam_graph':'lam_graph',
+     'scglue_rel_gene_weight':'rel_gene_weight', 
+     'scglue_lam_align':'lam_align',
      'scvi':None})
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
@@ -399,6 +484,9 @@ g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
           height=2.5,aspect=1.3,color='k')
 
 # %%
+metrics_data_heatmap(metrics_data=metrics_data,res=res,metric='jaccard_label')
+
+# %%
 g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
            kind="swarm", data=res,sharex=False,
           height=2.5,aspect=1.3,color='k')
@@ -445,3 +533,10 @@ g=sb.scatterplot(x='ilisi_system',y='nmi',
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))
 
 # %%
+rcParams['figure.figsize']=(2,2)
+g=sb.scatterplot(x='ilisi_system',y='moransi',
+               hue='params_opt',
+               data=res.groupby(['params_opt','param_opt_val'],observed=True
+                               ).mean().reset_index(),
+                palette='colorblind')
+sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))

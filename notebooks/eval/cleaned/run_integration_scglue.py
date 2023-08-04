@@ -396,5 +396,3 @@ embed_full.write(path_save+'embed_full.h5ad')
 # 
 # %%
 print('Finished integration!')
-
-# %%

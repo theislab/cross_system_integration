@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.4
+#       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: csp
+#     display_name: csi
 #     language: python
-#     name: csp
+#     name: csi
 # ---
 
 # %%
@@ -107,6 +107,8 @@ sb.swarmplot(x='n_random_features',y='ilisi',data=res)
 # %%
 res=[]
 n_total=9
+n=100
+batch=np.array(['a']*n+['b']*n)
 for n_noise in [0,1,2,4,8]:
     for i in range(10):
         # Regenerate also the feature taht differs in batch

@@ -47,6 +47,8 @@ parser.add_argument('-s', '--scaled', required=False, type=intstr_to_bool, defau
                     help='Should scaled X be used. Assumes X in embed data is still unscaled. '+
                     'Assumes there are neighbors with prefix '+
                     'scaled_ (for dist, conn) in the embedding.')
+parser.add_argument('-co', '--cluster_optimized', required=False, type=intstr_to_bool, default='0',
+                    help='Should clustering metrics on optimized clustering resolution be computed')
 parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,default='0',
                     help='Testing mode')
 
@@ -60,6 +62,7 @@ if False:
         '-gk','cell_type',
         '-bk','sample',
         '-s','0',
+        '-co','1',
         '-t','1',
     ])
 # Read command line args
@@ -140,6 +143,11 @@ if 'nmi' in metrics and 'ari' in metrics and\
 else:
     CLUSTER_CLASSIFICATION=True  
 
+if not(('nmi_opt' not in metrics or 'ari_opt' not in metrics) and args.cluster_optimized):
+    CLUSTER_OPTIMIZED=False
+else:
+    CLUSTER_OPTIMIZED=True
+
 if 'moransi' in metrics and 'moransi_label' in metrics_data and 'moransi_data' in metrics_data:
     MORANSI=False
 else:
@@ -180,6 +188,15 @@ if CLUSTER_CLASSIFICATION or TESTING:
     cluster_classification(
         labels=embed_group.obs[args.group_key],
         clusters=embed_group.obs[neigh_prefix+'leiden'])
+
+if CLUSTER_OPTIMIZED or TESTING:
+    print('cluster_optmimized')
+    res=sm.nmi_ari_cluster_labels_leiden(
+        X=embed_group.obsp[neigh_prefix+'connectivities'], 
+        labels=embed_group.obs[args.group_key], 
+        optimize_resolution = True,  n_jobs=-1)
+    metrics['nmi_opt']=res['nmi']
+    metrics['ari_opt']=res['ari']
 
 # %%
 # Moran's I

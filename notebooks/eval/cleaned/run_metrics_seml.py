@@ -24,7 +24,7 @@ def config():
 @ex.automain
 def run(path_save:str=None,subdir:str=None, fn_expr:str=None, fn_moransi:str=None,
         group_key:str=None,batch_key:str=None,system_key:str=None,
-        scaled:str=None,
+        scaled:str=None,cluster_optimized:str=None,
        ):
     params_info={
                  "path":path_save+subdir+'/',
@@ -34,6 +34,7 @@ def run(path_save:str=None,subdir:str=None, fn_expr:str=None, fn_moransi:str=Non
                  "group_key": group_key, 
                  "batch_key": batch_key, 
                  "scaled":scaled,
+                 "cluster_optimized":cluster_optimized,
     }
     #print('All params:')
     #print(params_info)
@@ -41,8 +42,9 @@ def run(path_save:str=None,subdir:str=None, fn_expr:str=None, fn_moransi:str=Non
     # Prepare args for running script
     args=[]
     for k,v in params_info.items():
-        args.append('--'+k)
-        args.append(str(v))
+        if v is not None:
+            args.append('--'+k)
+            args.append(str(v))
     #print('Script args:')
     #print(args)
     logging.info('Using the following args for the script')

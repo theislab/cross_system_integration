@@ -12,7 +12,7 @@ slurm:
   sbatch_options:
     mem: 50G          # memory, set to 32, for pancreas this could be 10Gb
     cpus-per-task: 4  # num cores, set to 4
-    time: 0-04:00     # max time, D-HH:MM, set to 0-08:00
+    time: 0-05:00     # max time, D-HH:MM, set to 0-08:00
     nice: 10000
 
 fixed:
@@ -26,11 +26,17 @@ fixed:
   # Data
   path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
   fn_moransi: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG_moransiGenes.pkl
+  fn_expr: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
   group_key: cell_type_eval
   batch_key: batch
   system_key: system
-  system_value: mouse,human
-  n_cells_eval: 100000
+  system_values: mouse-human
+  n_cells_eval: 100000 
+  conda_env: csi
+  pca_key: X_pca_system
+  cluster_key: leiden_system
+  saturn_emb: /om2/user/khrovati/data/saturn/protein_embeddings_export/ESM2/
+  saturn_code: /om2/user/khrovati/miniconda/envs/saturn/lib/python3.9/site-packages/SATURN_fix/
        
   
 grid:
@@ -41,70 +47,77 @@ grid:
       - 2
       - 3 
       
-klw_opt:
-    fixed:
-      params_opt: kl_weight
-    grid:
-      kl_weight:
-        type: choice
-        options:
-          - 1
-          - 1.5
-          - 2
-          - 5
-vamp_opt:
-    fixed:
-      params_opt: vamp
-      prior: vamp
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 100
-          - 500
-          - 1000
-          - 5000
-zdcw_opt:
-    fixed:
-      z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
-      params_opt: z_distance_cycle_weight
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 2
-          - 5 
-          - 10
-          - 50
-zdcw_opt_std:
-    fixed:
-      z_dist_metric: MSE_standard 
-      params_opt: z_distance_cycle_weight_std
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 2
-          - 5 
-          - 10
-          - 50       
-scvi:
-    fixed:
-      model: scvi
-      params_opt: scvi
-# scglue:
+# klw_opt:
 #     fixed:
-#       model: scglue
-#       latent_dim: 50
-#       params_opt: rel_gene_weight
+#       params_opt: kl_weight
 #     grid:
-#       rel_gene_weight:
+#       kl_weight:
 #         type: choice
 #         options:
-#           - 0.1
-#           - 0.5
-#           - 0.9
-#           - 1.0
+#           - 1
+#           - 1.5
+#           - 2
+#           - 5
+# vamp_opt:
+#     fixed:
+#       params_opt: vamp
+#       prior: vamp
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 10
+#           - 50
+#           - 100
+#           - 500
+#           - 1000
+#           - 5000
+# zdcw_opt:
+#     fixed:
+#       z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
+#       params_opt: z_distance_cycle_weight
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 2
+#           - 5 
+#           - 10
+#           - 50
+# zdcw_opt_std:
+#     fixed:
+#       z_dist_metric: MSE_standard 
+#       params_opt: z_distance_cycle_weight_std
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 2
+#           - 5 
+#           - 10
+#           - 50    
+
+vamp_zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      prior: vamp
+      n_prior_components: 100
+      params_opt: vamp_z_distance_cycle_weight_std
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50  
+
+# scvi:
+#     fixed:
+#       model: scvi
+#       params_opt: scvi
+
 # saturn:
 #     fixed:
 #       model: saturn
@@ -118,3 +131,135 @@ scvi:
 #           - 500
 #           - 1000
 #           - 1500
+
+# scglue_rgw:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_rel_gene_weight
+#       max_epochs: -1
+#     grid:
+#       rel_gene_weight:
+#         type: choice
+#         options:
+#           - 0.4
+#           - 0.6 
+#           - 0.8
+#           - 1       
+
+# scglue_la:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_lam_align
+#       max_epochs: -1
+#     grid:
+#       lam_align:
+#         type: choice
+#         options:
+#           - 0.0005
+#           - 0.005
+#           - 0.05
+#           - 0.5
+
+# scglue_lg:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_lam_graph
+#       max_epochs: -1
+#     grid:
+#       lam_graph:
+#         type: choice
+#         options:
+#           - 0.005
+#           - 0.1
+#           - 0.5
+#           - 2
+
+# scglue_rgw_no:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_no_rel_gene_weight
+#       max_epochs: -1
+#       path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
+#       path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad
+#       gene_graph: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv
+#     grid:
+#       rel_gene_weight:
+#         type: choice
+#         options:
+#           - 0.4
+#           - 0.6 
+#           - 0.8
+#           - 1       
+
+# scglue_la_no:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_no_lam_align
+#       max_epochs: -1
+#       path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
+#       path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad
+#       gene_graph: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv
+#     grid:
+#       lam_align:
+#         type: choice
+#         options:
+#           - 0.0005
+#           - 0.005
+#           - 0.05
+#           - 0.5
+
+# scglue_lg_no:
+#     fixed:
+#       model: scglue
+#       conda_env: scglue
+#       params_opt: scglue_no_lam_graph
+#       max_epochs: -1
+#       path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
+#       path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad
+#       gene_graph: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv      
+#     grid:
+#       lam_graph:
+#         type: choice
+#         options:
+#           - 0.005
+#           - 0.1
+#           - 0.5
+#           - 2
+
+# saturn_psp:
+#     fixed:
+#       model: saturn
+#       conda_env: saturn
+#       params_opt: saturn_pe_sim_penalty
+#       max_epochs: 50
+#       max_epochs_pretrain: 10
+#       var_name_keys: gs_mm-gs_hs
+#     grid:
+#       pe_sim_penalty:
+#         type: choice
+#         options:
+#           - 0.1
+#           - 1
+#           - 10
+
+# saturn_psp_no:
+#     fixed:
+#       model: saturn
+#       conda_env: saturn
+#       params_opt: saturn_no_pe_sim_penalty
+#       max_epochs: 50
+#       max_epochs_pretrain: 10
+#       path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
+#       path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad   
+#     grid:
+#       pe_sim_penalty:
+#         type: choice
+#         options:
+#           - 0.1
+#           - 1
+#           - 10
