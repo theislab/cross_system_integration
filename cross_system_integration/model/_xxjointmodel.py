@@ -317,12 +317,14 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         -------
         %(returns)s
         """
+        setup_method_args = cls._get_setup_method_args(**locals())
 
         # Make sure var names are unique
         if adata.shape[1] != len(set(adata.var_names)):
             raise ValueError('Adata var_names are not unique')
 
-        adata = adata.copy()
+        # User should copy its anndata itself if does not telerate changes.
+        # adata = adata.copy()
 
         # Make system to categorical for cov
         if adata.obs[system_key].nunique() != 2:
@@ -374,7 +376,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         adata.obsm['covariates'] = covariates
 
         # Anndata setup
-        setup_method_args = cls._get_setup_method_args(**locals())
         anndata_fields = [
             LayerField(REGISTRY_KEYS.X_KEY, layer, is_count_data=False),
             ObsmField('covariates', 'covariates'),
