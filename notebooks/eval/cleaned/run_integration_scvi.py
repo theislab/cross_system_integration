@@ -67,9 +67,13 @@ parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
 parser.add_argument('-me', '--max_epochs', required=False, type=int,default=50,
                     help='max_epochs for training')
+parser.add_argument('-uskw', '--use_n_steps_kl_warmup', 
+                    required=False, type=intstr_to_bool,  default='0',
+                    help='use suggested n_steps_kl_warmup instead of default n_epochs_kl_warmup')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
                     help='Loss subplot from this epoch on')
-
+parser.add_argument('-kw', '--kl_weight', required=False, type=float, default=1.0,
+                    help='max_kl_weight for trainingsplan')
 parser.add_argument('-nce', '--n_cells_eval', required=False, type=int, default=-1,  
                     help='Max cells to be used for eval, if -1 use all cells. '+\
                    'For cell subsetting seed 0 is always used to be reproducible accros '+\
@@ -81,13 +85,14 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 if False:
     args= parser.parse_args(args=[
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
-        '-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
+        #'-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
         '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
         '-sk','system',
         '-gk','cell_type',
         '-bk','sample',
         '-me','2',
         '-edp','0',
+        '-uskw','0',
         
         '-s','1',
                 
@@ -169,6 +174,12 @@ model = scvi.model.SCVI(adata_training,
 max_epochs=args.max_epochs if not TESTING else 3
 model.train(
     max_epochs = max_epochs,
+    # Uses n_steps_kl_warmup (128*5000/400) if n_epochs_kl_warmup is not set
+    plan_kwargs=dict(
+        n_epochs_kl_warmup = 400 if not args.use_n_steps_kl_warmup else None,
+        n_steps_kl_warmup = 1600,
+        max_kl_weight=args.kl_weight,
+    ),
     log_every_n_steps=1,
     check_val_every_n_epoch=1,
     callbacks=[pl.callbacks.LearningRateMonitor(logging_interval='epoch')] 

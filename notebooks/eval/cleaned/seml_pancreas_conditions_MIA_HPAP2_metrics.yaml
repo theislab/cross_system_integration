@@ -8,10 +8,12 @@ seml:
   conda_environment: csi
   
 slurm:
+  #sbatch_options_template: GPU
+  max_simultaneous_jobs: 30
   sbatch_options:
-    mem: 15G          # memory, set to 32, for pancreas this could be 10Gb
+    mem: 20G          # set only for NMI/ARI opt
     cpus-per-task: 4  # num cores, set to 4
-    time: 0-01:00     # max time, D-HH:MM, set to 0-08:00
+    time: 0-00:30     # set only for NMI/ARI opt
     nice: 10000
 
 fixed:
@@ -44,42 +46,151 @@ grid:
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC100NL2NH256_XvZeQUYl
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC100NL2NH256_x1VtHOrk
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC100NL2NH256_yqFP0nEg
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC10NL2NH256_LDin6MNC
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC10NL2NH256_sO7VABRy
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC10NL2NH256_xiD5LB7M
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC5000NL2NH256_0aVlMhik
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC5000NL2NH256_G4QTeXJE
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC5000NL2NH256_kj6ouW3e
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC500NL2NH256_jmAYJwrF
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC500NL2NH256_suV9YaP4
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC500NL2NH256_vbPu8e0t
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC50NL2NH256_BQ7amyZu
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC50NL2NH256_GWn8T7Ck
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC50NL2NH256_ZtvpFVgT
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_490dryGU
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_7URepVDu
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_Ore07G1B
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_PxdoghTr
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_VbjRYCU8
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_ZqbclY5V
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PvNPC100NL2NH256_Lc87Ih1V
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PvNPC100NL2NH256_ZwCV6uxv
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PvNPC100NL2NH256_xIuS0qL4
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_9MNxK4vk
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_EQOgu8TK
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_QrPZYwp7
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_U43jEPxo
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_vALqyRdZ
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_wEm9u7lk
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PvNPC100NL2NH256_GefI3LOP
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PvNPC100NL2NH256_PK3vguU2
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PvNPC100NL2NH256_XVQRAWxr
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_3yGCBz6W
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_QWIGbLj1
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_j0wR93eo
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_mISNpRe6
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_pTj9RfLF
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_v4EYcQ5N
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PvNPC100NL2NH256_H9TDiweG
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PvNPC100NL2NH256_OnP6eZI1
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PvNPC100NL2NH256_ovJgWelx
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_YxtprPJy
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_afsGy5nP
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_emcrpKkN
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_fzwkiUlK
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_q0arhwQO
         - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_yranSwLq
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PvNPC100NL2NH256_Dt1OBLIi
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PvNPC100NL2NH256_bI96RdkX
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PvNPC100NL2NH256_mpjg92IW
         - MANoneSDFalseOVMfeatureKLW2.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_7sUiZqcP
         - MANoneSDFalseOVMfeatureKLW2.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_WBIJVOQR
         - MANoneSDFalseOVMfeatureKLW2.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_YAbhok36
         - MANoneSDFalseOVMfeatureKLW5.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_5s0cP9Rb
         - MANoneSDFalseOVMfeatureKLW5.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_ABagkzQK
         - MANoneSDFalseOVMfeatureKLW5.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_zverBy4E
+        - saturn_1fMcluvQ
+        - saturn_25rtcN39
+        - saturn_72yxhYmV
+        - saturn_BmJMp30U
+        - saturn_Cf2OIS3Z
+        - saturn_D5BumNet
+        - saturn_EgkS0VlI
+        - saturn_MV8yFnu2
+        - saturn_Qq6fEgIC
+        - saturn_XOAMnI90
+        - saturn_Z9SEH1yI
+        - saturn_iY7tZ3kP
+        - saturn_kOrTtM2i
+        - saturn_m6fhLO5Y
+        - saturn_msOHPbWU
+        - saturn_tTkS80gW
+        - saturn_uDzylTLq
+        - saturn_wxb5otVu
+        - scglue_1dgTmE3M
+        - scglue_2fy6Svcz
+        - scglue_31PWx2Uu
+        - scglue_3871ilVC
+        - scglue_3HkLozmK
+        - scglue_3QnalrEV
+        - scglue_3V9qCa7j
+        - scglue_4G2Cx67o
+        - scglue_5xEGyg7U
+        - scglue_6x3gMNmU
+        - scglue_7vTIdxky
+        - scglue_7yWmiVgb
+        - scglue_8vzVj0MF
+        - scglue_9dwNua2E
+        - scglue_9lsUIGnZ
+        - scglue_AVgZtWJ1
+        - scglue_BpyCw8tc
+        - scglue_DM0YPKsz
+        - scglue_Debo5lPq
+        - scglue_F4ibOTQX
+        - scglue_FTzy7Xit
+        - scglue_FcyRzh9S
+        - scglue_GSJtnMvU
+        - scglue_Gfet6i9S
+        - scglue_Gt1XrKmi
+        - scglue_HfTMQgrh
+        - scglue_I6hPtAS1
+        - scglue_Ir7Abuwy
+        - scglue_JNV17A4T
+        - scglue_KX28ISHc
+        - scglue_MqrGeDWk
+        - scglue_NYPhVI5L
+        - scglue_Ncw0hajz
+        - scglue_OAfD1i2S
+        - scglue_PkWCmuyF
+        - scglue_PxJA3tqe
+        - scglue_T3YlWDHQ
+        - scglue_VO0KJbt4
+        - scglue_Vs7XxRrG
+        - scglue_XcCUGOmz
+        - scglue_Xh2Dmwk8
+        - scglue_YQ1PfjXo
+        - scglue_ZmRrHIy3
+        - scglue_ZpHJbU9o
+        - scglue_a4ivnOof
+        - scglue_aA4FU5gZ
+        - scglue_bATakq5K
+        - scglue_cKG7Zqh8
+        - scglue_cXxtBJm8
+        - scglue_dmIb5kiF
+        - scglue_dvgVSr0Q
+        - scglue_dzaLSkgN
+        - scglue_f4y5s8oF
+        - scglue_fAgpyYdM
+        - scglue_k4jvNdoL
+        - scglue_lxcdPhSg
+        - scglue_n2QZbdxj
+        - scglue_nimxO1hY
+        - scglue_oaizY6d5
+        - scglue_p0ZRO7L8
+        - scglue_p2oQYg6P
+        - scglue_pasbNzEl
+        - scglue_svuR2Jna
+        - scglue_tXNrKdCW
+        - scglue_tbh1Q7qI
+        - scglue_ujPbml5h
+        - scglue_uyROFhdD
+        - scglue_v23OcuTD
+        - scglue_wcgDfPSJ
+        - scglue_wkX6nqas
+        - scglue_xOarjzUZ
+        - scglue_zLnlD3u1
         - scvi_J7myLljG
         - scvi_eAxljTVG
         - scvi_m23BzP1Y
+

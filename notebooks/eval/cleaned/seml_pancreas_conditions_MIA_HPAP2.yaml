@@ -98,25 +98,57 @@ grid:
 #           - 10
 #           - 50    
 
-vamp_zdcw_opt_std:
-    fixed:
-      z_dist_metric: MSE_standard 
-      prior: vamp
-      n_prior_components: 100
-      params_opt: vamp_z_distance_cycle_weight_std
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 2
-          - 5 
-          - 10
-          - 50  
+# vamp_zdcw_opt_std:
+#     fixed:
+#       z_dist_metric: MSE_standard 
+#       prior: vamp
+#       n_prior_components: 100
+#       params_opt: vamp_z_distance_cycle_weight_std
+#     grid:
+#       z_distance_cycle_weight:
+#         type: choice
+#         options:
+#           - 2
+#           - 5 
+#           - 10
+#           - 50  
+
+
+# vamp_klw_opt:
+#     fixed:
+#       prior: vamp
+#       n_prior_components: 100
+#       params_opt: vamp_kl_weight
+#     grid:
+#       kl_weight:
+#         type: choice
+#         options:
+#           - 0.5
+#           - 1
+#           - 2
+#           - 5 
+
 
 # scvi:
 #     fixed:
 #       model: scvi
 #       params_opt: scvi
+
+scvi_kl_anneal:
+    fixed:
+      model: scvi
+      params_opt: scvi_kl_anneal
+      use_n_steps_kl_warmup: 1
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 0.1
+          - 0.5
+          #- 1
+          - 1.5
+          - 2
+          - 5
 
 # saturn:
 #     fixed:
@@ -243,6 +275,7 @@ vamp_zdcw_opt_std:
 #       pe_sim_penalty:
 #         type: choice
 #         options:
+#           - 0.01
 #           - 0.1
 #           - 1
 #           - 10
@@ -260,6 +293,44 @@ vamp_zdcw_opt_std:
 #       pe_sim_penalty:
 #         type: choice
 #         options:
+#           - 0.01
+#           - 0.1
+#           - 1
+#           - 10
+
+# saturn_psp_super:
+#     fixed:
+#       model: saturn
+#       conda_env: saturn
+#       params_opt: saturn_pe_sim_penalty_super
+#       max_epochs: 50
+#       max_epochs_pretrain: 10
+#       var_name_keys: gs_mm-gs_hs
+#       cluster_key: cell_type_eval
+#     grid:
+#       pe_sim_penalty:
+#         type: choice
+#         options:
+#           - 0.01
+#           - 0.1
+#           - 1
+#           - 10
+
+# saturn_psp_no_super:
+#     fixed:
+#       model: saturn
+#       conda_env: saturn
+#       params_opt: saturn_no_pe_sim_penalty_super
+#       max_epochs: 50
+#       max_epochs_pretrain: 10
+#       cluster_key: cell_type_eval
+#       path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
+#       path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad   
+#     grid:
+#       pe_sim_penalty:
+#         type: choice
+#         options:
+#           - 0.01
 #           - 0.1
 #           - 1
 #           - 10

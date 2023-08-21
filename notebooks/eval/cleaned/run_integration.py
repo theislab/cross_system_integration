@@ -50,6 +50,7 @@ def str_to_float_zeronone(x):
     else:
         return float(x)
 def str_to_weight(x):
+    # Format: wMIN_MAX_START_END (starts with w and separated by _ )
     # Quick seml fix to pass str and not int/list - add w at start and change sep
     x=[float(i) for i in x.replace('w','').split('_')]
     if len(x)==1:

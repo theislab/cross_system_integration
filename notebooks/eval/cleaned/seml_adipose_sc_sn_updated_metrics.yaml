@@ -1,0 +1,150 @@
+# Pancreas conditions
+# Run selected params (worked well or for comparison) for presentation plots & eval
+seml:
+  executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_metrics_seml.py
+  name: csi_eval
+  output_dir: /om2/user/khrovati/data/cross_system_integration/eval/adipose_sc_sn_updated/logs # CHANGE! OUT!
+  project_root_dir:  /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/
+  conda_environment: csi
+  
+slurm:
+  #sbatch_options_template: GPU
+  max_simultaneous_jobs: 30
+  sbatch_options:
+    mem: 15G          # set only for NMI/ARI opt
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-00:30     # set only for NMI/ARI opt
+    nice: 10000
+
+fixed:
+  path_save: /om2/user/khrovati/data/cross_system_integration/eval/adipose_sc_sn_updated/integration/ # CHANGE! OUT!
+  fn_expr: /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad
+  fn_moransi: /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn_moransiGenes.pkl
+  group_key: cluster
+  batch_key: donor_id
+  system_key: system
+       
+  
+grid:
+  scaled:
+    type: choice
+    options:
+      - 0
+      - 1
+  subdir:
+    type: choice
+    options:
+        - MANoneSDFalseOVMfeatureKLW1.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_71bEFfls
+        - MANoneSDFalseOVMfeatureKLW1.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_XQOWdUTJ
+        - MANoneSDFalseOVMfeatureKLW1.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_p7sX3x4o
+        - MANoneSDFalseOVMfeatureKLW1.5KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_KQ3Wxtcn
+        - MANoneSDFalseOVMfeatureKLW1.5KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_LxpJq1ur
+        - MANoneSDFalseOVMfeatureKLW1.5KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_u0pgMinf
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC1000NL2NH256_aJ1IhHKC
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC1000NL2NH256_oRli3SBv
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC1000NL2NH256_vl4N3RCT
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC100NL2NH256_EiM85Vx3
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC100NL2NH256_SAJdWBt1
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC100NL2NH256_bQ5JY2K6
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC10NL2NH256_5LEgHbaY
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC10NL2NH256_XBkuo0fr
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC10NL2NH256_kG2W60iS
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC5000NL2NH256_FvipItcM
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC5000NL2NH256_dbZOcP5Q
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC5000NL2NH256_rnBTi129
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC500NL2NH256_6hUDx3So
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC500NL2NH256_8OYzUye2
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC500NL2NH256_HPhqrxcD
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC50NL2NH256_15QWH3JV
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC50NL2NH256_AfRSgPqi
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PvNPC50NL2NH256_U4fJzYaT
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_3pPniZtV
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_PY5iNkG0
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_VSeyjqw2
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_cMqPtRUy
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_cNShmyTs
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PsnNPC100NL2NH256_ofCnbBa2
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PvNPC100NL2NH256_70ei4V2I
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PvNPC100NL2NH256_P8EvTe9p
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW10.0TCW0ZCW0PvNPC100NL2NH256_olnKC5Uj
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_M0R5zeaY
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_NRs6dBIx
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_YTehF8to
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_luH7CvjX
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_pvuTcebH
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PsnNPC100NL2NH256_uY8DBqfy
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PvNPC100NL2NH256_6UiMj1NH
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PvNPC100NL2NH256_Cnkf0puj
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW2.0TCW0ZCW0PvNPC100NL2NH256_htnJvfKV
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_B7ckTUum
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_CaLh0FIJ
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_JguPhEQe
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_gRfMEs3u
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_i2sWo3VC
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PsnNPC100NL2NH256_l2HyI4aC
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PvNPC100NL2NH256_DmjHsaUJ
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PvNPC100NL2NH256_Rdyb5ZWa
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW5.0TCW0ZCW0PvNPC100NL2NH256_nFWZoEAy
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_45dUCtxq
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_AYacWd6K
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_KVBfaphk
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_d9jLZTrx
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_dil9MznV
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PsnNPC100NL2NH256_fzORder2
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PvNPC100NL2NH256_AC20NpFY
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PvNPC100NL2NH256_MetBNF0u
+        - MANoneSDFalseOVMfeatureKLW1KLCW0RW1RMW0RCW0ZDCW50.0TCW0ZCW0PvNPC100NL2NH256_Y8ZXjMeI
+        - MANoneSDFalseOVMfeatureKLW2.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_GM7hyV2o
+        - MANoneSDFalseOVMfeatureKLW2.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_e7R9oDAS
+        - MANoneSDFalseOVMfeatureKLW2.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_pBeKIVbP
+        - MANoneSDFalseOVMfeatureKLW5.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_1YfrkiO2
+        - MANoneSDFalseOVMfeatureKLW5.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_861wNBnY
+        - MANoneSDFalseOVMfeatureKLW5.0KLCW0RW1RMW0RCW0ZDCW0TCW0ZCW0PsnNPC100NL2NH256_DduKotlz
+        - scglue_1ZaiX2oq
+        - scglue_2fLChpqu
+        - scglue_2hbU5Qrp
+        - scglue_47H6lJm8
+        - scglue_4qJfkOIh
+        - scglue_60ItEi7W
+        - scglue_71rNvqO3
+        - scglue_97jdnWu3
+        - scglue_BFrT7zw0
+        - scglue_BcYOt2bW
+        - scglue_Cr69mhvt
+        - scglue_Drm4dzVH
+        - scglue_I2N8Kx3T
+        - scglue_Ie2EQJ5W
+        - scglue_LVSaudkB
+        - scglue_Lek8vAJa
+        - scglue_LzxrhiTj
+        - scglue_MAt6gxsr
+        - scglue_NFm4Y1ix
+        - scglue_PXQuAofs
+        - scglue_RCeTP4JQ
+        - scglue_Se76r34T
+        - scglue_TcO3Ql8M
+        - scglue_Tr4alJ8X
+        - scglue_XQuFPyk6
+        - scglue_Y19WlbIs
+        - scglue_YoxjraNv
+        - scglue_b0fjDLy6
+        - scglue_caAlBfTr
+        - scglue_eGC9pEz7
+        - scglue_g2tPR3QL
+        - scglue_gfX9Q4Hi
+        - scglue_hXzT1qkR
+        - scglue_kjN21AUO
+        - scglue_kl6mCrae
+        - scglue_nvQ9qkyU
+        - scglue_oKcdETgb
+        - scglue_ogbr34ZC
+        - scglue_ojW9d0HZ
+        - scglue_tbORXSro
+        - scglue_uekf6ltj
+        - scglue_vDnqt9Mf
+        - scglue_vre2hQbk
+        - scglue_xMIQtjd4
+        - scglue_zfCgxuNj
+        - scvi_2s8c1AuB
+        - scvi_K29CswlM
+        - scvi_n9qQdNTl
