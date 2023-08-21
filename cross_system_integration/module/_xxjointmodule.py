@@ -60,6 +60,8 @@ class XXJointModule(BaseModuleClass):
             mixup_alpha: Optional[float] = None,
             prior: Literal["standard_normal", "vamp"] = 'standard_normal',
             n_prior_components=100,
+            trainable_priors=True,
+            encode_pseudoinputs_on_eval_mode=False,
             pseudoinput_data=None,
             z_dist_metric: str = 'MSE',
             n_latent: int = 15,
@@ -146,7 +148,9 @@ class XXJointModule(BaseModuleClass):
                                    encoder=self.encoder,
                                    data=(pseudoinput_data['expr'],
                                          self._merge_cov(cov=pseudoinput_data['cov'],
-                                                         system=pseudoinput_data['system']))
+                                                         system=pseudoinput_data['system'])),
+                                   trainable_priors=trainable_priors,
+                                   encode_pseudoinputs_on_eval_mode=encode_pseudoinputs_on_eval_mode,
                                    )
         else:
             raise ValueError('Prior not recognised')

@@ -27,11 +27,13 @@ class VampPrior(Prior):
     # K - components, I - inputs, L - latent, N - samples
 
     def __init__(self, n_components, n_input, n_cov, encoder,
-                 data: Optional[Tuple[torch.tensor, torch.tensor]] = None
+                 data: Optional[Tuple[torch.tensor, torch.tensor]] = None,
+                 trainable_priors=True, encode_pseudoinputs_on_eval_mode=False,
                  ):
         super(VampPrior, self).__init__()
 
         self.encoder = encoder
+        self.encode_pseudoinputs_on_eval_mode = encode_pseudoinputs_on_eval_mode
 
         # pseudoinputs
         if data is None:
@@ -40,15 +42,21 @@ class VampPrior(Prior):
         else:
             u = data[0]
             u_cov = data[1]
-        self.u = torch.nn.Parameter(u)
-        self.u_cov = torch.nn.Parameter(u_cov)
+        self.u = torch.nn.Parameter(u, requires_grad=trainable_priors)
+        self.u_cov = torch.nn.Parameter(u_cov, requires_grad=trainable_priors)
 
         # mixing weights
         self.w = torch.nn.Parameter(torch.zeros(self.u.shape[0], 1, 1))  # K x 1 x 1
 
     def get_params(self):
         # u->encoder->mean, var
-        z = self.encoder(x=self.u, cov=self.u_cov)
+        if self.encode_pseudoinputs_on_eval_mode:
+            original_mode = self.encoder.training
+            self.encoder.train(False)
+            z = self.encoder(x=self.u, cov=self.u_cov)
+            self.encoder.train(original_mode)
+        else:
+            z = self.encoder(x=self.u, cov=self.u_cov)
         return z['y_m'], z['y_v']  # (K x L), (K x L)
 
     def log_prob(self, z):
