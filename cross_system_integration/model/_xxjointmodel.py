@@ -76,7 +76,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             adata: AnnData,
             mixup_alpha: Optional[float] = None,
             system_decoders: bool = False,
-            prior: Literal["standard_normal", "vamp"] = 'standard_normal',
+            prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
             n_prior_components=100,
             trainable_priors=True,
             encode_pseudoinputs_on_eval_mode=False,
