@@ -14,7 +14,7 @@ from cross_system_integration.model._gene_maps import GeneMapInput
 from cross_system_integration.nn._base_components import EncoderDecoder
 from cross_system_integration.module._loss_recorder import LossRecorder
 from cross_system_integration.module._utils import *
-from cross_system_integration.module._priors import StandardPrior, VampPrior
+from cross_system_integration.module._priors import StandardPrior, VampPrior, GaussianMixtureModelPrior
 
 torch.backends.cudnn.benchmark = True
 
@@ -58,7 +58,7 @@ class XXJointModule(BaseModuleClass):
             n_system: int,  # This should be one anyways
             use_group: bool,
             mixup_alpha: Optional[float] = None,
-            prior: Literal["standard_normal", "vamp"] = 'standard_normal',
+            prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
             n_prior_components=100,
             trainable_priors=True,
             encode_pseudoinputs_on_eval_mode=False,
@@ -152,6 +152,24 @@ class XXJointModule(BaseModuleClass):
                                    trainable_priors=trainable_priors,
                                    encode_pseudoinputs_on_eval_mode=encode_pseudoinputs_on_eval_mode,
                                    )
+        elif prior == 'gmm':
+            if pseudoinput_data is not None:
+                pseudoinput_data = self._get_inference_input(pseudoinput_data)
+                original_mode = self.encoder.training
+                self.encoder.train(False)
+                encoded_pseudoinput_data = self.encoder(
+                    x=pseudoinput_data['expr'],
+                    cov=self._merge_cov(cov=pseudoinput_data['cov'], system=pseudoinput_data['system'])
+                )
+                self.encoder.train(original_mode)
+                encoded_pseudoinput_data = encoded_pseudoinput_data['y_m'], encoded_pseudoinput_data['y_v']
+            else:
+                encoded_pseudoinput_data = None
+            self.prior = GaussianMixtureModelPrior(
+                n_components=n_prior_components, n_latent=n_latent,
+                data=encoded_pseudoinput_data,
+                trainable_priors=trainable_priors,
+            )
         else:
             raise ValueError('Prior not recognised')
 
