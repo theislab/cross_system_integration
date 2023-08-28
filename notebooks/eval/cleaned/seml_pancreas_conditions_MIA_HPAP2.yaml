@@ -73,6 +73,40 @@ grid:
 #           - 500
 #           - 1000
 #           - 5000
+
+# vamp_opt_eval:
+#     fixed:
+#       params_opt: vamp_eval
+#       prior: vamp
+#       encode_pseudoinputs_on_eval_mode: 1
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
+
+# vamp_opt_eval_fixed:
+#     fixed:
+#       params_opt: vamp_eval_fixed
+#       prior: vamp
+#       encode_pseudoinputs_on_eval_mode: 1
+#       trainable_priors: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
+
 # zdcw_opt:
 #     fixed:
 #       z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
@@ -113,6 +147,21 @@ grid:
 #           - 10
 #           - 50  
 
+vamp_eval_zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      prior: vamp
+      n_prior_components: 5
+      encode_pseudoinputs_on_eval_mode: 1
+      params_opt: vamp_z_distance_cycle_weight_std_eval
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50  
 
 # vamp_klw_opt:
 #     fixed:
@@ -128,27 +177,41 @@ grid:
 #           - 2
 #           - 5 
 
+vamp_klw_opt_eval:
+    fixed:
+      prior: vamp
+      n_prior_components: 5
+      encode_pseudoinputs_on_eval_mode: 1
+      params_opt: vamp_kl_weight_eval
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
+          - 1.5
+          - 2
+          - 5   
 
 # scvi:
 #     fixed:
 #       model: scvi
 #       params_opt: scvi
 
-scvi_kl_anneal:
-    fixed:
-      model: scvi
-      params_opt: scvi_kl_anneal
-      use_n_steps_kl_warmup: 1
-    grid:
-      kl_weight:
-        type: choice
-        options:
-          - 0.1
-          - 0.5
-          #- 1
-          - 1.5
-          - 2
-          - 5
+# scvi_kl_anneal:
+#     fixed:
+#       model: scvi
+#       params_opt: scvi_kl_anneal
+#       use_n_steps_kl_warmup: 1
+#     grid:
+#       kl_weight:
+#         type: choice
+#         options:
+#           - 0.1
+#           - 0.5
+#           #- 1
+#           - 1.5
+#           - 2
+#           - 5
 
 # saturn:
 #     fixed:

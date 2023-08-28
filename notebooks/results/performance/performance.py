@@ -52,7 +52,7 @@ obs_col_cmap=pkl.load(open(path_names+'obs_col_cmap.pkl','rb'))
 metric_background_cmap=pkl.load(open(path_names+'metric_background_cmap.pkl','rb'))
 
 # %% [markdown]
-# ## Selected runs
+# ## Top runs
 
 # %%
 # Load metrics and embeddings
@@ -78,6 +78,17 @@ for dataset,dataset_name in dataset_map.items():
         categories=[m for m in model_map.values() if m in metrics[dataset_name].index],
         ordered=True)
     metrics[dataset_name].rename(metric_map,axis=1,inplace=True)
+
+# %%
+# Add non-integrated embeds
+dataset_embed_fns={
+    'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
+    'retina_adult_organoid':'combined_HVG_embed.h5ad',
+    'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
+}
+for dataset,dataset_name in dataset_map.items():
+    embeds[dataset_name][model_map['non-integrated']]=sc.read(
+        f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
 
 # %% [markdown]
 # ### Metric scores
@@ -148,23 +159,25 @@ plt.savefig(path_fig+'performance-score_topruns-lolipop.png',
 # %% [markdown]
 # ### UMAPs
 
-# %% jupyter={"outputs_hidden": true}
+# %%
 for dataset,dataset_name in dataset_map.items():
     embeds_ds=embeds[dataset_name]
     ncols=3
     nrows=len(embeds_ds)
     fig,axs=plt.subplots(nrows,ncols,figsize=(2*ncols,2*nrows))
+    # Args for ct, system, sample - same in all models
+    args_sub=list(args[dataset_name].values())[0]
     for irow,model_name in enumerate([m for m in model_map.values() if m in embeds_ds]):
         embed=embeds_ds[model_name]
-        args_sub=args[dataset_name][model]
         for icol,(col_name,col) in enumerate(zip(
-            ['cell type','system','batch'],
+            ['cell type','system','sample'],
             [args_sub.group_key,args_sub.system_key,args_sub.batch_key])):
 
             # Set cmap and col val names
             cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
             if col_name=='system':
-                embed.obs[col+'_parsed']=embed.obs[col].map(system_map[dataset])
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
                 cmap={system_map[dataset][k]:v for k,v in cmap.items()}
             else:
                 embed.obs[col+'_parsed']=embed.obs[col]
@@ -187,16 +200,187 @@ for dataset,dataset_name in dataset_map.items():
                 ax.set_xlabel('')
                 ax.set(frame_on=False)
 
-            if irow!=(nrows-1) or col_name=='batch':
+            if irow!=(nrows-1) or col_name=='sample':
                 ax.get_legend().remove()
             else:
-                ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,
+                ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,title=col_name,
                           ncol=math.ceil(embed.obs[col].nunique()/10))
 
     fig.set(facecolor = (0,0,0,0))
     plt.savefig(path_fig+f'performance-embed_{dataset}_topruns-umap.pdf',
                 dpi=300,bbox_inches='tight')
     plt.savefig(path_fig+f'performance-embed_{dataset}_topruns-umap.png',
+                dpi=300,bbox_inches='tight')
+
+# %% [markdown]
+# ## Top settings
+
+# %%
+# Load metrics and embeddings
+metrics={}
+embeds={}
+args={}
+for dataset,dataset_name in dataset_map.items():
+    top_settings=pkl.load(open(f'{path_data}eval/{dataset}/integration_summary/top_settings.pkl','rb'))
+    metrics[dataset_name]=[]
+    embeds[dataset_name]={}
+    args[dataset_name]={}
+    path_integration=f'{path_data}eval/{dataset}/integration/'
+    for model,model_setting in top_settings.items():
+        model=model_map[model]
+        for run in model_setting['runs']:
+            args_run=pkl.load(open(path_integration+run+'/args.pkl','rb'))
+            metrics_data=pd.Series(
+                pkl.load(open(path_integration+run+'/scib_metrics.pkl','rb')),
+                name=model)
+            metrics_data['seed']=args_run.seed
+            metrics[dataset_name].append(metrics_data)
+            if run==model_setting['mid_run']:
+                embeds[dataset_name][model]=sc.read(path_integration+run+'/embed.h5ad')
+                args[dataset_name][model]=args_run
+    metrics[dataset_name]=pd.DataFrame(metrics[dataset_name])
+    metrics[dataset_name]['model']=pd.Categorical(
+        values=metrics[dataset_name].index,
+        categories=[m for m in model_map.values() if m in metrics[dataset_name].index],
+        ordered=True)
+    metrics[dataset_name].rename(metric_map,axis=1,inplace=True)
+    # Seed to str for plotting
+    metrics[dataset_name]['seed']=metrics[dataset_name]['seed'].astype(str)
+
+# %%
+# Add non-integrated embeds
+dataset_embed_fns={
+    'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
+    'retina_adult_organoid':'combined_HVG_embed.h5ad',
+    'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
+}
+for dataset,dataset_name in dataset_map.items():
+    embeds[dataset_name][model_map['non-integrated']]=sc.read(
+        f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
+
+# %% [markdown]
+# ### Metric scores
+
+# %%
+# Plot metric scores
+
+# X range for metrics
+xlims={}
+for metric in metric_map.values():
+    mins=[]
+    maxs=[]
+    for data in metrics.values():
+        mins.append(data[metric].min())
+        maxs.append(data[metric].max())
+    x_min=min(mins)
+    x_max=max(maxs)
+    x_buffer=(x_max-x_min)*0.15
+    x_min=x_min-x_buffer 
+    x_max=x_max+x_buffer
+    xlims[metric]=(x_min,x_max)
+
+#Plots
+n_rows=len(metrics)
+n_cols=len(metric_map)
+fig,axs=plt.subplots(n_rows,n_cols,figsize=(2*n_cols,len(metric_map)/1.5*n_rows),
+                     sharey='row')
+for row,(dataset_name,metrics_sub) in enumerate(metrics.items()):
+    for col,metric in enumerate(metric_map.values()):
+        ax=axs[row,col]
+        # lolipop
+        means=metrics_sub.groupby('model')[metric].mean().reset_index()
+        sb.barplot(y='model',x=metric,data=means,ax=ax,
+                   color='k',dodge=False,width=0.15, zorder=0)
+        sb.swarmplot(y='model',x=metric,data=metrics_sub,ax=ax,
+                     edgecolor='k',linewidth=0.5,
+                     hue='model',palette=model_cmap, s=5, zorder=1)
+        sb.scatterplot(y='model',x=metric,data=means,ax=ax,
+                       edgecolor='k',linewidth=2,
+                       color='k', s=150, marker='|', zorder=2)
+        # Make pretty
+        # x_min=metrics_sub[metric].min()
+        # x_max=metrics_sub[metric].max()
+        # x_buffer=(x_max-x_min)*0.1
+        # x_min=x_min-x_buffer 
+        # x_max=x_max+x_buffer
+        # ax.set_xlim(x_min,x_max)
+        ax.set_xlim(xlims[metric][0],xlims[metric][1])
+        ax.get_legend().remove()
+        ax.tick_params(axis='y', which='major', length=0)
+        ax.set(facecolor = (0,0,0,0))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        if row!=(n_rows-1):
+            ax.set_xlabel('')
+        if row==0:
+            ax.set_title(metric_meaning_map[metric_map_rev[metric]],fontsize=10)
+        if col==0:
+            ax.set_ylabel(dataset_name)
+        else:
+            ax.set_ylabel('')
+            
+fig.set(facecolor = (0,0,0,0))
+plt.subplots_adjust( wspace=0.1)
+
+plt.savefig(path_fig+'performance-score_topsettings-swarm.pdf',
+            dpi=300,bbox_inches='tight')
+plt.savefig(path_fig+'performance-score_topsettings-swarm.png',
+            dpi=300,bbox_inches='tight')
+
+# %% [markdown]
+# ### UMAPs
+
+# %%
+for dataset,dataset_name in dataset_map.items():
+    embeds_ds=embeds[dataset_name]
+    ncols=3
+    nrows=len(embeds_ds)
+    fig,axs=plt.subplots(nrows,ncols,figsize=(2*ncols,2*nrows))
+    # Args for ct, system, sample - same in all models
+    args_sub=list(args[dataset_name].values())[0]
+    for irow,model_name in enumerate([m for m in model_map.values() if m in embeds_ds]):
+        embed=embeds_ds[model_name]
+        for icol,(col_name,col) in enumerate(zip(
+            ['cell type','system','sample'],
+            [args_sub.group_key,args_sub.system_key,args_sub.batch_key])):
+
+            # Set cmap and col val names
+            cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
+            if col_name=='system':
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
+                cmap={system_map[dataset][k]:v for k,v in cmap.items()}
+            else:
+                embed.obs[col+'_parsed']=embed.obs[col]
+
+            # Plot
+            ax=axs[irow,icol]
+            sc.pl.umap(embed,color=col+'_parsed',ax=ax,show=False,
+                      palette=cmap, frameon=False,title='')
+
+            # Make pretty
+            if irow==0:
+                ax.set_title(col_name+'\n',fontsize=10)
+
+            if icol==0:
+                ax.axis('on')
+                ax.tick_params(
+                        top='off', bottom='off', left='off', right='off', 
+                        labelleft='on', labelbottom='off')
+                ax.set_ylabel(model_name+'\n',rotation=90)
+                ax.set_xlabel('')
+                ax.set(frame_on=False)
+
+            if irow!=(nrows-1) or col_name=='sample':
+                ax.get_legend().remove()
+            else:
+                ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,title=col_name,
+                          ncol=math.ceil(embed.obs[col].nunique()/10))
+
+    fig.set(facecolor = (0,0,0,0))
+    plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.pdf',
+                dpi=300,bbox_inches='tight')
+    plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.png',
                 dpi=300,bbox_inches='tight')
 
 # %% [markdown]
@@ -231,9 +415,17 @@ for dataset,dataset_name in dataset_map.items():
          'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no',
          'saturn_no_pe_sim_penalty_super':'saturn_pe_sim_penalty_super_no'})
     res['param_opt_col']=res.params_opt.replace(
-        {'vamp':'n_prior_components',
+        {'kl_weight_anneal':'kl_weight',
+         'vamp':'n_prior_components',
+         'vamp_eval':'n_prior_components',
+         'vamp_eval_fixed':'n_prior_components',
+         'vamp_kl_anneal':'n_prior_components',
          'z_distance_cycle_weight_std':'z_distance_cycle_weight',
          'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
+         'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
+         'z_distance_cycle_weight_std_kl_anneal':'z_distance_cycle_weight',
+         'vamp_kl_weight':'kl_weight',
+         'vamp_kl_weight_eval':'kl_weight',
          'scglue_lam_graph':'lam_graph',
          'scglue_rel_gene_weight':'rel_gene_weight', 
          'scglue_lam_align':'lam_align',
@@ -244,9 +436,12 @@ for dataset,dataset_name in dataset_map.items():
          'saturn_pe_sim_penalty_no':'pe_sim_penalty',
          'saturn_pe_sim_penalty_super':'pe_sim_penalty',
          'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
-         'scvi':None})
+         'scvi':None,
+         'scvi_kl_anneal':'kl_weight'})
     res['param_opt_val']=res.apply(
-        lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
+        lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
+                  else x[x['param_opt_col']]['weight_end']) 
+                  if x['param_opt_col'] is not None else 0,axis=1)
     # param opt val for plotting - converted to str categ below
     res['param_opt_val_str']=res.apply(
         lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else np.nan,axis=1)
@@ -254,7 +449,8 @@ for dataset,dataset_name in dataset_map.items():
     res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
 
     # Keep relevant params and name model
-    res_sub=res.copy()
+    params_opt_vals=set(params_opt_map.keys())
+    res_sub=res.query('params_opt in @params_opt_vals').copy()
     res_sub['model']=res_sub.params_opt.replace(params_opt_map).astype(str)   
     # Models present in data but have no params opt
     nonopt_models=list(
@@ -311,8 +507,8 @@ ress['param_opt_val_str']=pd.Categorical(
                ]+['none'],
     ordered=True)
 
-# %%
-ress.groupby(['dataset_parsed','model_parsed','param_parsed','genes_parsed'],observed=True).size()
+# %% [markdown]
+# ### Metric scores
 
 # %%
 params=ress.groupby(['model_parsed','param_parsed','genes_parsed'],observed=True,sort=True

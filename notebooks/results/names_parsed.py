@@ -81,8 +81,8 @@ param_vals=[
         ('lam_graph',[0.005, 0.1, 0.5, 2.0]),
         ('rel_gene_weight',[0.4, 0.6, 0.8, 1.0]) ]),
     (['vamp'],[
-        ('n_prior_components',[10.0, 100.0, 1000.0, 5000.0]),
-        #('kl_weight',[0.5, 1.0, 2.0, 5]) 
+        #('n_prior_components',[10.0, 100.0, 1000.0, 5000.0]),
+        ('kl_weight',[1.0, 1.5, 2.0, 5]) 
     ]),
     (['saturn','saturn_super'],[
         ('pe_sim_penalty',[0.01, 0.1, 1.0, 10.0]) ]),
@@ -107,9 +107,8 @@ params_opt_map={
      'scglue_rel_gene_weight':'scglue',
      'scglue_rel_gene_weight_no':'scglue',
      'scvi_kl_anneal':'scvi',
-     'vamp_z_distance_cycle_weight_std':'vamp_cycle',
-     #'vamp_kl_weight':'vamp',
-     'vamp':'vamp',
+     'vamp_z_distance_cycle_weight_std_eval':'vamp_cycle',
+     'vamp_kl_weight_eval':'vamp',
      'z_distance_cycle_weight_std':'cycle',
     }
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
@@ -133,18 +132,18 @@ pkl.dump(param_names,open(path_save+'params.pkl','wb'))
 params_opt_gene_map={
      'kl_weight':'OTO',
      'saturn_pe_sim_penalty':'OTO',
-     'saturn_pe_sim_penalty_no':'MTM',
+     'saturn_pe_sim_penalty_no':'FO',
      'saturn_pe_sim_penalty_super':'OTO',
-     'saturn_pe_sim_penalty_super_no':'MTM',
+     'saturn_pe_sim_penalty_super_no':'FO',
      'scglue_lam_align':'OTO',
-     'scglue_lam_align_no':'MTM',
+     'scglue_lam_align_no':'FO',
      'scglue_lam_graph':'OTO',
-     'scglue_lam_graph_no':'MTM',
+     'scglue_lam_graph_no':'FO',
      'scglue_rel_gene_weight':'OTO',
-     'scglue_rel_gene_weight_no':'MTM',
-     'scvi':'OTO',
-     'vamp':'OTO',
-     'vamp_z_distance_cycle_weight_std':'OTO',
+     'scglue_rel_gene_weight_no':'FO',
+     'scvi_kl_anneal':'OTO',
+     'vamp_kl_weight_eval':'OTO',
+     'vamp_z_distance_cycle_weight_std_eval':'OTO',
      'z_distance_cycle_weight_std':'OTO',
     }
 pkl.dump(params_opt_gene_map,open(path_save+'params_opt_genes.pkl','wb'))
@@ -208,5 +207,14 @@ palette={'ilisi_system':'#F9F3F3',
              'moransi':'#EAF0F5',
              'nmi_opt':'#EFF9FB'}
 pkl.dump(palette,open(path_save+'metric_background_cmap.pkl','wb'))
+
+# %%
+# Dataset colors]
+palette={
+    'pancreas_conditions_MIA_HPAP2':'#8a9e59',
+    'retina_adult_organoid':'#c97fac',
+    'adipose_sc_sn_updated':'#92C2D0',
+}
+pkl.dump(palette,open(path_save+'dataset_cmap.pkl','wb'))
 
 # %%

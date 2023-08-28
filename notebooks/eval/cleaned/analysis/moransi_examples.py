@@ -88,8 +88,8 @@ embeds[name]=embed
 
 # %%
 # Load top embeddings, subset to correct cels, and compute NN graph
-for model,embed_dir in pkl.load(open(
-    path_integration+'integration_summary/top_runs.pkl','rb')).items():
+for model,embed_dir in {model:dat['mid_run'] for model,dat in 
+     pkl.load(open(path_integration+'integration_summary/top_settings.pkl','rb')).items()}.items():
     embed=sc.read(path_integration+'integration/'+embed_dir+'/embed_full.h5ad')
     embed=embed[adata.obs_names,:]
     sc.pp.neighbors(embed, use_rep='X')

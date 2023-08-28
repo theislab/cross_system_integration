@@ -56,7 +56,7 @@ dataset='pancreas_conditions_MIA_HPAP2'
 # %%
 # Load data
 path_integration=f'{path_data}eval/{dataset}/'
-run=pkl.load(open(f'{path_integration}integration_summary/top_runs.pkl','rb'))['saturn']
+run=pkl.load(open(f'{path_integration}integration_summary/top_settings.pkl','rb'))['saturn']['mid_run']
 path_run=f'{path_integration}integration/{run}/'
 embed=sc.read(path_run+'embed.h5ad')
 args=pkl.load(open(path_run+'args.pkl','rb'))

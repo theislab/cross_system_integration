@@ -41,6 +41,11 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 
+# %%
+path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_names=path_data+'names_parsed/'
+path_fig=path_data+'figures/'
+
 # %% [markdown]
 # Here NMI fixed is used as NMI_OPT is confounded by batch effects - i.e. low either if ct is split up due to batches or if mixing with other cts.
 
@@ -69,10 +74,6 @@ metric_background_cmap['nmi']=metric_background_cmap['nmi_opt']
 
 # %% [markdown]
 # ## Performance
-
-# %%
-pd.concat([pd.Series(vars(pkl.load(open(run+'args.pkl','rb')))),
-           pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))],axis=1).T
 
 # %%
 # Load data and keep relevant runs
@@ -112,7 +113,8 @@ for dataset,dataset_name in dataset_map.items():
     res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
 
     # Keep relevant params and name model
-    res_sub=res.copy()
+    params_opt_vals=set(params_opt_map.keys())
+    res_sub=res.query('params_opt in @params_opt_vals').copy()
     res_sub['model']=res_sub.params_opt.replace(params_opt_map).astype(str)   
     # Models present in data but have no params opt
     nonopt_models=list(
@@ -140,7 +142,9 @@ for dataset,dataset_name in dataset_map.items():
     # Add pretty model names
     res_sub['model_parsed']=pd.Categorical(
         values=res_sub['model'].map(model_map),
-        categories=model_map.values(), ordered=True)
+        # Custom ordering here to have cVAE first
+        categories=[model_map['cVAE'],model_map['cycle']], 
+        ordered=True)
     # Add prety param names
     res_sub['param_parsed']=pd.Categorical(
         values=res_sub['param_opt_col'].map(param_map),
@@ -245,7 +249,85 @@ plt.savefig(path_fig+'scaling_embed-score_all-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-score_all-swarm.png',
             dpi=300,bbox_inches='tight')
+
+
+# %%
+# Scaling results for cVAE on pancreas dataset
+params=ress.groupby(['model_parsed','param_parsed','genes_parsed'],observed=True,sort=True
+            ).size().index.to_frame().reset_index(drop=True)
+params=params.query(f'model_parsed=="{model_map["cVAE"]}"')
+ress_sub=ress.query(f'dataset_parsed=="{dataset_map["pancreas_conditions_MIA_HPAP2"]}"')
+nrow=params.shape[0]*2
+n_metrics=len(metric_map)
+ncol=ress_sub['dataset_parsed'].nunique()*n_metrics
+fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*1.7,nrow*1.8),sharex='col',sharey='row')
+for icol_ds, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed',observed=True)):
+    
+    # Max row for ds
+    models_parsed_ds=set(res_ds.model_parsed)
+    params_parsed_ds=set(res_ds.param_parsed)
+    genes_parsed_ds=set(res_ds.genes_parsed)
+    irow_max_ds=max([irow for irow,(model_parsed,param_parsed,genes_parsed) in params.iterrows() if 
+     model_parsed in models_parsed_ds and 
+     param_parsed in params_parsed_ds and
+     genes_parsed in genes_parsed_ds])*2+1
+    
+    for icol_metric,(metric,metric_name) in enumerate(metric_map.items()):
+        icol=icol_ds*n_metrics+icol_metric
+        for irow_param,(_,param_data) in enumerate(params.iterrows()):
+            res_sub=res_ds.query(
+                f'model_parsed=="{param_data.model_parsed}" & '+\
+                f'param_parsed=="{param_data.param_parsed}" & '+\
+                f'genes_parsed=="{param_data.genes_parsed}"')
+            if res_sub.shape[0]>0:
+                res_sub=res_sub.copy()
+                res_sub['param_opt_val_str']=\
+                    res_sub['param_opt_val_str'].cat.remove_unused_categories()
+                for irow_scl,scaling in enumerate([False,True]):
+                    irow=irow_param*2+irow_scl
+                    ax=axs[irow,icol]
+                    sb.swarmplot(x=metric if not scaling else metric+'_scaled',
+                                 y='param_opt_val_str',data=res_sub,ax=ax, 
+                                hue='param_opt_val_str',palette='cividis')
+                    ax.set(facecolor = metric_background_cmap[metric])
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    ax.grid(axis='x', linestyle='--', color='gray')
+                    ax.get_legend().remove()
+                    if irow!=irow_max_ds:
+                        ax.set_xlabel('')
+                    else:
+                        # Add xaxis
+                        # Must turn label to visible as sb will set it off if sharex
+                        # Must reset ticks as will be of due to sharex
+                        ax.set_xlabel(metric_name,visible=True)
+                        #ax.xaxis.set_label_position('bottom') 
+                        ax.xaxis.set_ticks_position('bottom')
+                    if irow==0:
+                        title=''
+                        #if icol%3==0:
+                        #    title=title+dataset_name+'\n\n'
+                        ax.set_title(title+metric_meaning_map[metric]+'\n',fontsize=10)
+                    if icol==0:
+                        ax.set_ylabel(
+                            param_data.model_parsed+(' - scaled' if scaling else '')+'\n'+\
+                            'opt.: '+param_data.param_parsed+'\n')
+                    else:
+                        ax.set_ylabel('')
+            else:
+                ax.remove()
             
+
+plt.subplots_adjust( wspace=0.1,hspace=0.1)
+fig.set(facecolor = (0,0,0,0))
+# Turn off tight layout as it messes up spacing if adding xlabels on intermediate plots
+#fig.tight_layout()
+
+plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE-swarm.pdf',
+            dpi=300,bbox_inches='tight')
+plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE-swarm.png',
+            dpi=300,bbox_inches='tight')
+
 
 # %% [markdown]
 # ## Embedding
@@ -313,7 +395,7 @@ for icol, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed'))
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         if icol==0:                        
-            ax.set_ylabel(param_data.model_parsed+'\n')
+            ax.set_ylabel(param_data.model_parsed+'\nfeature range\n')
         else:
             ax.set_ylabel('',visible=False)
         if irow==0:
@@ -332,7 +414,7 @@ plt.savefig(path_fig+'scaling_embed-dimension_sizes-box.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-dimension_sizes-box.png',
             dpi=300,bbox_inches='tight')
-            
+
 
 # %% [markdown]
 # For brevity make just swarmplots of std-s
@@ -400,7 +482,7 @@ plt.savefig(path_fig+'scaling_embed-dimension_stds-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-dimension_stds-swarm.png',
             dpi=300,bbox_inches='tight')
-            
+
 
 # %% [markdown]
 # ### UMAP
@@ -469,7 +551,7 @@ for dataset_name,params_sub in params.groupby('dataset_parsed'):
                 if irow!=(nrow-1) or icol>1:
                     ax.get_legend().remove()
                 else:
-                    ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,
+                    ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,title=col_name,
                               ncol=math.ceil(embed.obs[col].nunique()/10))
 
     fig.set(facecolor = (0,0,0,0))

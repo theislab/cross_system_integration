@@ -102,9 +102,17 @@ for dataset,dataset_name in dataset_map.items():
          'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no',
          'saturn_no_pe_sim_penalty_super':'saturn_pe_sim_penalty_super_no'})
     res['param_opt_col']=res.params_opt.replace(
-        {'vamp':'n_prior_components',
+        {'kl_weight_anneal':'kl_weight',
+         'vamp':'n_prior_components',
+         'vamp_eval':'n_prior_components',
+         'vamp_eval_fixed':'n_prior_components',
+         'vamp_kl_anneal':'n_prior_components',
          'z_distance_cycle_weight_std':'z_distance_cycle_weight',
          'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
+         'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
+         'z_distance_cycle_weight_std_kl_anneal':'z_distance_cycle_weight',
+         'vamp_kl_weight':'kl_weight',
+         'vamp_kl_weight_eval':'kl_weight',
          'scglue_lam_graph':'lam_graph',
          'scglue_rel_gene_weight':'rel_gene_weight', 
          'scglue_lam_align':'lam_align',
@@ -115,9 +123,12 @@ for dataset,dataset_name in dataset_map.items():
          'saturn_pe_sim_penalty_no':'pe_sim_penalty',
          'saturn_pe_sim_penalty_super':'pe_sim_penalty',
          'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
-         'scvi':None})
+         'scvi':None,
+         'scvi_kl_anneal':'kl_weight'})
     res['param_opt_val']=res.apply(
-        lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
+        lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
+                  else x[x['param_opt_col']]['weight_end']) 
+                  if x['param_opt_col'] is not None else 0,axis=1)
     # param opt val for plotting - converted to str categ below
     res['param_opt_val_str']=res.apply(
         lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else np.nan,axis=1)
@@ -125,7 +136,8 @@ for dataset,dataset_name in dataset_map.items():
     res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
 
     # Keep relevant params and name model
-    res_sub=res.copy()
+    params_opt_vals=set(params_opt_map.keys())
+    res_sub=res.query('params_opt in @params_opt_vals').copy()
     res_sub['model']=res_sub.params_opt.replace(params_opt_map).astype(str)   
     # Models present in data but have no params opt
     nonopt_models=list(

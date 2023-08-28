@@ -33,7 +33,7 @@ path_fig=path_data+'figures/'
 model_map=pkl.load(open(path_names+'models.pkl','rb'))
 
 # %%
-# Load embeddings and sort+rename for plorring
+# Load embeddings and sort+rename for plotting
 embeds=pkl.load(open(path_embed+'pancreas_STZG1_healthyvar_topmodels.pkl','rb'))
 embeds={parsed:embeds[name] for name,parsed in model_map.items()}
 
@@ -81,5 +81,3 @@ plt.savefig(path_fig+'moransi_example-pancreas_STZG1_healthyvar-umap.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'moransi_example-pancreas_STZG1_healthyvar-umap.png',
             dpi=300,bbox_inches='tight')
-
-# %%
