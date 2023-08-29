@@ -72,7 +72,7 @@ res=pd.DataFrame(res)
 
 # %%
 g=sb.catplot(x='N small noise features',y='value',col='metric',row='type',data=res,kind='swarm',
-           sharey=False,height=1.5,aspect=1.5,s=5)
+           sharey=False,height=1.5,aspect=1.5,s=3)
 for ax in g.axes.ravel():
     text=ax.title.get_text()
     if text=='type = batch | metric = asw':
@@ -85,8 +85,13 @@ for ax in g.axes.ravel():
         ax.set_title('LISI',fontsize=10)
     else:
         ax.set_title(None)
+    ax.set(facecolor = (0,0,0,0))
+g.fig.set(facecolor = (0,0,0,0))
 plt.tight_layout()
 plt.savefig(path_fig+'metric_bias-n_noise_ASW_LISI-swarm.pdf',dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'metric_bias-n_noise_ASW_LISI-swarm.png',dpi=300,bbox_inches='tight')
+
+# %% [markdown]
+# C: The background is set as non-transparent in jupyter lab, but is in fact transparent (e.g. if you copy the plot)
 
 # %%

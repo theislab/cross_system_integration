@@ -24,7 +24,8 @@ import pandas as pd
 import numpy as np
 import os
 
-from metrics import ilisi, clisi, asw_label, cluster_classification
+from metrics import ilisi, clisi, asw_label, cluster_classification,\
+cluster_classification_optimized
 import scib_metrics as sm
 
 # %%
@@ -47,7 +48,7 @@ parser.add_argument('-s', '--scaled', required=False, type=intstr_to_bool, defau
                     help='Should scaled X be used. Assumes X in embed data is still unscaled. '+
                     'Assumes there are neighbors with prefix '+
                     'scaled_ (for dist, conn) in the embedding.')
-parser.add_argument('-co', '--cluster_optimized', required=False, type=intstr_to_bool, default='0',
+parser.add_argument('-co', '--cluster_optimized', required=False, type=intstr_to_bool, default='1',
                     help='Should clustering metrics on optimized clustering resolution be computed')
 parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,default='0',
                     help='Testing mode')
@@ -61,7 +62,7 @@ if False:
         '-sk','system',
         '-gk','cell_type',
         '-bk','sample',
-        '-s','0',
+        '-s','1',
         '-co','1',
         '-t','1',
     ])
@@ -191,12 +192,10 @@ if CLUSTER_CLASSIFICATION or TESTING:
 
 if CLUSTER_OPTIMIZED or TESTING:
     print('cluster_optmimized')
-    res=sm.nmi_ari_cluster_labels_leiden(
+    metrics['nmi_opt'], metrics['ari_opt'] =\
+    cluster_classification_optimized(
         X=embed_group.obsp[neigh_prefix+'connectivities'], 
-        labels=embed_group.obs[args.group_key], 
-        optimize_resolution = True,  n_jobs=-1)
-    metrics['nmi_opt']=res['nmi']
-    metrics['ari_opt']=res['ari']
+        labels=embed_group.obs[args.group_key])
 
 # %%
 # Moran's I
@@ -212,6 +211,8 @@ if MORANSI or TESTING:
         print('Full embedding equals eval embedding')
     # Prepare for scaled/unscaled setting
     if args.scaled:
+        # This could be done only in the case where embed_full is loaded anew as
+        # embed is already scaled. But it doesnt change much if normal-scaling 2x
         sc.pp.scale(embed_full)
     
     # Compute Moran's I per celltype-sample group and obtain difference with base level

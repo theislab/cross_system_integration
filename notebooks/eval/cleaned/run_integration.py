@@ -50,6 +50,7 @@ def str_to_float_zeronone(x):
     else:
         return float(x)
 def str_to_weight(x):
+    # Format: wMIN_MAX_START_END (starts with w and separated by _ )
     # Quick seml fix to pass str and not int/list - add w at start and change sep
     x=[float(i) for i in x.replace('w','').split('_')]
     if len(x)==1:
@@ -99,6 +100,12 @@ parser.add_argument('-npc', '--n_prior_components', required=False, type=int, de
 parser.add_argument('-pcs', '--prior_components_system', required=False, type=int, default=None,
                     help='system to sample prior components from for vamp prior.'+\
                    'If empty defaults to None and samples from both systems')
+parser.add_argument('-epe', '--encode_pseudoinputs_on_eval_mode', required=False, 
+                    type=intstr_to_bool,default='0',
+                    help='encode_pseudoinputs_on_eval_mode for module. Converts 0/1 to bool')
+parser.add_argument('-tp', '--trainable_priors', required=False, 
+                    type=intstr_to_bool,default='1',
+                    help='trainable_priors for module. Converts 0/1 to bool')
 parser.add_argument('-zdm', '--z_dist_metric', required=False, type=str, default='MSE',
                     help='z_dist_metric for module')
 parser.add_argument('-nl', '--n_layers', required=False, type=int, default=2,
@@ -177,7 +184,7 @@ if False:
     args= parser.parse_args(args=[
         #'-pa','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad',
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
-        '-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
+        #'-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
         '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
         '-sk','system',
         #'-gk','cell_type',
@@ -186,6 +193,10 @@ if False:
         '-bk','sample',
         '-me','2',
         '-edp','0',
+        '-p','gmm,
+        
+        '-epe','1',
+        '-tp','0',
         
         '-kw','w0_1_1_2',
         '-rw','1',
@@ -309,6 +320,8 @@ model = XXJointModel(
     prior=args.prior, 
     n_prior_components=args.n_prior_components,
     pseudoinputs_data_indices=pdi,
+    trainable_priors=args.trainable_priors,
+    encode_pseudoinputs_on_eval_mode=args.encode_pseudoinputs_on_eval_mode,
     z_dist_metric = args.z_dist_metric,
     n_layers=args.n_layers,
     n_hidden=args.n_hidden,

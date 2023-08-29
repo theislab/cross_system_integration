@@ -36,6 +36,26 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         Dimensionality of the latent space.
     n_layers
         Number of hidden layers used for encoder and decoder NNs.
+    mixup_alpha
+        ? # TODO: fill this
+    system_decoders
+        ? # TODO: fill this
+    prior
+        The prior model to be used. You can chose between "standard_normal" and "vamp".
+    n_prior_components
+        Number of prior components in VAMP prior. Only used if you set "vamp" as prior.
+    trainable_priors
+        Whether the priors in VAMP are trainable or not.
+    encode_pseudoinputs_on_eval_mode
+        Pseudoinputs are in the data space and are transferred to the latent spase on each iteration.
+        Set this to True if you want this transfer to be made in eval mode (no dropout and batchnorm).
+    pseudoinputs_data_init
+        Set to True if you want pseudoinputs to be chosen randomly from the input adata.
+        Otherwise they will be initiated randomly.
+        Always set to true.
+    pseudoinputs_data_indices
+        By default (based on pseudoinputs_data_init), VAMP prior pseudoinputs are randomly selected from data.
+        Alternatively, one can feed pseudoinputs using this parameter. The input should be a numpy array.
     adata_eval
         Adata used for eval. Should be set up as adata and have eval info in uns['eval_info'] given as
         dict(metric_name:dict(cells_in, switch_ system, cells_target, genes)) where metric_name is name of metric
@@ -56,8 +76,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             adata: AnnData,
             mixup_alpha: Optional[float] = None,
             system_decoders: bool = False,
-            prior: Literal["standard_normal", "vamp"] = 'standard_normal',
+            prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
             n_prior_components=100,
+            trainable_priors=True,
+            encode_pseudoinputs_on_eval_mode=False,
             pseudoinputs_data_init: bool = True,
             pseudoinputs_data_indices: Optional[np.array] = None,
             adata_eval: Optional[AnnData] = None,
@@ -87,6 +109,8 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             mixup_alpha=mixup_alpha,
             prior=prior,
             n_prior_components=n_prior_components,
+            trainable_priors=trainable_priors,
+            encode_pseudoinputs_on_eval_mode=encode_pseudoinputs_on_eval_mode,
             pseudoinput_data=pseudoinput_data,
             data_eval=self._prepare_eval_data(adata_eval) if adata_eval is not None else None,
             **model_kwargs)
@@ -315,12 +339,14 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         -------
         %(returns)s
         """
+        setup_method_args = cls._get_setup_method_args(**locals())
 
         # Make sure var names are unique
         if adata.shape[1] != len(set(adata.var_names)):
             raise ValueError('Adata var_names are not unique')
 
-        adata = adata.copy()
+        # User should copy its anndata itself if does not telerate changes.
+        # adata = adata.copy()
 
         # Make system to categorical for cov
         if adata.obs[system_key].nunique() != 2:
@@ -372,7 +398,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         adata.obsm['covariates'] = covariates
 
         # Anndata setup
-        setup_method_args = cls._get_setup_method_args(**locals())
         anndata_fields = [
             LayerField(REGISTRY_KEYS.X_KEY, layer, is_count_data=False),
             ObsmField('covariates', 'covariates'),
