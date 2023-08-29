@@ -22,11 +22,16 @@ from scipy.io import mmread
 from scipy.sparse import csr_matrix
 import pickle as pkl
 
+from sklearn.metrics.pairwise import euclidean_distances
+from scipy.stats import mannwhitneyu
+from statsmodels.stats.multitest import multipletests
+
 import gc
 
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
+
 
 # %%
 #path_data='/lustre/groups/ml01/workspace/karin.hrovatin/data/'
@@ -197,8 +202,60 @@ adata=sc.concat([adata_sc[:,shared_hvgs], adata_sn[:,shared_hvgs]],
                 index_unique='_', keys=['sc','sn'])
 adata
 
+# %% [markdown]
+# Add PCA for scGLUE 
+
+# %%
+# PCA and clusters per system
+n_pcs=15
+X_pca_system=[]
+for system in adata.obs.system.unique():
+    adata_sub=adata[adata.obs.system==system,:].copy()
+    sc.pp.scale(adata_sub)
+    sc.pp.pca(adata_sub, n_comps=n_pcs)
+    X_pca_system.append(pd.DataFrame(adata_sub.obsm['X_pca'],index=adata_sub.obs_names))
+del adata_sub
+X_pca_system=pd.concat(X_pca_system)
+adata.obsm['X_pca_system']=X_pca_system.loc[adata.obs_names,:].values
+
+# %% [markdown]
+# ### Save
+
+# %%
+adata
+
 # %%
 adata.write(path_save+'adiposeHsSAT_sc_sn.h5ad')
+
+# %%
+#adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
+
+# %% [markdown]
+# # Non-integrated embedding
+
+# %%
+# Non-integrated embedding
+n_pcs=15
+cells_eval=np.random.RandomState(seed=0).permutation(adata.obs_names)[:100000]
+adata_temp=adata[cells_eval,:].copy()
+sc.pp.scale(adata_temp)
+sc.pp.pca(adata_temp, n_comps=n_pcs)
+sc.pp.neighbors(adata_temp, use_rep='X_pca')
+sc.tl.umap(adata_temp)
+
+# %%
+# Slimmed down data for saving
+adata_embed=sc.AnnData(adata_temp.obsm['X_pca'],obs=adata_temp.obs)
+for k in ['pca','neighbors','umap']:
+    adata_embed.uns[k]=adata_temp.uns[k]
+adata_embed.obsm['X_umap']=adata_temp.obsm['X_umap']
+for k in ['distances', 'connectivities']:
+    adata_embed.obsp[k]=adata_temp.obsp[k]
+display(adata_embed)
+
+# %%
+# Save
+adata_embed.write(path_save+'adiposeHsSAT_sc_sn_embed.h5ad')
 
 # %% [markdown]
 # # Moran's I for eval
@@ -289,5 +346,96 @@ for group,data_sub in data.groupby(['group','system','batch']):
 # %%
 # Save
 pkl.dump(selected,open(path_save+'adiposeHsSAT_sc_sn_moransiGenes.pkl','wb'))
+
+# %% [markdown]
+# # Batch effects within and between systems
+
+# %%
+#adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
+
+# %%
+# Compute PCA on the whole data
+adata_scl=adata.copy()
+sc.pp.scale(adata_scl)
+n_pcs=15
+sc.pp.pca(adata_scl, n_comps=n_pcs)
+pca=pd.DataFrame(adata_scl.obsm['X_pca'],index=adata_scl.obs_names)
+del adata_scl
+
+# %%
+# Average PCA accross system-batch-group pseudobulks. 
+# Only use pseudobulks with at least 50 cells
+# Only use cell types with at least 3 samples per system
+pca[['system','batch','group']]=adata.obs[['system', 'donor_id', 'cluster']]
+pca_pb=pca.groupby(['system','batch','group'])
+pca_mean=pca_pb.mean()
+pb_size=pca_pb.size()
+# Remove samples with too little cells
+filtered_pb=pb_size.index[pb_size>=50]
+# Get pbs/cts where both systems have enough samples
+n_samples_system=filtered_pb.to_frame().rename({'group':'group_col'},axis=1).groupby(
+    'group_col',observed=True)['system'].value_counts().rename('n_samples').reset_index()
+cts=set(n_samples_system.query('system==0 & n_samples>=3').group_col)&\
+    set(n_samples_system.query('system==1 & n_samples>=3').group_col)
+filtered_pb=filtered_pb[filtered_pb.get_level_values(2).isin(cts)]
+pca_mean=pca_mean.loc[filtered_pb,:]
+
+# %%
+# Compute per-ct distances of samples within and between systems
+distances={}
+for ct in cts:
+    pca_s0=pca_mean[(pca_mean.index.get_level_values(0)==0) &
+                    (pca_mean.index.get_level_values(2)==ct)]
+    pca_s1=pca_mean[(pca_mean.index.get_level_values(0)==1) &
+                    (pca_mean.index.get_level_values(2)==ct)]
+    d_s0=euclidean_distances(pca_s0)[np.triu_indices(pca_s0.shape[0],k=1)]
+    d_s1=euclidean_distances(pca_s1)[np.triu_indices(pca_s1.shape[0],k=1)]
+    d_s0s1=euclidean_distances(pca_s0,pca_s1).ravel()
+    distances[ct]={'s0':d_s0,'s1':d_s1,'s0s1':d_s0s1}
+
+# %%
+# Save distances
+pkl.dump(distances,open(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist.pkl','wb'))
+
+# %%
+#distances=pkl.load(open(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist.pkl','rb'))
+
+# %%
+# Prepare df for plotting
+plot=[]
+for ct,dat in distances.items():
+    for comparison,dist in dat.items():
+        dist=pd.DataFrame(dist,columns=['dist'])
+        dist['group']=ct
+        dist['comparison']=comparison
+        plot.append(dist)
+plot=pd.concat(plot)
+
+# %%
+# Plot distances
+sb.catplot(x='comparison',y='dist',col='group',
+           data=plot.reset_index(drop=True),kind='swarm',
+           sharey=False, height=2.5,aspect=1 )
+
+# %% [markdown]
+# Evaluate statisticsal significance
+
+# %%
+# Compute significance of differences within and accross systems
+signif=[]
+for ct,dat in distances.items():
+    for ref in ['s0','s1']:
+        u,p=mannwhitneyu( dat[ref],dat['s0s1'],alternative='less')
+        signif.append(dict( cell_type=ct,system=ref, u=u,pval=p,
+                           n_system=dat[ref].shape[0],n_crossystem=dat['s0s1'].shape[0]))
+signif=pd.DataFrame(signif)
+signif['padj']=multipletests(signif['pval'],method='fdr_bh')[1]
+
+# %%
+signif
+
+# %%
+# Save signif
+signif.to_csv(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
 
 # %%
