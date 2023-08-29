@@ -22,6 +22,10 @@ from scipy.io import mmread
 from scipy.sparse import csr_matrix
 import pickle as pkl
 
+from sklearn.metrics.pairwise import euclidean_distances
+from scipy.stats import mannwhitneyu
+from statsmodels.stats.multitest import multipletests
+
 import gc
 
 from matplotlib import rcParams
@@ -206,6 +210,28 @@ gs_df.index=shared_orthologues['eid_mm']
 adata.var[['gs_mm','gs_hs']]=gs_df[['gs_mm','gs_hs']]
 
 # %% [markdown]
+# Add PCA and leiden for scGLUE and Saturn
+
+# %%
+# PCA and clusters per system
+n_pcs=15
+X_pca_system=[]
+leiden_system=[]
+for system in adata.obs.system.unique():
+    adata_sub=adata[adata.obs.system==system,:].copy()
+    sc.pp.scale(adata_sub)
+    sc.pp.pca(adata_sub, n_comps=n_pcs)
+    sc.pp.neighbors(adata_sub, n_pcs=n_pcs)
+    sc.tl.leiden(adata_sub)
+    X_pca_system.append(pd.DataFrame(adata_sub.obsm['X_pca'],index=adata_sub.obs_names))
+    leiden_system.append(adata_sub.obs.apply(lambda x: str(x['system'])+'_'+x['leiden'],axis=1))
+del adata_sub
+X_pca_system=pd.concat(X_pca_system)
+leiden_system=pd.concat(leiden_system)
+adata.obsm['X_pca_system']=X_pca_system.loc[adata.obs_names,:].values
+adata.obs['leiden_system']=leiden_system.loc[adata.obs_names].values
+
+# %% [markdown]
 # ### Save
 
 # %%
@@ -230,7 +256,40 @@ adata_hs_sub.var_names=adata_hs_sub.var['gs_hs']
 adata_hs_sub.write(path_save+'combined-hsPart_orthologuesHVG.h5ad')
 
 # %%
+adata_mm_sub
+
+# %%
+adata_hs_sub
+
+# %%
 adata.var.to_csv(path_save+'combined_orthologuesHVG_geneMapping.tsv',index=False,sep='\t')
+
+# %% [markdown]
+# ## Non-integrated embedding
+
+# %%
+# Non-integrated embedding
+n_pcs=15
+cells_eval=np.random.RandomState(seed=0).permutation(adata.obs_names)[:100000]
+adata_temp=adata[cells_eval,:].copy()
+sc.pp.scale(adata_temp)
+sc.pp.pca(adata_temp, n_comps=n_pcs)
+sc.pp.neighbors(adata_temp, use_rep='X_pca')
+sc.tl.umap(adata_temp)
+
+# %%
+# Slimmed down data for saving
+adata_embed=sc.AnnData(adata_temp.obsm['X_pca'],obs=adata_temp.obs)
+for k in ['pca','neighbors','umap']:
+    adata_embed.uns[k]=adata_temp.uns[k]
+adata_embed.obsm['X_umap']=adata_temp.obsm['X_umap']
+for k in ['distances', 'connectivities']:
+    adata_embed.obsp[k]=adata_temp.obsp[k]
+display(adata_embed)
+
+# %%
+# Save
+adata_embed.write(path_save+'combined_orthologuesHVG_embed.h5ad')
 
 # %% [markdown]
 # ## Moran's I for eval
@@ -328,6 +387,115 @@ for group,data_sub in data.groupby(['group','system','batch']):
 # %%
 # Save
 pkl.dump(selected,open(path_save+'combined_orthologuesHVG_moransiGenes.pkl','wb'))
+
+# %% [markdown]
+# ## Batch effects within and between systems
+
+# %%
+#adata=sc.read(path_save+'combined_orthologuesHVG.h5ad')
+
+# %%
+# Compute PCA on the whole data
+adata_scl=adata.copy()
+sc.pp.scale(adata_scl)
+n_pcs=15
+sc.pp.pca(adata_scl, n_comps=n_pcs)
+pca=pd.DataFrame(adata_scl.obsm['X_pca'],index=adata_scl.obs_names)
+del adata_scl
+
+# %%
+# Average PCA accross system-batch-group pseudobulks. 
+# Only use pseudobulks with at least 50 cells
+# Only use cell types with at least 3 samples per system
+pca[['system','mm_study','batch','group']]=adata.obs[['system', 'mm_study','batch', 'cell_type_eval']]
+pca['mm_study']=pca['mm_study'].cat.add_categories('hs').fillna('hs')
+pca_pb=pca.groupby(['system','mm_study','batch','group'])
+pca_mean=pca_pb.mean()
+pb_size=pca_pb.size()
+# Remove samples with too little cells
+filtered_pb=pb_size.index[pb_size>=50]
+# Get pbs/cts where both systems have enough samples
+n_samples_system=filtered_pb.to_frame().rename({'group':'group_col'},axis=1).groupby(
+    'group_col',observed=True)['system'].value_counts().rename('n_samples').reset_index()
+cts=set(n_samples_system.query('system==0 & n_samples>=3').group_col)&\
+    set(n_samples_system.query('system==1 & n_samples>=3').group_col)
+filtered_pb=filtered_pb[filtered_pb.get_level_values(3).isin(cts)]
+pca_mean=pca_mean.loc[filtered_pb,:]
+
+# %%
+# Compute per-ct distances of samples within and between systems
+distances={}
+for ct in cts:
+    # Data for computing distances
+    pca_s0=pca_mean[(pca_mean.index.get_level_values(0)==0) &
+                    (pca_mean.index.get_level_values(3)==ct)]
+    pca_s1=pca_mean[(pca_mean.index.get_level_values(0)==1) &
+                    (pca_mean.index.get_level_values(3)==ct)]
+    
+    # Distances for s0 - within or between datasets
+    d_s0=euclidean_distances(pca_s0)
+    triu=np.triu_indices(pca_s0.shape[0],k=1)
+    idx_map=dict(enumerate(pca_s0.index.get_level_values(1)))
+    idx_within=([],[])
+    idx_between=([],[])
+    for i,j in zip(*triu):
+        if idx_map[i]==idx_map[j]:
+            idx_list=idx_within
+        else:
+            idx_list=idx_between
+        idx_list[0].append(i)
+        idx_list[1].append(j)
+    d_s0_within=d_s0[idx_within]
+    d_s0_between=d_s0[idx_between]
+    
+    # Distances for s1 and s0s1
+    d_s1=euclidean_distances(pca_s1)[np.triu_indices(pca_s1.shape[0],k=1)]
+    d_s0s1=euclidean_distances(pca_s0,pca_s1).ravel()
+    distances[ct]={'s0_within':d_s0_within,'s0_between':d_s0_between,'s1':d_s1,'s0s1':d_s0s1}
+
+# %%
+# Save distances
+pkl.dump(distances,open(path_save+'combined_orthologuesHVG_PcaSysBatchDist.pkl','wb'))
+
+# %%
+# Prepare df for plotting
+plot=[]
+for ct,dat in distances.items():
+    for comparison,dist in dat.items():
+        dist=pd.DataFrame(dist,columns=['dist'])
+        dist['group']=ct
+        dist['comparison']=comparison
+        plot.append(dist)
+plot=pd.concat(plot)
+
+# %%
+# Plot distances
+sb.catplot(x='comparison',y='dist',col='group',
+           data=plot.reset_index(drop=True),kind='violin',
+           sharey=False, height=2.5,aspect=1.5)
+
+# %% [markdown]
+# Evaluate statisticsal significance
+
+# %%
+# Compute significance of differences within and accross systems
+signif=[]
+for ct,dat in distances.items():
+    for ref in ['s0_within','s0_between','s1']:
+        n_system=dat[ref].shape[0]
+        if n_system>=3:
+            u,p=mannwhitneyu( dat[ref],dat['s0s1'],alternative='less')
+            signif.append(dict( cell_type=ct,system=ref, u=u,pval=p,
+                               n_system=n_system,n_crossystem=dat['s0s1'].shape[0]))
+signif=pd.DataFrame(signif)
+signif['padj']=multipletests(signif['pval'],method='fdr_bh')[1]
+
+# %%
+signif
+
+# %%
+# Save signif
+signif.to_csv(path_save+'combined_orthologuesHVG_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
 
 # %% [markdown]
 # ## Include non-oto orthologues
@@ -460,6 +628,22 @@ del adata_mm_sub.obsm
 del adata_mm_sub.uns
 del adata_mm_sub.var
 
+# %% [markdown]
+# PCA and clusters for scglue and saturn
+
+# %%
+# PCA and clusters per system
+n_pcs=15
+for adata_temp in [adata_hs_sub,adata_mm_sub]:
+    adata_sub=adata_temp.copy()
+    sc.pp.scale(adata_sub)
+    sc.pp.pca(adata_sub, n_comps=n_pcs)
+    sc.pp.neighbors(adata_sub, n_pcs=n_pcs)
+    sc.tl.leiden(adata_sub)
+    adata_temp.obsm['X_pca_system']=adata_sub[adata_temp.obs_names,:].obsm['X_pca']
+    adata_temp.obs['leiden_system']=adata_sub.obs.apply(lambda x: str(x['system'])+'_'+x['leiden'],axis=1)
+del adata_sub
+
 # %%
 adata_mm_sub
 
@@ -480,6 +664,10 @@ genes_hs=set(adata_hs_sub.var_names)
 gene_mapping=orthology_info.query('gs_mm in @genes_mm and gs_hs in @genes_hs')[['gs_mm','gs_hs']]
 print(gene_mapping.shape[0])
 gene_mapping.to_csv(path_save+'combined_nonortholHVG_geneMapping.tsv',index=False,sep='\t')
+
+# %%
+#adata_mm_sub=sc.read(path_save+'combined-mmPart_nonortholHVG.h5ad')
+#adata_hs_sub=sc.read(path_save+'combined-hsPart_nonortholHVG.h5ad')
 
 # %% [markdown]
 # ## Morna's I eval of non-orthol
