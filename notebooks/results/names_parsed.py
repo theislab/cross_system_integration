@@ -38,9 +38,19 @@ model_map={
     'scvi': 'scVI',
     'scglue': 'GLUE',
     'saturn': 'SATURN',
-    'saturn_super': 'SATURN-CT',
+    'saturn_super': 'SATURN-CT'
 }
 pkl.dump(model_map,open(path_save+'models.pkl','wb'))
+
+# %%
+# Models
+model_map_additional={
+    'vamp_fixed': 'vamp - FP',
+    'gmm':'GMM',
+    'gmm_ri':'GMM - RPI',
+    'gmm_fixed':'GMM - FP',
+}
+pkl.dump(model_map_additional,open(path_save+'models_additional.pkl','wb'))
 
 # %%
 # Metrics
@@ -93,6 +103,16 @@ param_vals=[
 pkl.dump(param_vals,open(path_save+'optimized_parameter_values.pkl','wb'))
 
 # %%
+# Optimized parameter values to be used alongside relevant models
+param_vals_additional=[
+    (['vamp','vamp_fixed','gmm','gmm_fixed','gmm_ri'],[
+        ('n_prior_components',[1.0,2.0,5.0,10.0, 100.0, 5000.0]),
+    ])
+] 
+
+pkl.dump(param_vals_additional,open(path_save+'optimized_parameter_values_additional.pkl','wb'))
+
+# %%
 # Map params_opt to model name
 params_opt_map={
      'kl_weight':'cVAE',
@@ -114,9 +134,20 @@ params_opt_map={
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
 
 # %%
+# Params opt used in main plots
+params_opt_map_additional={
+     'vamp_eval':'vamp',
+     'vamp_eval_fixed':'vamp_fixed',
+     'gmm_eval':'gmm',
+     'gmm_eval_fixed':'gmm_fixed',
+     'gmm_eval_ri':'gmm_ri',
+    }
+pkl.dump(params_opt_map_additional,open(path_save+'params_opt_model_additional.pkl','wb'))
+
+# %%
 # Map param names to pretty names
 param_names={
- 'n_prior_components':'N prior',
+ 'n_prior_components':'N priors',
  'z_distance_cycle_weight':'cycle LW',
  'kl_weight':'KL LW',
  'lam_graph':'graph LW',
@@ -209,7 +240,7 @@ palette={'ilisi_system':'#F9F3F3',
 pkl.dump(palette,open(path_save+'metric_background_cmap.pkl','wb'))
 
 # %%
-# Dataset colors]
+# Dataset colors
 palette={
     'pancreas_conditions_MIA_HPAP2':'#8a9e59',
     'retina_adult_organoid':'#c97fac',

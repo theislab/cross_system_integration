@@ -151,7 +151,7 @@ res=pd.concat(res,axis=1).T
 
 # %%
 #  Param that was optimised
-res['params_opt']=res.params_opt.replace(params_opt_map)
+res['params_opt']=res.params_opt.replace(params_opt_correct_map)
 res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
