@@ -1,4 +1,4 @@
-params_opt_map={
+params_opt_correct_map={
      'scglue_no_lam_graph':'scglue_lam_graph_no',
      'scglue_no_rel_gene_weight':'scglue_rel_gene_weight_no', 
      'scglue_no_lam_align':'scglue_lam_align_no',
