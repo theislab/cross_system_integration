@@ -56,14 +56,15 @@ parser.add_argument('-e', '--max-epochs', type=int, default=50)
 parser.add_argument('-n', '--n-priors', type=int, default=100)
 parser.add_argument('-m', '--n-cell_plot', type=int, default=None)
 parser.add_argument('-f', '--fixed-priors', action='store_true')
+parser.add_argument('-i', '--init-method', default='default', choices=['default', 'random', 'system_0', 'system_1', 'most_balanced'])
 
 if hasattr(sys, 'ps1'):
     args = parser.parse_args([
         '-e', '50',
-        '-n', '1',
-        '-m', '10000',
-        '-f',
-        
+        '-n', '10',
+        # '-m', '10000',
+        # '-f',
+        '-i', 'system_0',
     ])
 else:
     args = parser.parse_args()
@@ -74,10 +75,11 @@ MAX_EPOCHS = args.max_epochs
 TRAINABLE_PRIORS = not args.fixed_priors
 N_PRIOR_COMPONENTS = args.n_priors
 N_SAMPLES_TO_PLOT = args.n_cell_plot
+INIT_METHOD = args.init_method
 
 # %%
 path_data = os.path.expanduser("~/data/cs_integration/combined_orthologuesHVG.h5ad")
-output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}")
+output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}_init_{INIT_METHOD}")
 sc.settings.figdir = output_filename
 
 
@@ -102,6 +104,41 @@ class PriorInspectionCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         self._log_priors(trainer, pl_module)
 
+
+# %%
+def random_init_algorithm(adata, n_priors):
+    return np.random.choice(np.arange(adata.n_obs), size=n_priors, replace=False)
+
+
+def random_from_system_i(adata, n_priors, i=0):
+    obs = adata.obs.copy()
+    obs['uid'] = np.arange(obs.shape[0])
+    return obs[obs[SYSTEM_KEY] == i]['uid'].sample(N_PRIOR_COMPONENTS, replace=False).to_numpy()
+
+
+def most_balanced_algorithm(adata, n_priors):
+    system_keys = adata.obs[SYSTEM_KEY].unique()
+    assert len(system_keys) == 2
+    assert 0 in system_keys
+    assert 1 in system_keys
+
+    obs = adata.obs.copy()
+    obs['uid'] = np.arange(obs.shape[0])
+
+    return np.where(
+        np.arange(N_PRIOR_COMPONENTS) % 2 == 0,
+        obs[obs[SYSTEM_KEY] == 0]['uid'].sample(N_PRIOR_COMPONENTS, replace=False).to_numpy(),
+        obs[obs[SYSTEM_KEY] == 1]['uid'].sample(N_PRIOR_COMPONENTS, replace=False).to_numpy(),
+    )
+    
+
+INIT_ALGORITHMS = {
+    'default': lambda adata, n_priors: None,
+    'random': random_init_algorithm,
+    'system_0': lambda adata, n_priors: random_from_system_i(adata, n_priors, 0),
+    'system_1': lambda adata, n_priors: random_from_system_i(adata, n_priors, 1),
+    'most_balanced': most_balanced_algorithm,
+}
 
 # %% [markdown]
 # ## Pancreas
@@ -132,6 +169,7 @@ else:
     model = XXJointModel(adata=adata_training, prior='vamp', 
                          n_prior_components=N_PRIOR_COMPONENTS,
                          pseudoinputs_data_init=True,
+                         pseudoinputs_data_indices=INIT_ALGORITHMS[INIT_METHOD](adata_training, N_PRIOR_COMPONENTS),
                          trainable_priors=TRAINABLE_PRIORS,
                          encode_pseudoinputs_on_eval_mode=True,)
     
@@ -191,6 +229,7 @@ sc.tl.umap(embed)
 embed.write(os.path.join(output_filename, 'embed.h5ad'))
 
 # %%
+embed = sc.read(os.path.join(output_filename, 'embed.h5ad'))
 
 # %%
 rcParams['figure.figsize']=(8,8)
@@ -209,6 +248,7 @@ prior_history = model.train_prior_history_
 n_steps = len(prior_history)
 n_points = prior_history[0][0].shape[0]
 
+# %%
 prior_x = np.concatenate([x[0] for x in prior_history])
 prior_cov = np.concatenate([x[1] for x in prior_history])
 
@@ -230,11 +270,14 @@ sc.tl.umap(embed_all)
 embed_all.write(os.path.join(output_filename, 'embed_all.h5ad'))
 
 # %%
+embed_all = sc.read(os.path.join(output_filename, 'embed_all.h5ad'))
+
+# %%
 embed_final = embed_all[embed_all.obs['pseudoinput_time'].isna() | (embed_all.obs['pseudoinput_time'] == n_steps - 1)]
 
 # %%
 rcParams['figure.figsize']=(8,8)
-sc.pl.pca(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species'], s=10, wspace=0.5,
+sc.pl.pca(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species'], s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
           save='_pca_all.png')
 
 # %%
@@ -244,7 +287,7 @@ sc.pl.umap(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species'], s=
 
 # %%
 rcParams['figure.figsize']=(8,8)
-sc.pl.pca(embed_all, color=['input_type', 'pseudoinput_time', 'pseudoinput_id'], s=10, wspace=0.5,
+sc.pl.pca(embed_all, color=['input_type', 'pseudoinput_time', 'pseudoinput_id'], s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
           save='_pca_pseudoinput_time.png')
 
 # %%
