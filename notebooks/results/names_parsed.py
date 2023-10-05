@@ -30,10 +30,10 @@ path_save=path_data+'names_parsed/'
 # %%
 # Models
 model_map={
-    'non-integrated':'non-integrated',
-    'vamp': 'vamp',
-    'cycle': 'cycle',
-    'vamp_cycle':'vamp+cycle',
+    'non-integrated':'Non-integrated',
+    'vamp': 'VAMP',
+    'cycle': 'CYC',
+    'vamp_cycle':'VAMP+CYC',
     'cVAE': 'cVAE',
     'scvi': 'scVI',
     'scglue': 'GLUE',
@@ -45,10 +45,12 @@ pkl.dump(model_map,open(path_save+'models.pkl','wb'))
 # %%
 # Models
 model_map_additional={
-    'vamp_fixed': 'vamp - FP',
+    'vamp_fixed': 'VAMP - FP',
     'gmm':'GMM',
     'gmm_ri':'GMM - RPI',
     'gmm_fixed':'GMM - FP',
+    'scgen_sample':'scGEN - sample',
+    'scgen_system':'scGEN - system',
 }
 pkl.dump(model_map_additional,open(path_save+'models_additional.pkl','wb'))
 
@@ -64,18 +66,18 @@ pkl.dump(metric_map,open(path_save+'metrics.pkl','wb'))
 # %%
 # Metrics meaning
 metric_meaning_map={
-    'nmi_opt':'bio (coarse)',
-    'moransi':"bio (fine)",
-    'ilisi_system':'batch',
+    'nmi_opt':'Bio (coarse)',
+    'moransi':"Bio (fine)",
+    'ilisi_system':'Batch',
 }
 pkl.dump(metric_meaning_map,open(path_save+'metric_meanings.pkl','wb'))
 
 # %%
 # Datasets
 dataset_map={
-    'pancreas_conditions_MIA_HPAP2':'mouse-human',
-    'retina_adult_organoid':'organoid-tissue',
-    'adipose_sc_sn_updated':'cell-nuclei',
+    'pancreas_conditions_MIA_HPAP2':'Mouse-Human',
+    'retina_adult_organoid':'Organoid-Tissue',
+    'adipose_sc_sn_updated':'Cell-Nuclei',
 }
 pkl.dump(dataset_map,open(path_save+'datasets.pkl','wb'))
 
@@ -107,6 +109,10 @@ pkl.dump(param_vals,open(path_save+'optimized_parameter_values.pkl','wb'))
 param_vals_additional=[
     (['vamp','vamp_fixed','gmm','gmm_fixed','gmm_ri'],[
         ('n_prior_components',[1.0,2.0,5.0,10.0, 100.0, 5000.0]),
+    ]),
+    (['vamp'],[
+        ('prior_components_group', [ 'BALANCED','beta', 'alpha', 'acinar','schwann', 'immune']),
+        ('prior_components_system',[-1, 0, 1]),
     ])
 ] 
 
@@ -134,13 +140,15 @@ params_opt_map={
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
 
 # %%
-# Params opt used in main plots
+# Params opt 
 params_opt_map_additional={
      'vamp_eval':'vamp',
      'vamp_eval_fixed':'vamp_fixed',
      'gmm_eval':'gmm',
      'gmm_eval_fixed':'gmm_fixed',
      'gmm_eval_ri':'gmm_ri',
+     'prior_group':'vamp', 
+     'prior_system':'vamp', 
     }
 pkl.dump(params_opt_map_additional,open(path_save+'params_opt_model_additional.pkl','wb'))
 
@@ -148,15 +156,23 @@ pkl.dump(params_opt_map_additional,open(path_save+'params_opt_model_additional.p
 # Map param names to pretty names
 param_names={
  'n_prior_components':'N priors',
- 'z_distance_cycle_weight':'cycle LW',
+ 'z_distance_cycle_weight':'Cycle LW',
  'kl_weight':'KL LW',
- 'lam_graph':'graph LW',
- 'lam_align':'alignment LW',
- 'rel_gene_weight':'graph W',
- 'pe_sim_penalty':'protein sim. LW',
+ 'lam_graph':'Graph LW',
+ 'lam_align':'Alignment LW',
+ 'rel_gene_weight':'Graph W',
+ 'pe_sim_penalty':'Protein sim. LW',
   None:'None',  
 }
 pkl.dump(param_names,open(path_save+'params.pkl','wb'))
+
+# %%
+# Map param names to pretty names
+param_names_additional={
+    'prior_components_group':'Prior init. cell type',
+    'prior_components_system':'Prior init. system',
+}
+pkl.dump(param_names_additional,open(path_save+'params_additional.pkl','wb'))
 
 # %%
 # Map params_opt to gene relationship type
@@ -182,11 +198,83 @@ pkl.dump(params_opt_gene_map,open(path_save+'params_opt_genes.pkl','wb'))
 # %%
 # System 0-1 to name mapping
 system_map={
-    'pancreas_conditions_MIA_HPAP2':{'0':'mouse','1':'human'},
-    'retina_adult_organoid':{'0':'organoid','1':'tissue'},
-    'adipose_sc_sn_updated':{'0':'cell','1':'nuclei'},
+    'pancreas_conditions_MIA_HPAP2':{'0':'Mouse','1':'Human'},
+    'retina_adult_organoid':{'0':'Organoid','1':'Tissue'},
+    'adipose_sc_sn_updated':{'0':'Cell','1':'Nuclei'},
 }
 pkl.dump(system_map,open(path_save+'systems.pkl','wb'))
+
+# %%
+# Cell type labels
+cell_type_map={
+    'pancreas_conditions_MIA_HPAP2':{
+        'acinar': 'Acinar', 
+        'alpha': 'Alpha', 
+        'alpha+beta': 'Alpha+Beta', 
+        'alpha+delta': 'Alpha+Delta', 
+        'beta': 'Beta', 
+        'beta+delta': 'Beta+Delta', 
+        'beta+gamma': 'Beta+Gamma', 
+        'delta': 'Delta', 
+        'delta+gamma': 'Delta+Gamma', 
+        'ductal': 'Ductal', 
+        'endo. prolif.': 'Endo. prolif.', 
+        'endothelial': 'Endothelial', 
+        'gamma': 'Gamma', 
+        'immune': 'Immune', 
+        'schwann': 'Schwann', 
+        'stellate a.': 'Stellate a.', 
+        'stellate q.': 'Stellate q.'
+    },
+    'retina_adult_organoid':{
+        'B cell': 'B cell', 
+        'Mueller cell': 'Mueller cell', 
+        'OFF-bipolar cell': 'OFF-bipolar cell', 
+        'ON-bipolar cell': 'ON-bipolar cell', 
+        'T cell': 'T cell', 
+        'amacrine cell': 'Amacrine cell', 
+        'astrocyte': 'Astrocyte', 
+        'endothelial cell of vascular tree': 'Endothelial cell of vascular tree', 
+        'fibroblast': 'Fibroblast', 
+        'mast cell': 'Mast cell', 
+        'melanocyte': 'Melanocyte', 
+        'microglial cell': 'Microglial cell', 
+        'monocyte': 'Monocyte', 
+        'natural killer cell': 'Natural killer cell', 
+        'pericyte': 'Pericyte', 
+        'retina horizontal cell': 'Retina horizontal cell', 
+        'retinal cone cell': 'Retinal cone cell', 
+        'retinal ganglion cell': 'Retinal ganglion cell', 
+        'retinal pigment epithelial cell': 'Retinal pigment epithelial cell', 
+        'retinal rod cell': 'Retinal rod cell', 
+        'rod bipolar cell': 'Rod bipolar cell'
+    },
+    'adipose_sc_sn_updated':{
+        'ASPC': 'ASPC', 
+        'LEC': 'LEC', 
+        'SMC': 'SMC', 
+        'adipocyte': 'Adipocyte', 
+        'b_cell': 'B cell', 
+        'dendritic_cell': 'Dendritic cell', 
+        'endometrium': 'Endometrium', 
+        'endothelial': 'Endothelial', 
+        'macrophage': 'Macrophage', 
+        'mast_cell': 'Mast cell', 
+        'monocyte': 'Monocyte', 
+        'neutrophil': 'Neutrophil', 
+        'nk_cell': 'NK cell', 
+        'pericyte': 'Pericyte', 
+        't_cell': 'T cell' 
+    }
+}
+pkl.dump(cell_type_map,open(path_save+'cell_types.pkl','wb'))
+
+# %%
+prior_init_map={
+    'prior_components_group':{'BALANCED':'Balanced'},
+    'prior_components_system':{'-1':'Balanced'},
+}
+pkl.dump(prior_init_map,open(path_save+'prior_init.pkl','wb'))
 
 # %% [markdown]
 # ## Cmaps

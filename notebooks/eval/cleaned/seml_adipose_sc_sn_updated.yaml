@@ -129,70 +129,70 @@ grid:
 #           - 1000
 #           - 5000
 
-gmm_opt_eval:
-    fixed:
-      params_opt: gmm_eval
-      prior: gmm
-      encode_pseudoinputs_on_eval_mode: 1 # not needed
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval:
+#     fixed:
+#       params_opt: gmm_eval
+#       prior: gmm
+#       encode_pseudoinputs_on_eval_mode: 1 # not needed
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
-gmm_opt_eval_fixed:
-    fixed:
-      params_opt: gmm_eval_fixed
-      prior: gmm
-      trainable_priors: 0
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval_fixed:
+#     fixed:
+#       params_opt: gmm_eval_fixed
+#       prior: gmm
+#       trainable_priors: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
-gmm_opt_eval_ri:
-    fixed:
-      params_opt: gmm_eval_ri
-      prior: gmm
-      pseudoinputs_data_init: 0
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval_ri:
+#     fixed:
+#       params_opt: gmm_eval_ri
+#       prior: gmm
+#       pseudoinputs_data_init: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
-gmm_opt_eval_ri_fixed:
-    fixed:
-      params_opt: gmm_eval_ri_fixed
-      prior: gmm
-      trainable_priors: 0
-      pseudoinputs_data_init: 0
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval_ri_fixed:
+#     fixed:
+#       params_opt: gmm_eval_ri_fixed
+#       prior: gmm
+#       trainable_priors: 0
+#       pseudoinputs_data_init: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
 # zdcw_opt:
 #     fixed:
@@ -364,3 +364,32 @@ gmm_opt_eval_ri_fixed:
 #           - 0.5
 #           #- 1
 #           - 2
+
+scgen:
+    fixed:
+      model: scgen
+      params_opt: scgen_kl
+      conda_env: perturb
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 0.01
+          - 0.1
+          - 1
+          - 2
+
+scgen_sample:
+    fixed:
+      model: scgen
+      params_opt: scgen_sample_kl
+      conda_env: perturb
+      integrate_by: batch
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 0.01
+          - 0.1
+          - 1
+          - 2

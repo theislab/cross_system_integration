@@ -26,20 +26,7 @@ from collections import defaultdict
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
-
-# %%
-import pandas as pd
-import numpy as np
-import scanpy as sc
-import pickle as pkl
-import math
-import glob
-import os
-from collections import defaultdict
-
-from matplotlib import rcParams
-import matplotlib.pyplot as plt
-import seaborn as sb
+from matplotlib.lines import Line2D
 
 # %%
 path_data='/om2/user/khrovati/data/cross_system_integration/'
@@ -328,6 +315,72 @@ plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE-swarm.pdf',
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE-swarm.png',
             dpi=300,bbox_inches='tight')
 
+
+# %% [markdown]
+# ### 2D plot
+
+# %%
+# Make plotting df with scaled/unscaled embed metrics
+res_plot=ress.query(f'dataset_parsed=="{dataset_map["pancreas_conditions_MIA_HPAP2"]}" & model_parsed=="{model_map["cVAE"]}"').copy()
+res_sub=res_plot[['nmi','ilisi_system','param_opt_val','model_parsed']].copy()
+scaling_col='Scaled'
+res_sub[scaling_col]='No'
+res_sub_scaled=res_plot[['nmi_scaled','ilisi_system_scaled','param_opt_val','model_parsed']].rename(
+    {'nmi_scaled':'nmi','ilisi_system_scaled':'ilisi_system'},axis=1)
+res_sub_scaled[scaling_col]='Yes'
+res_plot=pd.concat([res_sub,res_sub_scaled])
+param_opt_val_col=param_map['kl_weight']
+# Make categorical for coloring
+res_plot[param_opt_val_col]=pd.Categorical(res_plot['param_opt_val'],sorted(res_plot['param_opt_val'].unique()),ordered=True)
+res_plot['model_parsed']=res_plot['model_parsed'].cat.remove_unused_categories()
+# Compute mean scores
+res_plot_me=res_plot.groupby(['model_parsed',scaling_col,param_opt_val_col])[['nmi','ilisi_system']].mean()
+# Shuffle points as else some param_opt_vals are on top
+res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),:]
+# Plot
+rcParams['figure.figsize']=(2,2)
+s_run=10
+s_avg=70
+g=sb.scatterplot(y='ilisi_system',x='nmi',hue=param_opt_val_col,style=scaling_col,data=res_plot,
+           palette=['#090a3d', '#4b87cc',  'yellowgreen', 'tab:olive'],s=s_run,legend=False)
+ax=g.axes
+g=sb.scatterplot(y='ilisi_system',x='nmi',hue=param_opt_val_col,style=scaling_col,data=res_plot_me,
+           palette=['#2b2a82', '#4b87cc',  'yellowgreen', 'tab:olive'],s=s_avg)
+# Mark high KL dots
+for i,dot in res_plot_me.reset_index().query(
+    f'`{param_opt_val_col}`=={res_plot[param_opt_val_col].max()}'
+                            ).iterrows():
+    ax.scatter(dot['nmi'],dot['ilisi_system'],marker='o',s=180,
+            facecolors='none', edgecolors='#730202')
+
+# Adjust ax
+ax.set_ylabel(metric_map['ilisi_system'])
+ax.set_xlabel(metric_map['nmi'])
+ax.set(facecolor = (0,0,0,0))
+g.figure.set_facecolor((0,0,0,0))
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+# Add extra elements to legend
+handles,labels=ax.get_legend_handles_labels()
+handle_title=handles[np.argwhere(np.array(labels)==param_opt_val_col)[0,0]]
+handles.extend([handle_title,
+                Line2D([0], [0], marker='o', color='k', markersize=s_run**0.5, 
+                       lw=0,markeredgewidth=0),
+                Line2D([0], [0], marker='o', color='k', markersize=s_avg**0.5, 
+                       lw=0,markeredgewidth=0)])
+labels.extend(['Dot','Run','Average'])
+ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.05,1.2),frameon=False)
+# Encircle important points
+for text in ax.get_legend().get_texts():
+    if text.get_text() in [param_opt_val_col,'Dot',scaling_col]:
+        text.set_position((text.get_position()[0] - 29,text.get_position()[1]))
+# Make sure red circle at the bottom is not cut off
+ax.set_ylim(ax.get_ylim()[0]-(ax.get_ylim()[1]-ax.get_ylim()[0])*0.03,ax.get_ylim()[1])
+# Save
+plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-scatter.pdf',
+            dpi=300,bbox_inches='tight')
+plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-scatter.png',
+            dpi=300,bbox_inches='tight')
 
 # %% [markdown]
 # ## Embedding

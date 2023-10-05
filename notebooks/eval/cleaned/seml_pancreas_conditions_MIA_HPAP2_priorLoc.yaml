@@ -1,0 +1,73 @@
+# Pancreas conditions
+# Run selected params (worked well or for comparison) for presentation plots & eval
+seml:
+  executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
+  name: csi_eval
+  output_dir: /om2/user/khrovati/data/cross_system_integration/eval/pancreas_conditions_MIA_HPAP2_priorLoc/logs # CHANGE! OUT!
+  project_root_dir:  /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/
+  conda_environment: csi
+  
+slurm:
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 50G          # memory, set to 32, for pancreas this could be 10Gb
+    cpus-per-task: 4  # num cores, set to 4
+    time: 0-05:00     # max time, D-HH:MM, set to 0-08:00
+    nice: 10000
+
+fixed:
+  path_save: /om2/user/khrovati/data/cross_system_integration/eval/pancreas_conditions_MIA_HPAP2_priorLoc/ # CHANGE! OUT!
+  max_epochs: 20
+  epochs_detail_plot: 5
+  # Model params
+  system_decoders: 0
+  # Task
+  eval_type: integration
+  # Data
+  path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
+  fn_moransi: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG_moransiGenes.pkl
+  group_key: cell_type_eval
+  batch_key: batch
+  system_key: system
+  n_cells_eval: 100000 
+  conda_env: csi
+       
+  
+grid:
+  seed_num:
+    type: choice
+    options:
+      - 1
+      - 2
+      - 3 
+
+prior_system:
+    fixed:
+      params_opt: prior_system
+      prior: vamp
+      encode_pseudoinputs_on_eval_mode: 1
+      n_prior_components: 2
+    grid:
+      prior_components_system:
+        type: choice
+        options:
+          - -1
+          - 0
+          - 1
+
+prior_group:
+    fixed:
+      params_opt: prior_group
+      prior: vamp
+      encode_pseudoinputs_on_eval_mode: 1
+      n_prior_components: -1
+    grid:
+      prior_components_group:
+        type: choice
+        options:
+          - BALANCED
+          - alpha
+          - beta
+          - acinar
+          - immune
+          - schwann

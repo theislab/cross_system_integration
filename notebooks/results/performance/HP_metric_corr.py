@@ -27,6 +27,10 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.colors as mcolors
 
+import sys
+sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
+from params_opt_maps import *
+
 # %%
 path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_names=path_data+'names_parsed/'
@@ -73,37 +77,8 @@ for dataset,dataset_name in dataset_map.items():
     # Parse res table
 
     # Parse params
-    res['params_opt']=res.params_opt.replace(
-        {
-         'scglue_no_lam_graph':'scglue_lam_graph_no',
-         'scglue_no_rel_gene_weight':'scglue_rel_gene_weight_no', 
-         'scglue_no_lam_align':'scglue_lam_align_no',
-         'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no',
-         'saturn_no_pe_sim_penalty_super':'saturn_pe_sim_penalty_super_no'})
-    res['param_opt_col']=res.params_opt.replace(
-        {'kl_weight_anneal':'kl_weight',
-         'vamp':'n_prior_components',
-         'vamp_eval':'n_prior_components',
-         'vamp_eval_fixed':'n_prior_components',
-         'vamp_kl_anneal':'n_prior_components',
-         'z_distance_cycle_weight_std':'z_distance_cycle_weight',
-         'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
-         'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
-         'z_distance_cycle_weight_std_kl_anneal':'z_distance_cycle_weight',
-         'vamp_kl_weight':'kl_weight',
-         'vamp_kl_weight_eval':'kl_weight',
-         'scglue_lam_graph':'lam_graph',
-         'scglue_rel_gene_weight':'rel_gene_weight', 
-         'scglue_lam_align':'lam_align',
-         'scglue_lam_graph_no':'lam_graph',
-         'scglue_rel_gene_weight_no':'rel_gene_weight', 
-         'scglue_lam_align_no':'lam_align',
-         'saturn_pe_sim_penalty':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_no':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_super':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
-         'scvi':None,
-         'scvi_kl_anneal':'kl_weight'})
+    res['params_opt']=res.params_opt.replace(params_opt_correct_map)
+    res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
     res['param_opt_val']=res.apply(
         lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
                   else x[x['param_opt_col']]['weight_end']) 
@@ -184,14 +159,14 @@ for group,res_sub in ress.query('genes_parsed=="OTO"').groupby(
         corr['HP corr.']=res_sub['param_opt_val'].astype(float).corr(
             res_sub[metric].astype(float), method='spearman')
         corr['metric'] = metric_name
-        corr['optimized']=corr['model_parsed']+'\n'+corr['param_parsed']
+        corr['Optimized']=corr['model_parsed']+'\n'+corr['param_parsed']
         corrs.append(corr)
 corrs=pd.DataFrame(corrs)
-corrs.rename({'dataset_parsed':'dataset'},axis=1,inplace=True)
+corrs.rename({'dataset_parsed':'Dataset'},axis=1,inplace=True)
 
 # %%
 palette={dataset_map[dataset]:color for dataset,color in dataset_cmap.items()}
-g=sb.catplot(x='optimized',y='HP corr.',hue='dataset',row='metric', data=corrs, 
+g=sb.catplot(x='Optimized',y='HP corr.',hue='Dataset',row='metric', data=corrs, 
              height=1.5,aspect=3, kind='swarm',palette=palette)
 g.axes[-1][0].set_xticklabels(g.axes[-1][0].get_xticklabels(),rotation=90)
 for ax in g.axes:
@@ -201,3 +176,5 @@ plt.savefig(path_fig+f'HP_metric_corr-corrs_all-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+f'HP_metric_corr-corrs_all-swarm.png',
             dpi=300,bbox_inches='tight')
+
+# %%

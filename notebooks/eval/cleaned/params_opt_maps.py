@@ -31,6 +31,11 @@ param_opt_col_map={
      'saturn_pe_sim_penalty_super':'pe_sim_penalty',
      'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
      'scvi':None,
-     'scvi_kl_anneal':'kl_weight'}
+     'scvi_kl_anneal':'kl_weight',
+     'prior_system':'prior_components_system',
+     'prior_group':'prior_components_group',
+     'scgen_kl':'kl_weight',
+     'scgen_sample_kl':'kl_weight',
+}
 
 

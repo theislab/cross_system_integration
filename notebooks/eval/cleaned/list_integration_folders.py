@@ -25,9 +25,16 @@ for f in glob(dir_parent+'*/scib_metrics_scaled.pkl'):
     if pkl.load(open(dir_name+'args.pkl','rb')).seed==1:
         print('- '+dir_name.split('/')[-2])
         
-# All folders that finished eval ocmpletely and have seed=1
+# All folders that finished eval ocmpletely and ...
 for f in glob(dir_parent+'*/scib_metrics_scaled.pkl'):
     dir_name=f.replace('scib_metrics_scaled.pkl','')
     args=pkl.load(open(dir_name+'args.pkl','rb'))
     if args.params_opt=="scvi_kl_anneal" & args.kl_weight is None:
+        print('- '+dir_name.split('/')[-2])
+        
+# All folders that finished eval ocmpletely and ...
+for f in glob(dir_parent+'*/scib_metrics_scaled.pkl'):
+    dir_name=f.replace('scib_metrics_scaled.pkl','')
+    args=pkl.load(open(dir_name+'args.pkl','rb'))
+    if args.params_opt=="scgen_sample_kl" or args.params_opt=="vamp_z_distance_cycle_weight_std_eval":
         print('- '+dir_name.split('/')[-2])

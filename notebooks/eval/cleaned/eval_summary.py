@@ -539,6 +539,11 @@ for ax in g.axes.ravel():
     ax.axhline(0.96,lw=0.5,c='gray')
 
 # %%
+g=sb.catplot( x='param_opt_val', y="moransi_ct",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
 # Check vamp and cVAE in more detail only
 # res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
@@ -652,6 +657,16 @@ res.loc[top_runs.values(),['params_opt','param_opt_val','seed']]
 # %%
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
+
+# %% [markdown]
+# ### Example runs - nonbenchmarked
+
+# %%
+example_runs={
+    'scgen_sample':res.query('params_opt=="scgen_sample_kl" & seed==1 & kl_weight==0.1').index[0],
+    'scgen_system':res.query('params_opt=="scgen_kl" & seed==1 & kl_weight==0.1').index[0],
+}
+pkl.dump(example_runs,open(path_integration.rstrip('/')+'_summary/example_runs.pkl','wb'))
 
 # %% [markdown]
 # ## Adipose sc sn updated
@@ -874,5 +889,91 @@ res.loc[top_runs.values(),['params_opt','param_opt_val','seed']]
 # %%
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
+
+# %% [markdown]
+# ## Pancreas conditions MIA HPAP2 - prior init
+
+# %%
+path_integration=path_eval+'pancreas_conditions_MIA_HPAP2_priorLoc/integration/'
+path_integration_sup=path_eval+'pancreas_conditions_MIA_HPAP2/integration/'
+
+# %%
+# Load integration results - params and metrics
+res=[]
+metrics_data=[]
+for run in glob.glob(path_integration+'*/'):
+    if os.path.exists(run+'args.pkl') and \
+        os.path.exists(run+'scib_metrics.pkl') and \
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
+        metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
+        metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
+        data=pd.concat([args,metrics,metrics_scl])
+        name=run.split('/')[-2]
+        data.name=name
+        res.append(data)
+        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+        metrics_data_sub['name']=name
+        metrics_data.append(metrics_data_sub)
+for run in glob.glob(path_integration_sup+'*/'):
+    if os.path.exists(run+'args.pkl') and \
+        os.path.exists(run+'scib_metrics.pkl') and \
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if args.params_opt=='vamp_eval':
+            metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
+            metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
+            metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
+            data=pd.concat([args,metrics,metrics_scl])
+            name=run.split('/')[-2]
+            data.name=name
+            res.append(data)
+            metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+            metrics_data_sub['name']=name
+            metrics_data.append(metrics_data_sub)    
+res=pd.concat(res,axis=1).T
+
+# %%
+#  Param that was optimised
+res['params_opt']=res.params_opt.replace(params_opt_correct_map)
+res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
+res['param_opt_val']=res.apply(
+    lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
+
+
+# %%
+# Order mixed categories (str, num)
+res['param_opt_val']=pd.Categorical(
+    res['param_opt_val'],
+    sorted([i for i in res['param_opt_val'].unique() if not isinstance(i,str)],key=int)+\
+    sorted([i for i in res['param_opt_val'].unique() if isinstance(i,str)]), 
+    True)
+res=res.sort_values('param_opt_val')
+res['param_opt_val']=res['param_opt_val'].astype(str)
+
+# %%
+res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
+
+# %%
+g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
+g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
+g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+for ax in g.axes.ravel():
+    ax.axhline(0.03,lw=0.5,c='gray')
+
+# %%
 
 # %%

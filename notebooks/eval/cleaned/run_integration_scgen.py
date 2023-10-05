@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: csi
+#     display_name: perturb
 #     language: python
-#     name: csi
+#     name: perturb
 # ---
 
 # %%
@@ -29,8 +29,8 @@ from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 
-import scvi
-import pytorch_lightning as pl
+import scgen
+#import pytorch_lightning as pl
 
 # Otherwise the seed remains constant
 from scvi._settings import ScviConfig
@@ -62,12 +62,11 @@ parser.add_argument('-sk', '--system_key', required=True, type=str,
 parser.add_argument('-gk', '--group_key', required=True, type=str,
                     help='obs col with group info')
 parser.add_argument('-bk', '--batch_key', required=True, type=str,
-                    help='obs col with batch info')
+                     help='obs col with batch info')
+parser.add_argument('-ib', '--integrate_by', required=False, type=str,default='system',
+                     help='use for integration batch, "system" or "batch"')
 parser.add_argument('-me', '--max_epochs', required=False, type=int,default=50,
                     help='max_epochs for training')
-parser.add_argument('-uskw', '--use_n_steps_kl_warmup', 
-                    required=False, type=intstr_to_bool,  default='0',
-                    help='use suggested n_steps_kl_warmup instead of default n_epochs_kl_warmup')
 parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, default=20,
                     help='Loss subplot from this epoch on')
 parser.add_argument('-kw', '--kl_weight', required=False, type=float, default=1.0,
@@ -83,14 +82,12 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 if False:
     args= parser.parse_args(args=[
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
-        #'-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
         '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
         '-sk','system',
-        '-gk','cell_type',
         '-bk','sample',
+        '-gk','cell_type',
         '-me','2',
         '-edp','0',
-        '-uskw','0',
         
         '-s','1',
                 
@@ -112,7 +109,7 @@ if args.name is None:
 
 # %%
 # Make folder for saving
-path_save=args.path_save+'scvi'+\
+path_save=args.path_save+'scgen'+\
     '_'+''.join(np.random.permutation(list(string.ascii_letters)+list(string.digits))[:8])+\
     ('-TEST' if TESTING else '')+\
     os.sep
@@ -148,6 +145,10 @@ if TESTING:
     print(adata.shape)
     # Set some groups to nan for testing if this works
     adata.obs[args.group_key]=[np.nan]*10+list(adata.obs[args.group_key].iloc[10:])
+    
+    # Also remove nan from testing data - from real data this is not removed as it
+    # would not match other integration scripts - will raise error
+    adata=adata[~adata.obs[args.group_key].isna(),:].copy()
 
 # %% [markdown]
 # ### Training
@@ -158,29 +159,22 @@ print('Train')
 # %%
 # Setup adata
 adata_training = adata
-scvi.model.SCVI.setup_anndata(
-    adata_training, 
-    layer="counts", 
-    batch_key=args.system_key,
-    categorical_covariate_keys=[args.batch_key])
+if args.integrate_by=="system":
+    integrate_by=args.system_key
+elif args.integrate_by=="batch":
+    integrate_by=args.batch_key
+else:
+    raise ValueError('integrate_by not recognised')
+scgen.SCGEN.setup_anndata(adata_training, batch_key=integrate_by, labels_key=args.group_key)
 
 # %%
-model = scvi.model.SCVI(adata_training, 
-                        n_layers=2, n_hidden=256, n_latent=15, 
-                        gene_likelihood="nb")
+model = scgen.SCGEN(adata_training, kl_weight=args.kl_weight)
 
 max_epochs=args.max_epochs if not TESTING else 3
 model.train(
     max_epochs = max_epochs,
-    # Uses n_steps_kl_warmup (128*5000/400) if n_epochs_kl_warmup is not set
-    plan_kwargs=dict(
-        n_epochs_kl_warmup = 400 if not args.use_n_steps_kl_warmup else None,
-        n_steps_kl_warmup = 1600,
-        max_kl_weight=args.kl_weight,
-    ),
     log_every_n_steps=1,
     check_val_every_n_epoch=1,
-    callbacks=[pl.callbacks.LearningRateMonitor(logging_interval='epoch')] 
 )
 
 # %% [markdown]
@@ -250,10 +244,7 @@ print('Get embedding')
 # %%
 # Compute and save whole embedding
 if args.n_cells_eval!=-1:
-    embed_full = model.get_latent_representation(
-        adata=adata_training,
-        indices=None,
-        batch_size=None, )
+    embed_full = model.batch_removal(adata_training).obsm['latent']
     embed_full=sc.AnnData(embed_full,obs=adata_training.obs)
     # Make system categorical for eval as below
     embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
@@ -266,10 +257,7 @@ if args.n_cells_eval!=-1:
 cells_eval=adata_training.obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(adata_training.obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
-embed = model.get_latent_representation(
-    adata=adata_training[cells_eval,:],
-    indices=None,
-    batch_size=None, )
+embed = model.batch_removal(adata=adata_training[cells_eval,:]).obsm['latent']
 embed=sc.AnnData(embed,obs=adata_training[cells_eval,:].obs)
 # Make system categorical for metrics and plotting
 embed.obs[args.system_key]=embed.obs[args.system_key].astype(str)
