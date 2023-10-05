@@ -64,7 +64,7 @@ if hasattr(sys, 'ps1'):
         '-n', '10',
         # '-m', '10000',
         # '-f',
-        '-i', 'system_0',
+        '-i', 'default',
     ])
 else:
     args = parser.parse_args()
@@ -79,7 +79,7 @@ INIT_METHOD = args.init_method
 
 # %%
 path_data = os.path.expanduser("~/data/cs_integration/combined_orthologuesHVG.h5ad")
-output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}_init_{INIT_METHOD}")
+output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_balanced_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}_init_{INIT_METHOD}")
 sc.settings.figdir = output_filename
 
 
@@ -152,6 +152,20 @@ adata
 
 # %%
 adata_training = adata.copy()
+
+# %%
+limited_obs = adata_training.obs[adata_training.obs[CT_KEY].isin(['alpha', 'beta', 'ductal'])].copy()
+limited_obs['cell_id'] = limited_obs.index
+limited_obs[CT_KEY] = limited_obs[CT_KEY].cat.remove_unused_categories()
+print(limited_obs.assign(count=1).groupby([SYSTEM_KEY, CT_KEY]).count()['count'])
+
+# %%
+balanced_obs = limited_obs.groupby([SYSTEM_KEY, CT_KEY]).apply(lambda x: x.sample(30_000, replace=True)).reset_index(drop=True)
+print(balanced_obs.assign(count=1).groupby([SYSTEM_KEY, CT_KEY]).count()['count'])
+
+# %%
+adata_training = adata_training[balanced_obs['cell_id']]
+adata_training
 
 # %%
 print(f"Target: {output_filename}")
