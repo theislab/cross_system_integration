@@ -96,6 +96,9 @@ parser.add_argument('-p', '--prior', required=False, type=str, default='standard
                     help='VAE prior')
 parser.add_argument('-npc', '--n_prior_components', required=False, type=int, default=100,
                     help='n_prior_components used for vamp prior')
+parser.add_argument('-pdi', '--pseudoinputs_data_init', required=False, 
+                    type=intstr_to_bool,default='1',
+                    help='pseudoinputs_data_init for model. Converts 0/1 to bool')
 # N prior components system is int as system itself is 0/1
 parser.add_argument('-pcs', '--prior_components_system', required=False, type=int, default=None,
                     help='system to sample prior components from for vamp prior.'+\
@@ -193,7 +196,7 @@ if False:
         '-bk','sample',
         '-me','2',
         '-edp','0',
-        '-p','gmm,
+        '-p','gmm',
         
         '-epe','1',
         '-tp','0',
@@ -319,6 +322,7 @@ model = XXJointModel(
     system_decoders=args.system_decoders,
     prior=args.prior, 
     n_prior_components=args.n_prior_components,
+    pseudoinputs_data_init=args.pseudoinputs_data_init,
     pseudoinputs_data_indices=pdi,
     trainable_priors=args.trainable_priors,
     encode_pseudoinputs_on_eval_mode=args.encode_pseudoinputs_on_eval_mode,

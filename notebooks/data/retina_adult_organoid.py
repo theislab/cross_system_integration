@@ -18,6 +18,10 @@ import scanpy as sc
 import pandas as pd
 import numpy as np
 
+from sklearn.metrics.pairwise import euclidean_distances
+from scipy.stats import mannwhitneyu
+from statsmodels.stats.multitest import multipletests
+
 import pickle as pkl
 
 from matplotlib import rcParams
@@ -26,7 +30,7 @@ import seaborn as sb
 
 # %%
 path='/net/bmc-lab6/data/lab/kellis/users/khrovati/data/'
-path_data=path+'datasets/10_1016_j_cell_2020_08_013/'
+path_data=path+'datasets/d10_1016_j_cell_2020_08_013/'
 path_train=path+'cross_system_integration/retina_adult_organoid/'
 
 # %%
@@ -39,7 +43,7 @@ adata=sc.concat([
 )
 
 # %%
-adata
+adata.X=adata.raw.X
 
 # %% [markdown]
 # C: Unclear what batch may be
@@ -95,6 +99,9 @@ print(len(hvgs))
 adata_sub=adata_sub[:,list(hvgs)]
 
 # %%
+adata_sub.obs['system']=adata_sub.obs['material'].map({"organoid":0,'adult':1})
+
+# %%
 del adata_sub.uns
 del adata_sub.obsm
 adata_sub.obs=adata_sub.obs[[
@@ -103,10 +110,26 @@ adata_sub.obs=adata_sub.obs[[
     'region',  'material', 'system']]
 
 # %%
-adata_sub.obs['system']=adata_sub.obs['material'].map({"organoid":0,'adult':1})
+adata_sub.layers['counts']=adata[adata_sub.obs_names,adata_sub.var_names].X.copy()
+
+# %% [markdown]
+# Add PCA for scGLUE
 
 # %%
-adata_sub.layers['counts']=adata[adata_sub.obs_names,adata_sub.var_names].X.copy()
+# PCA per system
+n_pcs=15
+X_pca_system=[]
+for system in adata_sub.obs.system.unique():
+    adata_temp=adata_sub[adata_sub.obs.system==system,:].copy()
+    sc.pp.scale(adata_temp)
+    sc.pp.pca(adata_temp, n_comps=n_pcs)
+    X_pca_system.append(pd.DataFrame(adata_temp.obsm['X_pca'],index=adata_temp.obs_names))
+del adata_temp
+X_pca_system=pd.concat(X_pca_system)
+adata_sub.obsm['X_pca_system']=X_pca_system.loc[adata_sub.obs_names,:].values
+
+# %% [markdown]
+# ### Save
 
 # %%
 adata_sub
@@ -114,8 +137,41 @@ adata_sub
 # %%
 adata_sub.write(path_train+'combined_HVG.h5ad')
 
+# %%
+#adata_sub=sc.read(path_train+'combined_HVG.h5ad')
+
+# %% [markdown]
+# # Non-integrated embedding
+
+# %%
+# Non-integrated embedding
+n_pcs=15
+cells_eval=np.random.RandomState(seed=0).permutation(adata_sub.obs_names)[:100000]
+adata_temp=adata_sub[cells_eval,:].copy()
+sc.pp.scale(adata_temp)
+sc.pp.pca(adata_temp, n_comps=n_pcs)
+sc.pp.neighbors(adata_temp, use_rep='X_pca')
+sc.tl.umap(adata_temp)
+
+# %%
+# Slimmed down data for saving
+adata_embed=sc.AnnData(adata_temp.obsm['X_pca'],obs=adata_temp.obs)
+for k in ['pca','neighbors','umap']:
+    adata_embed.uns[k]=adata_temp.uns[k]
+adata_embed.obsm['X_umap']=adata_temp.obsm['X_umap']
+for k in ['distances', 'connectivities']:
+    adata_embed.obsp[k]=adata_temp.obsp[k]
+display(adata_embed)
+
+# %%
+# Save
+adata_embed.write(path_train+'combined_HVG_embed.h5ad')
+
 # %% [markdown]
 # # Moran's I for eval
+
+# %%
+#adata=adata_sub
 
 # %%
 #adata=sc.read(path_train+'combined_HVG.h5ad')
@@ -210,5 +266,96 @@ for group,data_sub in data.groupby(['group','system','batch']):
 # %%
 # Save
 pkl.dump(selected,open(path_train+'combined_HVG_moransiGenes.pkl','wb'))
+
+# %%
+path_train
+
+# %% [markdown]
+# # Batch effects within and between systems
+
+# %%
+#adata=sc.read(path_train+'combined_HVG.h5ad')
+
+# %%
+# Compute PCA on the whole data
+adata_scl=adata.copy()
+sc.pp.scale(adata_scl)
+n_pcs=15
+sc.pp.pca(adata_scl, n_comps=n_pcs)
+pca=pd.DataFrame(adata_scl.obsm['X_pca'],index=adata_scl.obs_names)
+del adata_scl
+
+# %%
+# Average PCA accross system-batch-group pseudobulks. 
+# Only use pseudobulks with at least 50 cells
+# Only use cell types with at least 3 samples per system
+pca[['system','batch','group']]=adata.obs[['system', 'sample_id', 'cell_type']]
+pca_pb=pca.groupby(['system','batch','group'])
+pca_mean=pca_pb.mean()
+pb_size=pca_pb.size()
+# Remove samples with too little cells
+filtered_pb=pb_size.index[pb_size>=50]
+# Get pbs/cts where both systems have enough samples
+n_samples_system=filtered_pb.to_frame().rename({'group':'group_col'},axis=1).groupby(
+    'group_col',observed=True)['system'].value_counts().rename('n_samples').reset_index()
+cts=set(n_samples_system.query('system==0 & n_samples>=3').group_col)&\
+    set(n_samples_system.query('system==1 & n_samples>=3').group_col)
+filtered_pb=filtered_pb[filtered_pb.get_level_values(2).isin(cts)]
+pca_mean=pca_mean.loc[filtered_pb,:]
+
+# %%
+# Compute per-ct distances of samples within and between systems
+distances={}
+for ct in cts:
+    pca_s0=pca_mean[(pca_mean.index.get_level_values(0)==0) &
+                    (pca_mean.index.get_level_values(2)==ct)]
+    pca_s1=pca_mean[(pca_mean.index.get_level_values(0)==1) &
+                    (pca_mean.index.get_level_values(2)==ct)]
+    d_s0=euclidean_distances(pca_s0)[np.triu_indices(pca_s0.shape[0],k=1)]
+    d_s1=euclidean_distances(pca_s1)[np.triu_indices(pca_s1.shape[0],k=1)]
+    d_s0s1=euclidean_distances(pca_s0,pca_s1).ravel()
+    distances[ct]={'s0':d_s0,'s1':d_s1,'s0s1':d_s0s1}
+
+# %%
+# Save distances
+pkl.dump(distances,open(path_train+'combined_HVG_PcaSysBatchDist.pkl','wb'))
+
+# %%
+# Prepare df for plotting
+plot=[]
+for ct,dat in distances.items():
+    for comparison,dist in dat.items():
+        dist=pd.DataFrame(dist,columns=['dist'])
+        dist['group']=ct
+        dist['comparison']=comparison
+        plot.append(dist)
+plot=pd.concat(plot)
+
+# %%
+# Plot distances
+sb.catplot(x='comparison',y='dist',col='group',
+           data=plot.reset_index(drop=True),kind='violin',
+           sharey=False, height=2.5,aspect=1 )
+
+# %% [markdown]
+# Evaluate statisticsal significance
+
+# %%
+# Compute significance of differences within and accross systems
+signif=[]
+for ct,dat in distances.items():
+    for ref in ['s0','s1']:
+        u,p=mannwhitneyu( dat[ref],dat['s0s1'],alternative='less')
+        signif.append(dict( cell_type=ct,system=ref, u=u,pval=p,
+                           n_system=dat[ref].shape[0],n_crossystem=dat['s0s1'].shape[0]))
+signif=pd.DataFrame(signif)
+signif['padj']=multipletests(signif['pval'],method='fdr_bh')[1]
+
+# %%
+signif
+
+# %%
+# Save signif
+signif.to_csv(path_train+'combined_HVG_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
 
 # %%
