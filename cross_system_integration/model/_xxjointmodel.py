@@ -15,6 +15,7 @@ from scvi.model.base import BaseModelClass, VAEMixin
 from scvi.utils import setup_anndata_dsp
 
 from cross_system_integration.model._training import TrainingMixin
+from cross_system_integration.module._priors import VampPrior, GaussianMixtureModelPrior
 from cross_system_integration.module._xxjointmodule import XXJointModule
 from cross_system_integration.model._gene_maps import GeneMapInput
 from cross_system_integration.model._utils import prepare_metadata
@@ -303,6 +304,52 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
                 predicted += [inference_outputs['z_m']]
             else:
                 predicted += [inference_outputs['z']]
+
+        predicted = torch.cat(predicted)
+
+        if as_numpy:
+            predicted = predicted.cpu().numpy()
+        return predicted
+
+    @torch.no_grad()
+    def get_prior_probs(
+            self,
+            adata: AnnData,
+            indices: Optional[Sequence[int]] = None,
+            batch_size: Optional[int] = None,
+            as_numpy: bool = True
+    ) -> (Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]):
+        """
+        Translate expression - based on input expression and metadata
+        predict expression of data as if it had given metadata.
+        expression, metadata (from adata) -> latent
+        latent, new metadata -> translated expression
+        :param adata: Input adata based on which latent representation is obtained.
+        :param indices:
+        :param batch_size:
+        :param as_numpy:  Move output tensor to cpu and convert to numpy
+        :return:
+        """
+        # Check model and adata
+        assert isinstance(self.module.prior, VampPrior) or isinstance(self.module.prior, GaussianMixtureModelPrior)
+        self._check_if_trained(warn=False)
+        adata = self._validate_anndata(adata)
+        if indices is None:
+            indices = np.arange(adata.n_obs)
+        # Prediction
+        # Do not shuffle to retain order
+        tensors_fwd = self._make_data_loader(
+            adata=adata, indices=indices, batch_size=batch_size, shuffle=False
+        )
+        predicted = []
+        for tensors in tensors_fwd:
+            # Inference
+            inference_inputs = self.module._get_inference_input(tensors)
+            inference_outputs = self.module.inference(**inference_inputs)
+            z = inference_outputs['z_m']
+            log_p_c_by_z = self.module.prior.log_prob_per_mod(z)  # K x N x L
+            p_c_by_z = torch.exp(log_p_c_by_z.sum(axis=3))
+            predicted.append(p_c_by_z)
 
         predicted = torch.cat(predicted)
 
