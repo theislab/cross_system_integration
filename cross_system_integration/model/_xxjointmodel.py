@@ -348,7 +348,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             inference_outputs = self.module.inference(**inference_inputs)
             z = inference_outputs['z_m']
             log_p_c_by_z = self.module.prior.log_prob_per_mod(z)  # K x N x L
-            p_c_by_z = torch.exp(log_p_c_by_z.sum(axis=3))
+            p_c_by_z = torch.exp(log_p_c_by_z.sum(axis=2).permute([1, 0]))
             predicted.append(p_c_by_z)
 
         predicted = torch.cat(predicted)

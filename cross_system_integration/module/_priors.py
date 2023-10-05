@@ -59,7 +59,7 @@ class VampPrior(Prior):
             z = self.encoder(x=self.u, cov=self.u_cov)
         return z['y_m'], z['y_v']  # (K x L), (K x L)
 
-    def log_prob_per_mode(self, z):
+    def log_prob_per_mod(self, z):
         # Mixture of gaussian computed on K x N x L
         z = z.unsqueeze(0)  # 1 x N x L
 
@@ -106,7 +106,7 @@ class GaussianMixtureModelPrior(Prior):
         # mixing weights
         self.w = torch.nn.Parameter(torch.zeros(self.p_m.shape[0], 1, 1))  # K x 1 x 1
 
-    def log_prob_per_mode(self, z):
+    def log_prob_per_mod(self, z):
         # Mixture of gaussian computed on K x N x L
         z = z.unsqueeze(0)  # 1 x N x L
 
