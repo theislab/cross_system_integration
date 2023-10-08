@@ -52,6 +52,7 @@ system_map=pkl.load(open(path_names+'systems.pkl','rb'))
 params_opt_map=pkl.load(open(path_names+'params_opt_model.pkl','rb'))
 params_opt_gene_map=pkl.load(open(path_names+'params_opt_genes.pkl','rb'))
 param_opt_vals=pkl.load(open(path_names+'optimized_parameter_values.pkl','rb'))
+cell_type_map=pkl.load(open(path_names+'cell_types.pkl','rb'))
 
 # cmap
 model_cmap=pkl.load(open(path_names+'model_cmap.pkl','rb'))
@@ -220,7 +221,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
                     if icol==0:
                         ax.set_ylabel(
                             param_data.model_parsed+(' - scaled' if scaling else '')+'\n'+\
-                            'opt.: '+param_data.param_parsed+'\n')
+                            param_data.param_parsed+'\n')
                     else:
                         ax.set_ylabel('')
             else:
@@ -298,7 +299,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed
                     if icol==0:
                         ax.set_ylabel(
                             param_data.model_parsed+(' - scaled' if scaling else '')+'\n'+\
-                            'opt.: '+param_data.param_parsed+'\n')
+                            param_data.param_parsed+'\n')
                     else:
                         ax.set_ylabel('')
             else:
@@ -368,11 +369,11 @@ handles.extend([handle_title,
                        lw=0,markeredgewidth=0),
                 Line2D([0], [0], marker='o', color='k', markersize=s_avg**0.5, 
                        lw=0,markeredgewidth=0)])
-labels.extend(['Dot','Run','Average'])
+labels.extend(['Average','No - run','Yes'])
 ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.05,1.2),frameon=False)
 # Encircle important points
 for text in ax.get_legend().get_texts():
-    if text.get_text() in [param_opt_val_col,'Dot',scaling_col]:
+    if text.get_text() in [param_opt_val_col,'Average',scaling_col]:
         text.set_position((text.get_position()[0] - 29,text.get_position()[1]))
 # Make sure red circle at the bottom is not cut off
 ax.set_ylim(ax.get_ylim()[0]-(ax.get_ylim()[1]-ax.get_ylim()[0])*0.03,ax.get_ylim()[1])
@@ -380,6 +381,61 @@ ax.set_ylim(ax.get_ylim()[0]-(ax.get_ylim()[1]-ax.get_ylim()[0])*0.03,ax.get_yli
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-scatter.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-scatter.png',
+            dpi=300,bbox_inches='tight')
+
+# %% [markdown]
+# ### Twin-y
+
+# %%
+# Make plotting df with scaled/unscaled embed metrics
+res_plot=ress.query(f'dataset_parsed=="{dataset_map["pancreas_conditions_MIA_HPAP2"]}" & model_parsed=="{model_map["cVAE"]}"').copy()
+res_sub=res_plot[['nmi','ilisi_system','param_opt_val','model_parsed']].copy()
+scaling_col='Scaled'
+res_sub[scaling_col]='no'
+res_sub_scaled=res_plot[['nmi_scaled','ilisi_system_scaled','param_opt_val','model_parsed']].rename(
+    {'nmi_scaled':'nmi','ilisi_system_scaled':'ilisi_system'},axis=1)
+res_sub_scaled[scaling_col]='yes'
+res_plot=pd.concat([res_sub,res_sub_scaled])
+param_opt_val_col=param_map['kl_weight']
+# Make categorical for coloring
+res_plot['model_parsed']=res_plot['model_parsed'].cat.remove_unused_categories()
+res_plot[param_opt_val_col]=pd.Categorical(
+    res_plot['param_opt_val'].astype(str),
+    [str(i) for i in sorted(res_plot['param_opt_val'].unique())], True)
+# Compute mean scores
+res_plot_me=res_plot.groupby(['model_parsed',scaling_col,param_opt_val_col]
+                            )[['nmi','ilisi_system']].mean().reset_index()
+# Shuffle points as else some param_opt_vals are on top
+res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),:]
+res_plot[scaling_col]=res_plot[scaling_col].replace({'yes':'Scaled - run','no':'Unscaled - run'})
+res_plot_me[scaling_col]=res_plot_me[scaling_col].replace({'yes':'Scaled - avg.','no':'Unscaled - avg.'})
+# Plot
+fig,ax1=plt.subplots(figsize=(2,2))
+ax2=ax1.twinx()
+palette_metric={'ilisi_system':'#74028E','nmi':'#B78E00'}
+s_run=20
+sb.lineplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot_me,ax=ax1,
+           c=palette_metric['ilisi_system'],alpha=0.5)
+sb.scatterplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot,ax=ax1,
+           c=palette_metric['ilisi_system'],s=s_run,alpha=0.8)
+sb.lineplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot_me,ax=ax2,
+           c=palette_metric['nmi'],alpha=0.5)
+sb.scatterplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot,ax=ax2,
+           c=palette_metric['nmi'],s=s_run,alpha=0.8)
+ax2.get_legend().remove()
+ax1.set_ylabel(metric_map['ilisi_system'],c=palette_metric['ilisi_system'])
+ax2.set_ylabel(metric_map['nmi'],c=palette_metric['nmi'])
+ax1.set(facecolor = (0,0,0,0))
+ax2.set(facecolor = (0,0,0,0))
+fig.set_facecolor((0,0,0,0))
+ax1.spines['top'].set_visible(False)
+ax2.spines['top'].set_visible(False)
+
+ax1.legend(bbox_to_anchor=(1.5,0.75),frameon=False)
+
+plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.pdf',
+            dpi=300,bbox_inches='tight')
+plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.png',
             dpi=300,bbox_inches='tight')
 
 # %% [markdown]
@@ -522,7 +578,7 @@ for icol, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed'))
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         if icol==0:                        
-            ax.set_ylabel(param_data.model_parsed+'\nfeature std')
+            ax.set_ylabel(param_data.model_parsed+'\nFeature std')
         else:
             ax.set_ylabel('',visible=False)
         if irow==0:
@@ -553,6 +609,8 @@ params=ress_sub.groupby(['dataset_parsed','model_parsed','param_parsed'],observe
         'group_key':[x['group_key'][0]]*2,
         'system_key':[x['system_key'][0]]*2,
         })).reset_index()
+ct_col_name='Cell type'
+sys_col_name='System'
 for dataset_name,params_sub in params.groupby('dataset_parsed'):
     dataset=dataset_map_rev[dataset_name]
     nrow=params_sub.shape[0]
@@ -561,18 +619,21 @@ for dataset_name,params_sub in params.groupby('dataset_parsed'):
     for irow,(_,res_sub) in enumerate(params_sub.iterrows()):
         for icol_scl,scaling in enumerate([False,True]):
             for icol_col,(col_name,col) in enumerate(zip(
-                ['cell type','system'],
+                [ct_col_name,sys_col_name],
                 [res_sub.group_key,res_sub.system_key])):
                 icol=icol_scl*2+icol_col
                 embed=embeds[res_sub['run']]
                     
                 # Set cmap and col val names
                 cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
-                if col_name=='system':
-                    embed.obs[col+'_parsed']=embed.obs[col].map(system_map[dataset])
+                if col_name==sys_col_name:
+                    # Map system to str as done in integrated embeds but not in non-int
+                    embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
                     cmap={system_map[dataset][k]:v for k,v in cmap.items()}
-                else:
-                    embed.obs[col+'_parsed']=embed.obs[col]
+                elif col_name==ct_col_name:
+                    # Map system to str as done in integrated embeds but not in non-int
+                    embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(cell_type_map[dataset])
+                    cmap={cell_type_map[dataset][k]:v for k,v in cmap.items()}
 
                 # Plot
                 ax=axs[irow,icol]
@@ -583,7 +644,7 @@ for dataset_name,params_sub in params.groupby('dataset_parsed'):
                 # Make pretty
                 if irow==0:
                     if icol%2==0:
-                        title=('unscaled' if not scaling else 'scaled')+'\n\n'
+                        title=('Unscaled' if not scaling else 'Scaled')+'\n\n'
                     else:
                         title=''
                             

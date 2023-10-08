@@ -38,7 +38,7 @@ embeds=pkl.load(open(path_embed+'pancreas_STZG1_healthyvar_topmodels.pkl','rb'))
 embeds={parsed:embeds[name] for name,parsed in model_map.items()}
 
 # %%
-scores=[c for c in embeds['non-integrated'].obs.columns if 'gene_score' in c]
+scores=[c for c in embeds['Non-integrated'].obs.columns if 'gene_score' in c]
 
 # %%
 # Make figure
@@ -62,7 +62,7 @@ for col,(model,embed) in enumerate(embeds.items()):
             ax.tick_params(
                 top='off', bottom='off', left='off', right='off', 
                 labelleft='on', labelbottom='off')
-            ax.set_ylabel(score.replace('gene_score_cluster_','group ')+'\n', rotation=90)
+            ax.set_ylabel(score.replace('gene_score_cluster_','Group ')+'\n', rotation=90)
             ax.set_xlabel('')
             ax.set(frame_on=False)
 # Remove repeated cmaps
@@ -71,7 +71,7 @@ for ax in fig.axes:
     if ax.get_label()=='<colorbar>' and ax.get_position().x0!=rightmost:
         ax.remove()
     elif ax.get_label()=='<colorbar>':
-        ax.set_title('score')
+        ax.set_title('Score')
 
 fig.set(facecolor = (0,0,0,0))
 fig.tight_layout()
@@ -81,3 +81,5 @@ plt.savefig(path_fig+'moransi_example-pancreas_STZG1_healthyvar-umap.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'moransi_example-pancreas_STZG1_healthyvar-umap.png',
             dpi=300,bbox_inches='tight')
+
+# %%

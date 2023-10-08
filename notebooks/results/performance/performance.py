@@ -422,6 +422,66 @@ for dataset,dataset_name in dataset_map.items():
     plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.png',
                 dpi=300,bbox_inches='tight')
 
+# %%
+ct_col_name='Cell type'
+sys_col_name='System'
+sample_col_name='Sample'
+for dataset,dataset_name in dataset_map.items():
+    embeds_ds=embeds[dataset_name]
+    ncols=3
+    nrows=len(embeds_ds)
+    fig,axs=plt.subplots(nrows,ncols,figsize=(2*ncols,2*nrows))
+    # Args for ct, system, sample - same in all models
+    args_sub=list(args[dataset_name].values())[0]
+    for irow,model_name in enumerate([m for m in model_map.values() if m in embeds_ds]):
+        embed=embeds_ds[model_name]
+        for icol,(col_name,col) in enumerate(zip(
+            [ct_col_name,sys_col_name,sample_col_name],
+            [args_sub.group_key,args_sub.system_key,args_sub.batch_key])):
+
+            # Set cmap and col val names
+            cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
+            if col_name==sys_col_name:
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
+                cmap={system_map[dataset][k]:v for k,v in cmap.items()}
+            elif col_name==ct_col_name:
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(cell_type_map[dataset])
+                cmap={cell_type_map[dataset][k]:v for k,v in cmap.items()}
+            else:
+                embed.obs[col+'_parsed']=embed.obs[col]
+
+            # Plot
+            ax=axs[irow,icol]
+            sc.pl.umap(embed,color=col+'_parsed',ax=ax,show=False,
+                      palette=cmap, frameon=False,title='')
+
+            # Make pretty
+            if irow==0:
+                ax.set_title(col_name+'\n',fontsize=10)
+
+            if icol==0:
+                ax.axis('on')
+                ax.tick_params(
+                        top='off', bottom='off', left='off', right='off', 
+                        labelleft='on', labelbottom='off')
+                ax.set_ylabel(model_name+'\n',rotation=90)
+                ax.set_xlabel('')
+                ax.set(frame_on=False)
+
+            if irow!=(nrows-1) or col_name==sample_col_name:
+                ax.get_legend().remove()
+            else:
+                ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,title=col_name,
+                          ncol=math.ceil(embed.obs[col].nunique()/10))
+
+    fig.set(facecolor = (0,0,0,0))
+    plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.pdf',
+                dpi=300,bbox_inches='tight')
+    plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.png',
+                dpi=300,bbox_inches='tight')
+
 # %% [markdown]
 # ## All runs
 

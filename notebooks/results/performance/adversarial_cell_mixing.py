@@ -38,6 +38,10 @@ import rpy2.rinterface_lib.callbacks
 import logging
 rpy2.rinterface_lib.callbacks.logger.setLevel(logging.ERROR)
 
+import sys
+sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
+from params_opt_maps import *
+
 
 # %% language="R"
 # library('ComplexHeatmap')
@@ -62,6 +66,7 @@ system_map=pkl.load(open(path_names+'systems.pkl','rb'))
 params_opt_map=pkl.load(open(path_names+'params_opt_model.pkl','rb'))
 params_opt_gene_map=pkl.load(open(path_names+'params_opt_genes.pkl','rb'))
 param_opt_vals=pkl.load(open(path_names+'optimized_parameter_values.pkl','rb'))
+cell_type_map=pkl.load(open(path_names+'cell_types.pkl','rb'))
 
 # cmap
 model_cmap=pkl.load(open(path_names+'model_cmap.pkl','rb'))
@@ -94,37 +99,9 @@ for dataset,dataset_name in dataset_map.items():
     # Parse res table
 
     # Parse params
-    res['params_opt']=res.params_opt.replace(
-        {
-         'scglue_no_lam_graph':'scglue_lam_graph_no',
-         'scglue_no_rel_gene_weight':'scglue_rel_gene_weight_no', 
-         'scglue_no_lam_align':'scglue_lam_align_no',
-         'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no',
-         'saturn_no_pe_sim_penalty_super':'saturn_pe_sim_penalty_super_no'})
-    res['param_opt_col']=res.params_opt.replace(
-        {'kl_weight_anneal':'kl_weight',
-         'vamp':'n_prior_components',
-         'vamp_eval':'n_prior_components',
-         'vamp_eval_fixed':'n_prior_components',
-         'vamp_kl_anneal':'n_prior_components',
-         'z_distance_cycle_weight_std':'z_distance_cycle_weight',
-         'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
-         'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
-         'z_distance_cycle_weight_std_kl_anneal':'z_distance_cycle_weight',
-         'vamp_kl_weight':'kl_weight',
-         'vamp_kl_weight_eval':'kl_weight',
-         'scglue_lam_graph':'lam_graph',
-         'scglue_rel_gene_weight':'rel_gene_weight', 
-         'scglue_lam_align':'lam_align',
-         'scglue_lam_graph_no':'lam_graph',
-         'scglue_rel_gene_weight_no':'rel_gene_weight', 
-         'scglue_lam_align_no':'lam_align',
-         'saturn_pe_sim_penalty':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_no':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_super':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
-         'scvi':None,
-         'scvi_kl_anneal':'kl_weight'})
+    # Parse params
+    res['params_opt']=res.params_opt.replace(params_opt_correct_map)
+    res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
     res['param_opt_val']=res.apply(
         lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
                   else x[x['param_opt_col']]['weight_end']) 
@@ -221,6 +198,9 @@ for dataset,file,group_key in [
     gc.collect()
 
 # %%
+dat.columns
+
+# %%
 # heatmap per dataset
 for dataset,dataset_name in dataset_map.items():
     metric='jaccard_label'
@@ -255,6 +235,8 @@ for dataset,dataset_name in dataset_map.items():
     ct_prop=ct_prop.loc[ct_order]
     ct_max=ct_max.loc[ct_order]
     dat=dat.loc[:,ct_prop.index]
+    # Now replace cell types after matching has ben done on non-parsed cell type names
+    dat.rename(cell_type_map[dataset],axis=1,inplace=True)
 
 
     # Add data to R
@@ -269,7 +251,7 @@ for dataset,dataset_name in dataset_map.items():
     ro.globalenv['ct_max']=list(ct_max)
     batch_score_name=metric_map['ilisi_system']
     ro.globalenv['batch_score_name']=batch_score_name
-    ct_prop_name='cells\nsystem\nmin/max'
+    ct_prop_name='Cells\nsystem\nmin/max'
     ro.globalenv['ct_prop_name']=ct_prop_name
     ct_max_name='log10\nN cells\nsystem\nmax'
     ro.globalenv['ct_max_name']=ct_max_name
@@ -342,7 +324,7 @@ for dataset,dataset_name in dataset_map.items():
                 labels_gp=gpar(fontsize=12)
             )
         ),
-        annotation_label=c( "system cell ratio", "N cells"),
+        annotation_label=c( "System cell ratio", "N cells"),
         annotation_name_gp = gpar(fontsize=12),
         height = 2*unit(5, "mm"),width=ncol(x)*unit(5,"mm")
     )
@@ -351,15 +333,15 @@ for dataset,dataset_name in dataset_map.items():
            row_labels = rownames,
            cluster_columns = FALSE, cluster_rows = FALSE,
            show_column_names = TRUE, show_row_names = TRUE,
-           row_title ="parameter value",
+           row_title ="Parameter value",
            bottom_annotation=col_anno,
            left_annotation=row_anno,
            row_split =row_splits,
-           column_title = 'cell type',
+           column_title = 'Cell type',
            row_names_side = "left",
            column_names_side = "bottom",
            column_title_side="bottom",
-           heatmap_legend_param = list( title = "relative\nJaccard\nindex\n", 
+           heatmap_legend_param = list( title = "Relative\nJaccard\nindex\n", 
                                        title_gp=gpar( fontsize = 12),
                                        labels_gp = gpar( fontsize = 12)
                                        ),

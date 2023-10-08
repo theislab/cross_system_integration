@@ -26,9 +26,11 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.colors as mcolors
+from matplotlib.lines import Line2D
+from matplotlib.text import Text
 
 import sys
-sys.path.appenparams_opt_mapd('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
+sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
 from params_opt_maps import *
 
 # %%
@@ -209,7 +211,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
                 if icol==0:
                     ax.set_ylabel(
                         param_data.model_parsed+'\n'+\
-                        'opt.: '+param_data.param_parsed+'\n')
+                        param_data.param_parsed+'\n')
                 else:
                     ax.set_ylabel('')
             else:
@@ -287,7 +289,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed
                 if icol==0:
                     ax.set_ylabel(
                         param_data.model_parsed+'\n'+\
-                        'opt.: '+param_data.param_parsed+'\n')
+                        param_data.param_parsed+'\n')
                 else:
                     ax.set_ylabel('')
             else:
@@ -319,25 +321,53 @@ res_plot_me=res_plot.groupby(['model_parsed',param_opt_val_col]
                             )[['nmi_opt','ilisi_system']].mean().reset_index()
 # Shuffle points as else some param_opt_vals are on top
 res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),:]
-res_plot['Dot']='Run'
-res_plot_me['Dot']='Average'
-res_plot=pd.concat([res_plot,res_plot_me])[
-    ['ilisi_system','nmi_opt',param_opt_val_col,'model_parsed','Dot']]
+# res_plot['Average']='No - run'
+# res_plot_me['Average']='Yes'
+# res_plot=pd.concat([res_plot,res_plot_me])[
+#     ['ilisi_system','nmi_opt',param_opt_val_col,'model_parsed','Average']]
 # Plot
+s_run=10
+s_avg=70
 colors=['darkgray', '#4b87cc', '#55a380', 'yellowgreen', 'tab:olive', 'khaki']
-g=sb.relplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,col='model_parsed',
-             data=res_plot,kind='scatter',size='Dot',
-           palette=colors,sizes=[10,70],
-            height=2.2,aspect=0.85)
-# Adjust axes
-for ax in g.axes[0]:
-    ax.set_title(ax.get_title().replace('model_parsed = ',''),fontsize=10)
-    if len(ax.get_ylabel())>1:
+ncol=res_plot.model_parsed.nunique()
+fig,axs=plt.subplots(1,ncol,figsize=(2*ncol,2),sharey=True,sharex=True)
+# Assert that all models have same category values (as not checked for legend below)
+assert res_plot.groupby('model_parsed')['param_opt_val'].apply(
+    lambda x: ','.join(sorted(set(x.astype(str))))).nunique()==1
+for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
+    ax=axs[idx]
+    sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,s=s_avg,palette=colors,
+                   data=res_plot_me.query('model_parsed==@model_name'),ax=ax,
+                   alpha=0.5, lw=0,legend=False)
+    sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,
+                   s=s_run,palette=colors,lw=0,
+                   data=res_plot.query('model_parsed==@model_name'),ax=ax)
+    
+    ax.set_title(model_name,fontsize=10)
+    if idx==0:
         ax.set_ylabel(metric_map['ilisi_system'])
     ax.set_xlabel(metric_map['nmi_opt'])
     ax.axhline(0.025,linestyle='--',lw=1,color='#730202',dashes=(5, 5))  
     ax.set(facecolor = (0,0,0,0))
-_=g.fig.set(facecolor = (0,0,0,0))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    if idx!=(ncol-1):
+        ax.get_legend().remove()
+    else:
+        handles,labels=ax.get_legend_handles_labels()
+        handles=[Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0)]+handles+\
+                [Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0),
+                 Line2D([0], [0], marker='o', color='k', markersize=s_run**0.5, 
+                               lw=0,markeredgewidth=0),
+                 Line2D([0], [0], marker='o', color='k', markersize=s_avg**0.5, 
+                               lw=0,markeredgewidth=0)]
+        labels=[param_opt_val_col]+labels+['Average','No - run','Yes']
+        ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.05,1.2),frameon=False)
+        for text in ax.get_legend().get_texts():
+            if text.get_text() in [param_opt_val_col,'Average']:
+                text.set_position((text.get_position()[0] - 29,text.get_position()[1]))
+fig.subplots_adjust(wspace=0.05)
+_=fig.set(facecolor = (0,0,0,0))
 # Save
 plt.savefig(path_fig+'performance_vamp-score_vampSub_pancreas_2d-scatter.pdf',
             dpi=300,bbox_inches='tight')
