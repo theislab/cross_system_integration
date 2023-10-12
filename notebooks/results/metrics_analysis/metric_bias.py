@@ -67,19 +67,19 @@ for n_small in range(0,n_noise+1,3):
             ('lisi','batch',ilisi),
             ('lisi','bio',clisi)
         ]:
-            res.append({'i':i,'N small noise features':n_small,'metric':metric,'type':bio_batch,'value':value})
+            res.append({'i':i,'N low var. noise feats.':n_small,'metric':metric,'type':bio_batch,'value':value})
 res=pd.DataFrame(res)
 
 # %%
-g=sb.catplot(x='N small noise features',y='value',col='metric',row='type',data=res,kind='swarm',
+g=sb.catplot(x='N low var. noise feats.',y='value',col='metric',row='type',data=res,kind='swarm',
            sharey=False,height=1.5,aspect=1.5,s=3)
 for ax in g.axes.ravel():
     text=ax.title.get_text()
     if text=='type = batch | metric = asw':
         ax.set_title('ASW',fontsize=10)
-        ax.set_ylabel('batch score')
+        ax.set_ylabel('Batch score')
     elif text=='type = bio | metric = asw':
-        ax.set_ylabel('bio score')
+        ax.set_ylabel('Bio score')
         ax.set_title(None)
     elif text=='type = batch | metric = lisi':
         ax.set_title('LISI',fontsize=10)

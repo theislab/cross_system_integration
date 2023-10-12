@@ -95,11 +95,23 @@ parser.add_argument('-ovm', '--out_var_mode', required=False, type=str, default=
 parser.add_argument('-p', '--prior', required=False, type=str, default='standard_normal',
                     help='VAE prior')
 parser.add_argument('-npc', '--n_prior_components', required=False, type=int, default=100,
-                    help='n_prior_components used for vamp prior')
+                    help='n_prior_components used for vamp prior.'+ 
+                    'if -1 use as many prior components as there are cell groups'+
+                    '(ignoring nan groups)')
+parser.add_argument('-pdi', '--pseudoinputs_data_init', required=False, 
+                    type=intstr_to_bool,default='1',
+                    help='pseudoinputs_data_init for model. Converts 0/1 to bool')
 # N prior components system is int as system itself is 0/1
 parser.add_argument('-pcs', '--prior_components_system', required=False, type=int, default=None,
-                    help='system to sample prior components from for vamp prior.'+\
-                   'If empty defaults to None and samples from both systems')
+                    help='system to sample prior components from.'+
+                    'If -1 samples balanced from both systems'+
+                    'If unsepcified samples randomly'+
+                    'Either this of prior_components_group must be None')
+parser.add_argument('-pcg', '--prior_components_group', required=False, type=str, default=None,
+                    help='group to sample prior components from.'+
+                   'If BALANCED sample balanced across groups (ignores nan groups)'+
+                   'If unsepcified samples randomly'+
+                   'Either this of prior_components_system must be None')
 parser.add_argument('-epe', '--encode_pseudoinputs_on_eval_mode', required=False, 
                     type=intstr_to_bool,default='0',
                     help='encode_pseudoinputs_on_eval_mode for module. Converts 0/1 to bool')
@@ -184,16 +196,20 @@ if False:
     args= parser.parse_args(args=[
         #'-pa','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad',
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
+        #'-pa','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         #'-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
         '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
         '-sk','system',
-        #'-gk','cell_type',
         '-gk','cell_type',
-        #'-bk','batch',
+        #'-gk','cell_type_eval',
         '-bk','sample',
+        #'-bk','batch',
         '-me','2',
         '-edp','0',
-        '-p','gmm,
+        '-p','vamp',
+        
+        '-npc','2',
+        '-pcs','-1',
         
         '-epe','1',
         '-tp','0',
@@ -226,6 +242,10 @@ TESTING=args.testing
 if args.name is None:
     if args.seed is not None:
         args.name='r'+str(args.seed)
+
+# %%
+if args.prior_components_group is not None and args.prior_components_system is not None:
+    raise ValueError('Either prior_components_group or prior_components_system must be None')
 
 
 # %%
@@ -305,20 +325,60 @@ adata_training = XXJointModel.setup_anndata(
 )
 
 # %%
-# Train
-if args.prior_components_system is not None:
-    pdi=np.random.permutation(np.argwhere((
-            adata_training.obs[args.system_key]==args.prior_components_system
-                    ).ravel()).ravel())[:args.n_prior_components]
+# Define pseudoinputs
+if args.n_prior_components==-1:
+    n_prior_components=adata_training.obs[args.group_key].dropna().nunique()
+else:
+    n_prior_components=args.n_prior_components
+
+if args.prior_components_group is not None:
+    if args.prior_components_group!='BALANCED':
+        prior_locations=[(args.prior_components_group,n_prior_components)]
+    else:
+        groups=list(np.random.permutation(adata_training.obs[args.group_key].dropna().unique()))
+        multiple, remainder = divmod(n_prior_components, len(groups))
+        prior_locations=[(k,v) for k,v in 
+             pd.Series(groups * multiple + groups[:remainder]).value_counts().iteritems()]
+        
+    pdi=[]
+    for (group,npc) in prior_locations:
+        pdi.extend(np.random.permutation(np.argwhere((
+                adata_training.obs[args.group_key]==group
+                        ).ravel()).ravel())[:npc])
+    print('Prior components group:')
+    print(adata_training.obs.iloc[pdi,:][args.group_key].value_counts())
+        
+elif args.prior_components_system is not None:
+    if args.prior_components_system==-1:
+        npc_half=int(n_prior_components/2)
+        npc_half2=n_prior_components-npc_half
+        prior_locations=[(0,npc_half),(1,npc_half2)]
+    else:
+        prior_locations=[(args.prior_components_system,n_prior_components)]
+    pdi=[]
+    for (system,npc) in prior_locations:
+        pdi.extend(np.random.permutation(np.argwhere((
+                adata_training.obs[args.system_key]==system
+                        ).ravel()).ravel())[:npc])
+    print('Prior components system:')
+    print(adata_training.obs.iloc[pdi,:][args.system_key].value_counts())
+        
 else:
     pdi=None
+    
+if len(pdi)!=n_prior_components:
+    raise ValueError('Not sufficent number of prior components could be sampled')
+
+# %%
+# Train
 model = XXJointModel(
     adata=adata_training,
     out_var_mode=args.out_var_mode,
     mixup_alpha=args.mixup_alpha,
     system_decoders=args.system_decoders,
     prior=args.prior, 
-    n_prior_components=args.n_prior_components,
+    n_prior_components=n_prior_components,
+    pseudoinputs_data_init=args.pseudoinputs_data_init,
     pseudoinputs_data_indices=pdi,
     trainable_priors=args.trainable_priors,
     encode_pseudoinputs_on_eval_mode=args.encode_pseudoinputs_on_eval_mode,

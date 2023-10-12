@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: analysis
+#     display_name: csi
 #     language: python
-#     name: analysis
+#     name: csi
 # ---
 
 # %%
@@ -38,24 +38,25 @@ distances=pkl.load(open(path_res_panc+'combined_orthologuesHVG_PcaSysBatchDist.p
 plot=[]
 ct='delta'
 dat=distances[ct]
+y_col='Compared samples'
 for comparison,dist in dat.items():
     dist=pd.DataFrame(dist,columns=['dist'])
     dist['group']=ct
-    dist['comparison']=comparison
+    dist[y_col]=comparison
     plot.append(dist)
 plot=pd.concat(plot)
 
 # %%
 # Make data prettier
-plot.rename({'dist':'distance'},axis=1,inplace=True)
-plot.replace({'s0_within':'mouse\n(within datasets)',
-              's0_between':'mouse\n(between datasets)',
-              's1':'human',
-              's0s1':'mouse and human'},inplace=True)
+plot.rename({'dist':'Distance'},axis=1,inplace=True)
+plot.replace({'s0_within':'Mouse\n(within datasets)',
+              's0_between':'Mouse\n(between datasets)',
+              's1':'Human',
+              's0s1':'Mouse vs human'},inplace=True)
 
 # %%
 fig,ax=plt.subplots(figsize=(1.5,2))
-sb.violinplot(y='comparison',x='distance',data=plot,inner=None,linewidth=0.5,ax=ax)
+sb.violinplot(y=y_col,x='Distance',data=plot,inner=None,linewidth=0.5,ax=ax)
 fig.set(facecolor = (0,0,0,0))
 ax.set(facecolor = (0,0,0,0))
 ax.spines['top'].set_visible(False)
@@ -65,6 +66,6 @@ plt.savefig(path_fig+f'batch_strength-pancreas_{ct}-violin.png',dpi=300,bbox_inc
 
 # %%
 # N comparisons per group
-plot.groupby('comparison').size()
+plot.groupby(y_col).size()
 
 # %%

@@ -23,6 +23,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import os
+from collections import defaultdict
 
 from metrics import ilisi, clisi, asw_label, cluster_classification,\
 cluster_classification_optimized
@@ -152,7 +153,12 @@ else:
 if 'moransi' in metrics and 'moransi_label' in metrics_data and 'moransi_data' in metrics_data:
     MORANSI=False
 else:
-    MORANSI=True       
+    MORANSI=True   
+    
+# if 'moransi_ct' in metrics and 'moransi_ct_label' in metrics_data:
+#     MORANSI_CT=False
+# else:
+#     MORANSI_CT=True   
 
 if all(['ilisi_batch_system-'+system in metrics and 
     'ilisi_batch_label_system-'+system in metrics_data
@@ -199,8 +205,8 @@ if CLUSTER_OPTIMIZED or TESTING:
 
 # %%
 # Moran's I
-if MORANSI or TESTING:
-    print('moransi')
+#if MORANSI or MORANSI_CT or TESTING:
+if MORANSI or  TESTING:
     # Load adata with expression and Moran's I base values and full embedding
     adata_expr=sc.read(args.fn_expr)
     moransi_base=pkl.load(open(args.fn_moransi,'rb'))
@@ -216,34 +222,68 @@ if MORANSI or TESTING:
         sc.pp.scale(embed_full)
     
     # Compute Moran's I per celltype-sample group and obtain difference with base level
-    moransi_data=[]
-    for group_mi in moransi_base:
-        res=dict(group=group_mi['group'],
-                 system=group_mi['system'],
-                 batch=group_mi['batch'])
-        embed_sub=embed_full[
-            (embed_full.obs[args.group_key]==group_mi['group']).values&
-            (embed_full.obs[args.system_key]==str(group_mi['system'])).values&
-            (embed_full.obs[args.batch_key]==group_mi['batch']).values,:].copy()
-        # Check that there are enough cells for testing
-        if not TESTING or embed_sub.shape[0]>50:
-            sc.pp.neighbors(embed_sub, use_rep='X')
-            genes=group_mi['genes'].index
-            res['moransi_genes']=pd.Series(
-                (sc.metrics._morans_i._morans_i(
-                    g=embed_sub.obsp['connectivities'],
-                    vals=adata_expr[embed_sub.obs_names,genes].X.T)+1)/2,
-                index=genes)
-            res['moransi_diff']=(res['moransi_genes']/group_mi['genes']).mean()
-            moransi_data.append(res)
-    metrics_data['moransi_data']=moransi_data
+    if MORANSI or TESTING:
+        print('moransi')
+        moransi_data=[]
+        for group_mi in moransi_base:
+            res=dict(group=group_mi['group'],
+                     system=group_mi['system'],
+                     batch=group_mi['batch'])
+            embed_sub=embed_full[
+                (embed_full.obs[args.group_key]==group_mi['group']).values&
+                (embed_full.obs[args.system_key]==str(group_mi['system'])).values&
+                (embed_full.obs[args.batch_key]==group_mi['batch']).values,:].copy()
+            # Check that there are enough cells for testing
+            if not TESTING or embed_sub.shape[0]>50:
+                sc.pp.neighbors(embed_sub, use_rep='X')
+                genes=group_mi['genes'].index
+                res['moransi_genes']=pd.Series(
+                    (sc.metrics._morans_i._morans_i(
+                        g=embed_sub.obsp['connectivities'],
+                        vals=adata_expr[embed_sub.obs_names,genes].X.T)+1)/2,
+                    index=genes)
+                res['moransi_diff']=(res['moransi_genes']/group_mi['genes']).mean()
+                moransi_data.append(res)
+        metrics_data['moransi_data']=moransi_data
 
-    # Average MI diffs across samples per cell type
-    metrics_data['moransi_label']=pd.DataFrame([
-        {'label':i['group'],'moransi':i['moransi_diff']} for i in moransi_data
-    ]).groupby('label').mean()
-    # Average MI diffs accross cell types
-    metrics['moransi']=metrics_data['moransi_label'].mean()[0]
+        # Average MI diffs across samples per cell type
+        metrics_data['moransi_label']=pd.DataFrame([
+            {'label':i['group'],'moransi':i['moransi_diff']} for i in moransi_data
+        ]).groupby('label').mean()
+        # Average MI diffs accross cell types
+        metrics['moransi']=metrics_data['moransi_label'].mean()[0]
+
+        # DOESNT really work as expected
+#     # Moransi per cell type
+#     if MORANSI_CT or TESTING:
+#         print('moransi_ct')
+#         # Union of genes across cell types
+#         moransi_genes=defaultdict(set)
+#         for group_mi in moransi_base:
+#             moransi_genes[group_mi['group']].update(group_mi['genes'].index)
+#         moransi_genes={group:list(genes) for group,genes in moransi_genes.items()}
+#         # Moransi per ct
+#         moransi_data={}
+#         for group,genes in moransi_genes.items():
+#             embed_sub=embed_full[
+#                 (embed_full.obs[args.group_key]==group).values,:].copy()
+#             # Check that there are enough cells for testing
+#             if embed_sub.shape[0]>50:
+#                 sc.pp.neighbors(embed_sub, use_rep='X')
+#                 moransi_data[group]=pd.Series(
+#                     (sc.metrics._morans_i._morans_i(
+#                         g=embed_sub.obsp['connectivities'],
+#                         vals=adata_expr[embed_sub.obs_names,genes].X.T)+1)/2,
+#                     index=genes)
+#         metrics_data['moransi_ct_data']=moransi_data
+
+#         # Average MI per cell type
+#         metrics_data['moransi_ct_label']=pd.DataFrame(pd.Series(
+#             {group:res.mean() for group,res in moransi_data.items()},
+#             name='moransi_ct'
+#         ))
+#         # Average MI diffs accross cell types
+#         metrics['moransi_ct']=metrics_data['moransi_ct_label'].mean()[0]
 
 # %%
 # Compute batch lisi metrics per system as else it would be confounded by system

@@ -28,6 +28,9 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.image as mpimg
 import matplotlib.colors as mcolors
+import colorcet as cc
+
+from params_opt_maps import *
 
 # %%
 path_data='/om2/user/khrovati/data/cross_system_integration/'
@@ -115,6 +118,9 @@ def get_top_runs(res,param_opt_vals=param_opt_vals,params_opt_map=params_opt_map
     return top_runs, top_settings
 
 
+# %%
+params_opt_colors=sb.color_palette(cc.glasbey, n_colors=len(param_opt_col_map))
+
 # %% [markdown]
 # ## Pancreas conditions MIA HPAP2
 
@@ -145,43 +151,13 @@ res=pd.concat(res,axis=1).T
 
 # %%
 #  Param that was optimised
-res['params_opt']=res.params_opt.replace(
-    {
-     'scglue_no_lam_graph':'scglue_lam_graph_no',
-     'scglue_no_rel_gene_weight':'scglue_rel_gene_weight_no', 
-     'scglue_no_lam_align':'scglue_lam_align_no',
-     'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no',
-     'saturn_no_pe_sim_penalty_super':'saturn_pe_sim_penalty_super_no'})
-res['param_opt_col']=res.params_opt.replace(
-    {'vamp':'n_prior_components',
-     'vamp_eval':'n_prior_components',
-     'vamp_eval_fixed':'n_prior_components',
-     'z_distance_cycle_weight_std':'z_distance_cycle_weight',
-     'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
-     'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
-     'vamp_kl_weight':'kl_weight',
-     'vamp_kl_weight_eval':'kl_weight',
-     'scglue_lam_graph':'lam_graph',
-     'scglue_rel_gene_weight':'rel_gene_weight', 
-     'scglue_lam_align':'lam_align',
-     'scglue_lam_graph_no':'lam_graph',
-     'scglue_rel_gene_weight_no':'rel_gene_weight', 
-     'scglue_lam_align_no':'lam_align',
-     'saturn_pe_sim_penalty':'pe_sim_penalty',
-     'saturn_pe_sim_penalty_no':'pe_sim_penalty',
-     'saturn_pe_sim_penalty_super':'pe_sim_penalty',
-     'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
-     
-     'scvi':None,
-     'scvi_kl_anneal':'kl_weight'})
+res['params_opt']=res.params_opt.replace(params_opt_correct_map)
+res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
 
 # %%
 res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
-
-# %%
-res.query('params_opt=="scglue_lam_align"')['param_opt_val']
 
 # %%
 # List all param values by param opt
@@ -223,8 +199,8 @@ g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
           height=2.5,aspect=1.3,color='k')
 
 # %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+#Check vamp, gmm, and cVAE in more detail only
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
@@ -288,8 +264,8 @@ for ax in g.axes.ravel():
     ax.axhline(0.96,lw=0.5,c='gray')
 
 # %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# # Check vamp and cVAE in more detail only
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
@@ -326,8 +302,8 @@ for ax in g.axes.ravel():
     ax.axhline(0.03,lw=0.5,c='gray')
 
 # %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# # Check vamp and cVAE in more detail only
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
@@ -372,7 +348,7 @@ g=sb.scatterplot(x='ilisi_system',y='nmi_opt',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='tab20')
+                palette=params_opt_colors,s=10)
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %%
@@ -381,7 +357,7 @@ g=sb.scatterplot(x='ilisi_system',y='moransi',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='tab20')
+                palette=params_opt_colors,s=10)
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %% [markdown]
@@ -443,20 +419,7 @@ res=pd.concat(res,axis=1).T
 
 # %%
 #  Param that was optimised
-res['param_opt_col']=res.params_opt.replace(
-    {'vamp':'n_prior_components',
-     'vamp_eval':'n_prior_components',
-     'vamp_eval_fixed':'n_prior_components',
-     'z_distance_cycle_weight_std':'z_distance_cycle_weight',
-     'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
-     'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
-     'vamp_kl_weight':'kl_weight',
-     'vamp_kl_weight_eval':'kl_weight',
-     'scglue_lam_graph':'lam_graph',
-     'scglue_rel_gene_weight':'rel_gene_weight', 
-     'scglue_lam_align':'lam_align',
-     'scvi':None,
-     'scvi_kl_anneal':'kl_weight'})
+res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
 
@@ -514,7 +477,7 @@ g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
 
 # %%
 # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
@@ -576,8 +539,13 @@ for ax in g.axes.ravel():
     ax.axhline(0.96,lw=0.5,c='gray')
 
 # %%
+g=sb.catplot( x='param_opt_val', y="moransi_ct",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
 # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
@@ -608,7 +576,7 @@ for ax in g.axes.ravel():
 
 # %%
 # # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
@@ -644,7 +612,7 @@ g=sb.scatterplot(x='ilisi_system',y='nmi_opt',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='colorblind')
+                palette=params_opt_colors,s=10)
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %%
@@ -653,7 +621,7 @@ g=sb.scatterplot(x='ilisi_system',y='moransi',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='colorblind')
+                palette=params_opt_colors,s=10)
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %%
@@ -691,6 +659,16 @@ pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
 
 # %% [markdown]
+# ### Example runs - nonbenchmarked
+
+# %%
+example_runs={
+    'scgen_sample':res.query('params_opt=="scgen_sample_kl" & seed==1 & kl_weight==0.1').index[0],
+    'scgen_system':res.query('params_opt=="scgen_kl" & seed==1 & kl_weight==0.1').index[0],
+}
+pkl.dump(example_runs,open(path_integration.rstrip('/')+'_summary/example_runs.pkl','wb'))
+
+# %% [markdown]
 # ## Adipose sc sn updated
 
 # %%
@@ -720,23 +698,7 @@ res=pd.concat(res,axis=1).T
 
 # %%
 #  Param that was optimised
-res['param_opt_col']=res.params_opt.replace(
-    {'kl_weight_anneal':'kl_weight',
-     'vamp':'n_prior_components',
-     'vamp_eval':'n_prior_components',
-     'vamp_eval_fixed':'n_prior_components',
-     'vamp_kl_anneal':'n_prior_components',
-     'z_distance_cycle_weight_std':'z_distance_cycle_weight',
-     'z_distance_cycle_weight_std_kl_anneal':'z_distance_cycle_weight',
-     'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
-     'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
-     'vamp_kl_weight':'kl_weight',
-     'vamp_kl_weight_eval':'kl_weight',
-     'scglue_lam_graph':'lam_graph',
-     'scglue_rel_gene_weight':'rel_gene_weight', 
-     'scglue_lam_align':'lam_align',
-     'scvi':None,
-     'scvi_kl_anneal':'kl_weight'})
+res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
               else x[x['param_opt_col']]['weight_end']) 
@@ -781,8 +743,8 @@ g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
           height=2.5,aspect=1.3,color='k')
 
 # %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# # Check vamp and cVAE in more detail only
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
@@ -834,8 +796,8 @@ for ax in g.axes.ravel():
     ax.axhline(0.96,lw=0.5,c='gray')
 
 # %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# # Check vamp and cVAE in more detail only
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
@@ -864,8 +826,8 @@ for ax in g.axes.ravel():
     ax.axhline(0.15,lw=0.5,c='gray')
 
 # %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt=="kl_weight"', 
+# # Check vamp and cVAE in more detail only
+# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
 #                engine='python').copy()
 # res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
 # g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
@@ -896,7 +858,7 @@ g=sb.scatterplot(x='ilisi_system',y='nmi_opt',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='colorblind')
+                palette=params_opt_colors,s=10)
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %%
@@ -905,7 +867,7 @@ g=sb.scatterplot(x='ilisi_system',y='moransi',
                hue='params_opt',
                data=res.groupby(['params_opt','param_opt_val'],observed=True
                                ).mean().reset_index(),
-                palette='colorblind')
+                palette=params_opt_colors,s=10)
 sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %% [markdown]
@@ -927,5 +889,91 @@ res.loc[top_runs.values(),['params_opt','param_opt_val','seed']]
 # %%
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
+
+# %% [markdown]
+# ## Pancreas conditions MIA HPAP2 - prior init
+
+# %%
+path_integration=path_eval+'pancreas_conditions_MIA_HPAP2_priorLoc/integration/'
+path_integration_sup=path_eval+'pancreas_conditions_MIA_HPAP2/integration/'
+
+# %%
+# Load integration results - params and metrics
+res=[]
+metrics_data=[]
+for run in glob.glob(path_integration+'*/'):
+    if os.path.exists(run+'args.pkl') and \
+        os.path.exists(run+'scib_metrics.pkl') and \
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
+        metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
+        metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
+        data=pd.concat([args,metrics,metrics_scl])
+        name=run.split('/')[-2]
+        data.name=name
+        res.append(data)
+        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+        metrics_data_sub['name']=name
+        metrics_data.append(metrics_data_sub)
+for run in glob.glob(path_integration_sup+'*/'):
+    if os.path.exists(run+'args.pkl') and \
+        os.path.exists(run+'scib_metrics.pkl') and \
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
+        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if args.params_opt=='vamp_eval':
+            metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
+            metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
+            metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
+            data=pd.concat([args,metrics,metrics_scl])
+            name=run.split('/')[-2]
+            data.name=name
+            res.append(data)
+            metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+            metrics_data_sub['name']=name
+            metrics_data.append(metrics_data_sub)    
+res=pd.concat(res,axis=1).T
+
+# %%
+#  Param that was optimised
+res['params_opt']=res.params_opt.replace(params_opt_correct_map)
+res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
+res['param_opt_val']=res.apply(
+    lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
+
+
+# %%
+# Order mixed categories (str, num)
+res['param_opt_val']=pd.Categorical(
+    res['param_opt_val'],
+    sorted([i for i in res['param_opt_val'].unique() if not isinstance(i,str)],key=int)+\
+    sorted([i for i in res['param_opt_val'].unique() if isinstance(i,str)]), 
+    True)
+res=res.sort_values('param_opt_val')
+res['param_opt_val']=res['param_opt_val'].astype(str)
+
+# %%
+res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
+
+# %%
+g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
+g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
+g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+for ax in g.axes.ravel():
+    ax.axhline(0.03,lw=0.5,c='gray')
+
+# %%
 
 # %%

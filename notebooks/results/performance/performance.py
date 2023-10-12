@@ -27,6 +27,10 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.colors as mcolors
 
+import sys
+sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
+from params_opt_maps import *
+
 # %%
 path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_names=path_data+'names_parsed/'
@@ -34,7 +38,8 @@ path_fig=path_data+'figures/'
 
 # %%
 # Names
-model_map=pkl.load(open(path_names+'models.pkl','rb'))
+model_map={**pkl.load(open(path_names+'models.pkl','rb')),
+           **pkl.load(open(path_names+'models_additional.pkl','rb'))}
 param_map=pkl.load(open(path_names+'params.pkl','rb'))
 metric_map=pkl.load(open(path_names+'metrics.pkl','rb'))
 dataset_map=pkl.load(open(path_names+'datasets.pkl','rb'))
@@ -45,6 +50,7 @@ system_map=pkl.load(open(path_names+'systems.pkl','rb'))
 params_opt_map=pkl.load(open(path_names+'params_opt_model.pkl','rb'))
 params_opt_gene_map=pkl.load(open(path_names+'params_opt_genes.pkl','rb'))
 param_opt_vals=pkl.load(open(path_names+'optimized_parameter_values.pkl','rb'))
+cell_type_map=pkl.load(open(path_names+'cell_types.pkl','rb'))
 
 # cmap
 model_cmap=pkl.load(open(path_names+'model_cmap.pkl','rb'))
@@ -56,13 +62,16 @@ metric_background_cmap=pkl.load(open(path_names+'metric_background_cmap.pkl','rb
 
 # %%
 # Load metrics and embeddings
+load_embed=False
 metrics={}
-embeds={}
+if load_embed:
+    embeds={}
 args={}
 for dataset,dataset_name in dataset_map.items():
     top_runs=pkl.load(open(f'{path_data}eval/{dataset}/integration_summary/top_runs.pkl','rb'))
     metrics[dataset_name]=[]
-    embeds[dataset_name]={}
+    if load_embed:
+        embeds[dataset_name]={}
     args[dataset_name]={}
     path_integration=f'{path_data}eval/{dataset}/integration/'
     for model,run in top_runs.items():
@@ -70,7 +79,8 @@ for dataset,dataset_name in dataset_map.items():
         metrics[dataset_name].append(pd.Series(
             pkl.load(open(path_integration+run+'/scib_metrics.pkl','rb')),
             name=model))
-        embeds[dataset_name][model]=sc.read(path_integration+run+'/embed.h5ad')
+        if load_embed:
+            embeds[dataset_name][model]=sc.read(path_integration+run+'/embed.h5ad')
         args[dataset_name][model]=pkl.load(open(path_integration+run+'/args.pkl','rb'))
     metrics[dataset_name]=pd.DataFrame(metrics[dataset_name])
     metrics[dataset_name]['model']=pd.Categorical(
@@ -81,14 +91,15 @@ for dataset,dataset_name in dataset_map.items():
 
 # %%
 # Add non-integrated embeds
-dataset_embed_fns={
-    'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
-    'retina_adult_organoid':'combined_HVG_embed.h5ad',
-    'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
-}
-for dataset,dataset_name in dataset_map.items():
-    embeds[dataset_name][model_map['non-integrated']]=sc.read(
-        f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
+if load_embed:
+    dataset_embed_fns={
+        'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
+        'retina_adult_organoid':'combined_HVG_embed.h5ad',
+        'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
+    }
+    for dataset,dataset_name in dataset_map.items():
+        embeds[dataset_name][model_map['non-integrated']]=sc.read(
+            f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
 
 # %% [markdown]
 # ### Metric scores
@@ -217,13 +228,16 @@ for dataset,dataset_name in dataset_map.items():
 
 # %%
 # Load metrics and embeddings
+load_embed=True
 metrics={}
-embeds={}
+if load_embed:
+    embeds={}
 args={}
 for dataset,dataset_name in dataset_map.items():
     top_settings=pkl.load(open(f'{path_data}eval/{dataset}/integration_summary/top_settings.pkl','rb'))
     metrics[dataset_name]=[]
-    embeds[dataset_name]={}
+    if load_embed:
+        embeds[dataset_name]={}
     args[dataset_name]={}
     path_integration=f'{path_data}eval/{dataset}/integration/'
     for model,model_setting in top_settings.items():
@@ -236,7 +250,8 @@ for dataset,dataset_name in dataset_map.items():
             metrics_data['seed']=args_run.seed
             metrics[dataset_name].append(metrics_data)
             if run==model_setting['mid_run']:
-                embeds[dataset_name][model]=sc.read(path_integration+run+'/embed.h5ad')
+                if load_embed:
+                    embeds[dataset_name][model]=sc.read(path_integration+run+'/embed.h5ad')
                 args[dataset_name][model]=args_run
     metrics[dataset_name]=pd.DataFrame(metrics[dataset_name])
     metrics[dataset_name]['model']=pd.Categorical(
@@ -249,14 +264,32 @@ for dataset,dataset_name in dataset_map.items():
 
 # %%
 # Add non-integrated embeds
-dataset_embed_fns={
-    'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
-    'retina_adult_organoid':'combined_HVG_embed.h5ad',
-    'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
-}
-for dataset,dataset_name in dataset_map.items():
-    embeds[dataset_name][model_map['non-integrated']]=sc.read(
-        f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
+if load_embed:
+    dataset_embed_fns={
+        'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
+        'retina_adult_organoid':'combined_HVG_embed.h5ad',
+        'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
+    }
+    for dataset,dataset_name in dataset_map.items():
+        embeds[dataset_name][model_map['non-integrated']]=sc.read(
+            f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
+
+# %%
+# Add scGEN example embeds to retina
+if load_embed:
+    dataset='retina_adult_organoid'
+    dataset_name=dataset_map[dataset]
+    example_runs=pkl.load(open(f'{path_data}eval/{dataset}/integration_summary/example_runs.pkl','rb'))
+    path_integration=f'{path_data}eval/{dataset}/integration/'
+    for model,run in example_runs.items():
+        model=model_map[model]
+        embeds[dataset_name][model]=sc.read(path_integration+run+'/embed.h5ad')
+
+
+# %%
+for i,j in embeds.items():
+    print('*** '+i)
+    print(j.keys())
 
 # %% [markdown]
 # ### Metric scores
@@ -289,13 +322,13 @@ for row,(dataset_name,metrics_sub) in enumerate(metrics.items()):
         ax=axs[row,col]
         # lolipop
         means=metrics_sub.groupby('model')[metric].mean().reset_index()
-        sb.barplot(y='model',x=metric,data=means,ax=ax,
-                   color='k',dodge=False,width=0.15, zorder=0)
+        # sb.barplot(y='model',x=metric,data=means,ax=ax,
+        #            color='k',dodge=False,width=0.15, zorder=0)
         sb.swarmplot(y='model',x=metric,data=metrics_sub,ax=ax,
-                     edgecolor='k',linewidth=0.5,
+                     edgecolor='k',linewidth=0.25,
                      hue='model',palette=model_cmap, s=5, zorder=1)
         sb.scatterplot(y='model',x=metric,data=means,ax=ax,
-                       edgecolor='k',linewidth=2,
+                       edgecolor='k',linewidth=2.5,
                        color='k', s=150, marker='|', zorder=2)
         # Make pretty
         # x_min=metrics_sub[metric].min()
@@ -318,7 +351,6 @@ for row,(dataset_name,metrics_sub) in enumerate(metrics.items()):
             ax.set_ylabel(dataset_name)
         else:
             ax.set_ylabel('')
-            
 fig.set(facecolor = (0,0,0,0))
 plt.subplots_adjust( wspace=0.1)
 
@@ -331,6 +363,9 @@ plt.savefig(path_fig+'performance-score_topsettings-swarm.png',
 # ### UMAPs
 
 # %%
+ct_col_name='Cell type'
+sys_col_name='System'
+sample_col_name='Sample'
 for dataset,dataset_name in dataset_map.items():
     embeds_ds=embeds[dataset_name]
     ncols=3
@@ -341,15 +376,19 @@ for dataset,dataset_name in dataset_map.items():
     for irow,model_name in enumerate([m for m in model_map.values() if m in embeds_ds]):
         embed=embeds_ds[model_name]
         for icol,(col_name,col) in enumerate(zip(
-            ['cell type','system','sample'],
+            [ct_col_name,sys_col_name,sample_col_name],
             [args_sub.group_key,args_sub.system_key,args_sub.batch_key])):
 
             # Set cmap and col val names
             cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
-            if col_name=='system':
+            if col_name==sys_col_name:
                 # Map system to str as done in integrated embeds but not in non-int
                 embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
                 cmap={system_map[dataset][k]:v for k,v in cmap.items()}
+            elif col_name==ct_col_name:
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(cell_type_map[dataset])
+                cmap={cell_type_map[dataset][k]:v for k,v in cmap.items()}
             else:
                 embed.obs[col+'_parsed']=embed.obs[col]
 
@@ -371,7 +410,67 @@ for dataset,dataset_name in dataset_map.items():
                 ax.set_xlabel('')
                 ax.set(frame_on=False)
 
-            if irow!=(nrows-1) or col_name=='sample':
+            if irow!=(nrows-1) or col_name==sample_col_name:
+                ax.get_legend().remove()
+            else:
+                ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,title=col_name,
+                          ncol=math.ceil(embed.obs[col].nunique()/10))
+
+    fig.set(facecolor = (0,0,0,0))
+    plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.pdf',
+                dpi=300,bbox_inches='tight')
+    plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.png',
+                dpi=300,bbox_inches='tight')
+
+# %%
+ct_col_name='Cell type'
+sys_col_name='System'
+sample_col_name='Sample'
+for dataset,dataset_name in dataset_map.items():
+    embeds_ds=embeds[dataset_name]
+    ncols=3
+    nrows=len(embeds_ds)
+    fig,axs=plt.subplots(nrows,ncols,figsize=(2*ncols,2*nrows))
+    # Args for ct, system, sample - same in all models
+    args_sub=list(args[dataset_name].values())[0]
+    for irow,model_name in enumerate([m for m in model_map.values() if m in embeds_ds]):
+        embed=embeds_ds[model_name]
+        for icol,(col_name,col) in enumerate(zip(
+            [ct_col_name,sys_col_name,sample_col_name],
+            [args_sub.group_key,args_sub.system_key,args_sub.batch_key])):
+
+            # Set cmap and col val names
+            cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
+            if col_name==sys_col_name:
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
+                cmap={system_map[dataset][k]:v for k,v in cmap.items()}
+            elif col_name==ct_col_name:
+                # Map system to str as done in integrated embeds but not in non-int
+                embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(cell_type_map[dataset])
+                cmap={cell_type_map[dataset][k]:v for k,v in cmap.items()}
+            else:
+                embed.obs[col+'_parsed']=embed.obs[col]
+
+            # Plot
+            ax=axs[irow,icol]
+            sc.pl.umap(embed,color=col+'_parsed',ax=ax,show=False,
+                      palette=cmap, frameon=False,title='')
+
+            # Make pretty
+            if irow==0:
+                ax.set_title(col_name+'\n',fontsize=10)
+
+            if icol==0:
+                ax.axis('on')
+                ax.tick_params(
+                        top='off', bottom='off', left='off', right='off', 
+                        labelleft='on', labelbottom='off')
+                ax.set_ylabel(model_name+'\n',rotation=90)
+                ax.set_xlabel('')
+                ax.set(frame_on=False)
+
+            if irow!=(nrows-1) or col_name==sample_col_name:
                 ax.get_legend().remove()
             else:
                 ax.legend(bbox_to_anchor=(0.4,-1),frameon=False,title=col_name,
@@ -407,37 +506,8 @@ for dataset,dataset_name in dataset_map.items():
     # Parse res table
 
     # Parse params
-    res['params_opt']=res.params_opt.replace(
-        {
-         'scglue_no_lam_graph':'scglue_lam_graph_no',
-         'scglue_no_rel_gene_weight':'scglue_rel_gene_weight_no', 
-         'scglue_no_lam_align':'scglue_lam_align_no',
-         'saturn_no_pe_sim_penalty':'saturn_pe_sim_penalty_no',
-         'saturn_no_pe_sim_penalty_super':'saturn_pe_sim_penalty_super_no'})
-    res['param_opt_col']=res.params_opt.replace(
-        {'kl_weight_anneal':'kl_weight',
-         'vamp':'n_prior_components',
-         'vamp_eval':'n_prior_components',
-         'vamp_eval_fixed':'n_prior_components',
-         'vamp_kl_anneal':'n_prior_components',
-         'z_distance_cycle_weight_std':'z_distance_cycle_weight',
-         'vamp_z_distance_cycle_weight_std':'z_distance_cycle_weight',
-         'vamp_z_distance_cycle_weight_std_eval':'z_distance_cycle_weight',
-         'z_distance_cycle_weight_std_kl_anneal':'z_distance_cycle_weight',
-         'vamp_kl_weight':'kl_weight',
-         'vamp_kl_weight_eval':'kl_weight',
-         'scglue_lam_graph':'lam_graph',
-         'scglue_rel_gene_weight':'rel_gene_weight', 
-         'scglue_lam_align':'lam_align',
-         'scglue_lam_graph_no':'lam_graph',
-         'scglue_rel_gene_weight_no':'rel_gene_weight', 
-         'scglue_lam_align_no':'lam_align',
-         'saturn_pe_sim_penalty':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_no':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_super':'pe_sim_penalty',
-         'saturn_pe_sim_penalty_super_no':'pe_sim_penalty',
-         'scvi':None,
-         'scvi_kl_anneal':'kl_weight'})
+    res['params_opt']=res.params_opt.replace(params_opt_correct_map)
+    res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
     res['param_opt_val']=res.apply(
         lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
                   else x[x['param_opt_col']]['weight_end']) 
@@ -564,7 +634,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
                 if icol==0:
                     ax.set_ylabel(
                         param_data.model_parsed+' '+param_data.genes_parsed+'\n'+\
-                        'opt.: '+param_data.param_parsed+'\n')
+                        param_data.param_parsed+'\n')
                 else:
                     ax.set_ylabel('')
             else:

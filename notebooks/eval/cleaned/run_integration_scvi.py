@@ -29,8 +29,6 @@ from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 
-import scib_metrics as sm
-
 import scvi
 import pytorch_lightning as pl
 
