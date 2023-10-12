@@ -9,5 +9,5 @@ Figure 1: The challenge of integrating datasets with substantial batch effects. 
 ## Citation
 
 ## Reproducibility code
-Benchmark: _notebooks_ directory
-Implementation of the model with VampPrior and cycle-consistency: _cross_system_integration_ directory
+- Benchmark: _notebooks_ directory
+- Implementation of the model with VampPrior and cycle-consistency: _cross_system_integration_ directory
