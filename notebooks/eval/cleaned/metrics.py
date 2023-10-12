@@ -17,6 +17,32 @@ def asw_label(X,labels):
     asw_macro=asw_label.mean()
     return asw_micro, asw_macro, asw_label
 
+def asw_batch(X,batches,labels):
+    asw_label={}
+    asws=[]
+    for label in np.unique(labels):
+        labels_mask = labels == label
+        X_sub = X[labels_mask]
+        batches_sub = batches[labels_mask]
+        n_batches = len(np.unique(batches_sub))
+
+        if (n_batches == 1) or (n_batches == X_sub.shape[0]):
+            continue
+        asw=sm.utils.silhouette_samples(
+            X=X_sub, 
+            labels=batches_sub, 
+            chunk_size=256)
+        # ASW is negative when distance between batches is smaller than within batches
+        # This deviates from scib implementation where abs of ASW is used 
+        # (hence also different scaling)
+        asw=(1-asw)/2
+        asws.extend(asw)
+        asw_label[label]=np.mean(asw)
+    asw_label=pd.Series(asw_label)
+    asw_macro=asw_label.mean()
+    asw_micro=np.mean(asws)
+
+    return asw_micro, asw_macro, asw_label
 
 def clisi(X, labels):
     labels_code = np.asarray(pd.Categorical(labels).codes)

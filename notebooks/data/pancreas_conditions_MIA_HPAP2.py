@@ -32,6 +32,12 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 
+import scib_metrics as sm
+import sys
+import os
+sys.path.append('/'.join(os.getcwd().split('/')[:-1]+['eval','cleaned','']))
+from metrics import ilisi,asw_batch
+
 # %%
 path_data='/net/bmc-lab6/data/lab/kellis/users/khrovati/data/'
 path_mm=path_data+'datasets/d10_1101_2022_12_22_521557/'
@@ -292,6 +298,52 @@ display(adata_embed)
 adata_embed.write(path_save+'combined_orthologuesHVG_embed.h5ad')
 
 # %% [markdown]
+# ## Integration metrics on non-integrated data
+
+# %%
+# Reload
+#adata_embed=sc.read(path_save+'combined_orthologuesHVG_embed.h5ad')
+
+# %%
+ilisi_system, ilisi_system_macro, ilisi_system_data_label=ilisi(
+        X=adata_embed.obsp['distances'],
+        batches=adata_embed.obs['system'], 
+        labels=adata_embed.obs['cell_type_eval'])
+
+# %%
+ilisi_system, ilisi_system_macro, ilisi_system_data_label
+
+# %%
+sm.graph_connectivity( X=adata_embed.obsp['distances'],
+        labels=adata_embed.obs['system'])
+
+# %%
+rcParams['figure.figsize']=(6,2)
+_=plt.boxplot(adata_embed.X)
+plt.ylabel('PCA value')
+plt.xlabel('PCs')
+
+# %%
+asw, asw_macro, asw_data_label=asw_batch(
+    X=adata_embed.X,
+    batches=adata_embed.obs['system'], 
+    labels=adata_embed.obs['cell_type_eval'])
+
+# %%
+asws={
+    'asw_micro':asw,
+    'asw_macro':asw_macro,
+    'asw_data_label':asw_data_label
+}
+for k,v in asws.items():
+    print(k)
+    print(v)
+    print('\n')
+
+# %%
+pkl.dump({'asw_batch':asws},open(path_save+'combined_orthologuesHVG_embed_integrationMetrics.pkl','wb'))
+
+# %% [markdown]
 # ## Moran's I for eval
 
 # %%
@@ -458,6 +510,10 @@ for ct in cts:
 pkl.dump(distances,open(path_save+'combined_orthologuesHVG_PcaSysBatchDist.pkl','wb'))
 
 # %%
+# Reload distances
+#distances=pkl.load(open(path_save+'combined_orthologuesHVG_PcaSysBatchDist.pkl','rb'))
+
+# %%
 # Prepare df for plotting
 plot=[]
 for ct,dat in distances.items():
@@ -496,6 +552,27 @@ signif
 # %%
 # Save signif
 signif.to_csv(path_save+'combined_orthologuesHVG_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
+
+# %% [markdown]
+# AUC based on Mann-Whitney U (using within system as one group and between system as the other)
+
+# %%
+# Within vs between systems
+auc_roc={}
+for ct,dat in distances.items():
+    x_within=np.concatenate([dat['s0_within'],dat['s0_between'],dat['s1']])
+    x_between=dat['s0s1']
+    auc_roc[ct]=mannwhitneyu(x_between,x_within)[0]/(x_within.shape[0]*x_between.shape[0])
+print(auc_roc)
+
+# %%
+# Within (only within datasets) vs between systems
+auc_roc={}
+for ct,dat in distances.items():
+    x_within=np.concatenate([dat['s0_within'],dat['s1']])
+    x_between=dat['s0s1']
+    auc_roc[ct]=mannwhitneyu(x_between,x_within)[0]/(x_within.shape[0]*x_between.shape[0])
+print(auc_roc)
 
 # %% [markdown]
 # ## Include non-oto orthologues

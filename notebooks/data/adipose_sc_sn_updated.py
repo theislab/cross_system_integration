@@ -32,6 +32,15 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 
+import scib_metrics as sm
+import sys
+import os
+sys.path.append('/'.join(os.getcwd().split('/')[:-1]+['eval','cleaned','']))
+from metrics import ilisi, asw_batch
+
+# %load_ext autoreload
+# %autoreload 2
+
 
 # %%
 #path_data='/lustre/groups/ml01/workspace/karin.hrovatin/data/'
@@ -258,6 +267,58 @@ display(adata_embed)
 adata_embed.write(path_save+'adiposeHsSAT_sc_sn_embed.h5ad')
 
 # %% [markdown]
+# # Integration metrics on non-integrated data
+
+# %%
+# Reload
+#adata_embed=sc.read(path_save+'adiposeHsSAT_sc_sn_embed.h5ad')
+
+# %%
+ilisi_system, ilisi_system_macro, ilisi_system_data_label=ilisi(
+        X=adata_embed.obsp['distances'],
+        batches=adata_embed.obs['system'], 
+        labels=adata_embed.obs['cluster'])
+
+# %%
+ilisi_system, ilisi_system_macro, ilisi_system_data_label
+
+# %% [markdown]
+# C: iLISI is not sensitive enough
+
+# %%
+sm.graph_connectivity( X=adata_embed.obsp['distances'],
+        labels=adata_embed.obs['system'])
+
+# %% [markdown]
+# C: Grapn connectivity does not account for labels
+
+# %%
+rcParams['figure.figsize']=(6,2)
+_=plt.boxplot(adata_embed.X)
+plt.ylabel('PCA value')
+plt.xlabel('PCs')
+
+# %%
+asw, asw_macro, asw_data_label=asw_batch(
+    X=adata_embed.X,
+    batches=adata_embed.obs['system'], 
+    labels=adata_embed.obs['cluster'])
+
+# %%
+asws={
+    'asw_micro':asw,
+    'asw_macro':asw_macro,
+    'asw_data_label':asw_data_label
+}
+for k,v in asws.items():
+    print(k)
+    print(v)
+    print('\n')
+
+# %%
+pkl.dump({'asw_batch':asws},open(path_save+'adiposeHsSAT_sc_sn_embed_integrationMetrics.pkl','wb'))
+
+# %% [markdown]
 # # Moran's I for eval
 # Find genes that would be appropriate for computing Moran's I on for evaluation in every sample-cell type group (of appropriate size) by computing Moran's I on per-sample non integrated data. This I can then also be used as a reference later on to compute relative preservation of Moran's I.
 #
@@ -437,5 +498,16 @@ signif
 # %%
 # Save signif
 signif.to_csv(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
+
+# %% [markdown]
+# AUC based on Mann-Whitney U (using within system as one group and between system as the other)
+
+# %%
+auc_roc={}
+for ct,dat in distances.items():
+    x_within=np.concatenate([dat['s0'],dat['s1']])
+    x_between=dat['s0s1']
+    auc_roc[ct]=mannwhitneyu(x_between,x_within)[0]/(x_within.shape[0]*x_between.shape[0])
+print(auc_roc)
 
 # %%
