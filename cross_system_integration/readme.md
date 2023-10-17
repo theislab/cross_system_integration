@@ -10,7 +10,14 @@ For model and module (passed via model):
 - encode_pseudoinputs_on_eval_mode=True
 - n_prior_components=5
 - z_dist_metric="MSE_standard"
-  
-We also recommend to use the VAMP+CYC model which can be done by setting the following parameters:
-- prior="vamp"
+- prior="vamp" - this will lead to using VampPrior, which is a recommended setting
+
+For loss (passed via train function):
+- kl_cycle_weight=0.0
+- reconstruction_mixup_weight=0.0
+- reconstruction_cycle_weight=0.0
+- z_distance_cycle_weight - should be tunned; a sensible value when also using VampPrior as described above may be around 1-10 or even higher (<100) if requiring stronger batch correction
+- translation_corr_weight=0.0
+- z_contrastive_weight=0.0
+
 
