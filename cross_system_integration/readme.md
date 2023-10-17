@@ -16,7 +16,7 @@ For loss (passed via train function):
 - kl_cycle_weight=0.0
 - reconstruction_mixup_weight=0.0
 - reconstruction_cycle_weight=0.0
-- z_distance_cycle_weight - should be tunned; a sensible value when also using VampPrior as described above may be around 1-10 or even higher (<100) if requiring stronger batch correction
+- z_distance_cycle_weight - should be tunned; a sensible value when also using VampPrior as described above will likely be around 1-10 or even higher (<100) if requiring stronger batch correction
 - translation_corr_weight=0.0
 - z_contrastive_weight=0.0
 
