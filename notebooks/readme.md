@@ -10,3 +10,15 @@ Data for integration is prepared within _data_ directory:
 - mouse-human: pancreas_conditions_MIA_HPAP2.ipynb
 - organoid-tissue: retina_adult_organoid.ipynb
 - cell-nuclei: adipose_sc_sn_updated.ipynb
+
+## Integration evaluation
+
+### Integration
+
+### Analysis of integration results
+
+### Analysis of VampPrior model
+
+### Analysis of integration metrics
+
+## Preparation of final plots/tables for the paper
