@@ -1,2 +1,0 @@
-# Example Luria to OpenMind when logged to OpenMind
-rsync -av -r khrovati@luria.mit.edu:/net/bmc-lab6/data/lab/kellis/users/khrovati/data/cross_system_integration/adipose_sc_sn_updated/ /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated
