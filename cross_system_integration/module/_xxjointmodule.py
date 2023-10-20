@@ -1,10 +1,7 @@
 import itertools
-from collections import defaultdict
-from typing import Optional, Union, Tuple, Dict
+from typing import Optional,Tuple
 from typing_extensions import Literal
-import numpy as np
 
-import torch
 from scvi import REGISTRY_KEYS
 from scvi.module.base import BaseModuleClass, auto_move_data
 from torch.distributions import Normal
