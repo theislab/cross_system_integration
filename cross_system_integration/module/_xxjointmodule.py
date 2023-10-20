@@ -21,31 +21,8 @@ torch.backends.cudnn.benchmark = True
 
 class XXJointModule(BaseModuleClass):
     """
-    Skeleton Variational auto-encoder model.
+    Integration model
 
-    Here we implement a basic version of scVI's underlying VAE [Lopez18]_.
-    This implementation is for instructional purposes only.
-
-    Parameters
-    ----------
-    n_input
-        Number of input genes
-    library_log_means
-        1 x n_batch array of means of the log library sizes. Parameterizes prior on library size if
-        not using observed library size.
-    library_log_vars
-        1 x n_batch array of variances of the log library sizes. Parameterizes prior on library size if
-        not using observed library size.
-    n_batch
-        Number of batches, if 0, no batch correction is performed.
-    n_hidden
-        Number of nodes per hidden layer
-    n_latent
-        Dimensionality of the latent space
-    n_layers
-        Number of hidden layers used for encoder and decoder NNs
-    dropout_rate
-        Dropout rate for neural networks
     """
 
     def __init__(
@@ -63,7 +40,7 @@ class XXJointModule(BaseModuleClass):
             trainable_priors=True,
             encode_pseudoinputs_on_eval_mode=False,
             pseudoinput_data=None,
-            z_dist_metric: str = 'MSE',
+            z_dist_metric: Literal["MSE","MSE_standard","KL","NLL"] = 'MSE',
             n_latent: int = 15,
             n_hidden: int = 256,
             n_layers: int = 2,
@@ -72,6 +49,55 @@ class XXJointModule(BaseModuleClass):
             out_var_mode: str = 'feature',
             **kwargs
     ):
+        """
+
+        Parameters
+        ----------
+        n_input
+            Number of input genes
+        n_output
+            Number of output genes
+        system_decoders
+            Use separate decoders for each system. TODO remove
+        gene_map
+            Object that performs gene mapping across systems;
+            TODO could be removed as the final integration model uses only one-to-one orthologues
+        n_cov
+            N covariate features
+        n_system
+            N system features; right now the implementation is only for 2 systems so always should be 1
+            TODO adapt model for >2 systems
+        use_group
+            Cell type contrastive loss; TODO remove
+        mixup_alpha
+            Alpha used for mixup (see mixup paper); TODO remove
+        prior
+            Prior to be used
+        n_prior_components
+            N prior components for multimodal priors
+        trainable_priors
+            Are priors trainable (true) or fixed
+        encode_pseudoinputs_on_eval_mode
+            When passing VampPrior pseudoinputs through encoder use eval not training mode. Should be True
+        pseudoinput_data
+            Data used to initialise pseudoinputs. If None will be initialised without data. Should be True
+        z_dist_metric
+            Distance metric used for cycle-consistency loss. Should be MSE_standard
+        n_latent
+            Dimensionality of the latent space
+        n_hidden
+            Number of nodes per hidden layer
+        n_layers
+            Number of hidden layers used for encoder and decoder NNs
+        dropout_rate
+            Dropout rate for neural networks
+        data_eval
+            Data to perform eval on
+        out_var_mode
+            Variance mode for output features (see VarEncoder).
+        kwargs
+            kwargs for encoder/decoder
+        """
         super().__init__()
 
         # self.gene_map = gene_map
@@ -175,7 +201,6 @@ class XXJointModule(BaseModuleClass):
 
     @auto_move_data
     def _get_inference_input(self, tensors, **kwargs):
-        """Parse the dictionary to get appropriate args"""
         input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
         expr = tensors[REGISTRY_KEYS.X_KEY][:, input_features]
         cov = tensors['covariates']
@@ -185,7 +210,6 @@ class XXJointModule(BaseModuleClass):
 
     @auto_move_data
     def _get_inference_cycle_input(self, tensors, generative_outputs, **kwargs):
-        """Parse the dictionary to get appropriate args"""
         input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
         expr = generative_outputs['y_m'][:, input_features]
         cov = self._mock_cov(tensors['covariates'])
@@ -196,7 +220,6 @@ class XXJointModule(BaseModuleClass):
     @auto_move_data
     def _get_generative_input(self, tensors, inference_outputs, cov_replace: torch.Tensor = None, **kwargs):
         """
-        Parse the dictionary to get appropriate args
         :param cov_replace: Replace cov from tensors with this covariate vector
         """
         z = inference_outputs["z"]
@@ -211,7 +234,6 @@ class XXJointModule(BaseModuleClass):
 
     @auto_move_data
     def _get_generative_cycle_input(self, tensors, inference_cycle_outputs, **kwargs):
-        """Parse the dictionary to get appropriate args"""
         z = inference_cycle_outputs["z"]
         cov = {'x': self._mock_cov(tensors['covariates']), 'y': tensors['covariates']}
         system = {'x': self._negate_zero_one(tensors['system']), 'y': tensors['system']}
@@ -248,13 +270,6 @@ class XXJointModule(BaseModuleClass):
     def inference(self, expr, cov, system):
         """
         expression & cov -> latent representation
-        All inputs (expr, cov, train) are split by x and y (two modalities)
-        :param expr:
-        :param cov:
-        :param train: Should samples be used for training
-        :param mask_subset: Do prediction only for samples that are supposed to be used for training (train!=0)
-        :param pad_output: Pad (zeros) the predicted samples to get back to the non-masked number of samples
-        :return:
         """
 
         z = self.encoder(x=expr, cov=self._merge_cov(cov=cov, system=system))
@@ -264,17 +279,6 @@ class XXJointModule(BaseModuleClass):
     def generative(self, z, cov, system, x_x=True, x_y=True):
         """
         latent representation & convariates -> expression
-        :param z:
-        :param cov:
-        :param train: Should samples be used for training
-        :param z_masked: Was z already predicted for only a subset (masked)
-        :param mask_subset: Do prediction only for samples that are supposed to be used for training (train!=0)
-        :param pad_output: Pad (zeros) the predicted samples to get back to the non-masked number of samples
-        :param x_x: Should this prediction be computed
-        :param x_y: Should this prediction be computed
-        :param y_y: Should this prediction be computed
-        :param y_x: Should this prediction be computed
-        :return:
         """
 
         def outputs(compute, name, res, x, cov, system):
@@ -314,6 +318,7 @@ class XXJointModule(BaseModuleClass):
     ]:
         """
         Forward pass through the network.
+        Core of the forward call shared by PyTorch- and Jax-based modules.
         Parameters
         ----------
         tensors
@@ -332,7 +337,6 @@ class XXJointModule(BaseModuleClass):
             Whether to compute loss on forward pass. This adds
             another return value.
         """
-        """Core of the forward call shared by PyTorch- and Jax-based modules."""
 
         # TODO currently some forward paths are computed despite potentially having loss weight=0 -
         #  don't compute if not needed
@@ -398,9 +402,9 @@ class XXJointModule(BaseModuleClass):
 
     def loss(
             self,
-            tensors,
-            inference_outputs,
-            generative_outputs,
+            tensors: dict,
+            inference_outputs: dict,
+            generative_outputs: dict,
             kl_weight: float = 1.0,
             kl_cycle_weight: float = 1,
             reconstruction_weight: float = 1,
@@ -410,6 +414,39 @@ class XXJointModule(BaseModuleClass):
             translation_corr_weight: float = 1,
             z_contrastive_weight: float = 1,
     ):
+        """
+        Compute loss
+
+        Parameters
+        ----------
+        tensors
+            Inputs
+        inference_outputs
+            encoder outputs
+        generative_outputs
+            decoder outputs
+        kl_weight
+            weight of KL loss. Should be 1
+        kl_cycle_weight
+            weight of KL loss in the cycle latent space. Should be 0
+        reconstruction_weight
+            weight or reconstruction loss. Should be 1
+        reconstruction_mixup_weight
+            weight or mixup reconstruction loss. Should be 0
+        reconstruction_cycle_weight
+            weight or cycle reconstruction loss. Should be 0
+        z_distance_cycle_weight
+            weight of latent cycle-consistency loss. Should be tuned: reasonable range may be
+            1-10 or higher (<100) if batch effects are stronger
+        translation_corr_weight
+            weight of loss comparing (corr.) reconstruction to both systems. Should be 0
+        z_contrastive_weight
+            weight of contrastive loss. Should be 0
+
+        Returns
+        -------
+
+        """
 
         x_true = tensors[REGISTRY_KEYS.X_KEY]
 
@@ -614,6 +651,12 @@ class XXJointModule(BaseModuleClass):
 
     @torch.no_grad()
     def eval_metrics(self):
+        """
+        Compute evaluation metrics
+        Returns
+        -------
+
+        """
         if self.data_eval is None:
             return None
         else:

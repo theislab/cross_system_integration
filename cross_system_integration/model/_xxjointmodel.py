@@ -23,53 +23,6 @@ logger = logging.getLogger(__name__)
 
 
 class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
-    """
-    Architecture with a single encoder and decoder for two systems
-
-    Parameters
-    ----------
-    adata
-        AnnData object that has been registered via :meth:`~mypackage.MyModel.setup_anndata`.
-    n_hidden
-        Number of nodes per hidden layer.
-    n_latent
-        Dimensionality of the latent space.
-    n_layers
-        Number of hidden layers used for encoder and decoder NNs.
-    mixup_alpha
-        ? # TODO: fill this
-    system_decoders
-        ? # TODO: fill this
-    prior
-        The prior model to be used. You can chose between "standard_normal" and "vamp".
-    n_prior_components
-        Number of prior components in VAMP prior. Only used if you set "vamp" as prior.
-    trainable_priors
-        Whether the priors in VAMP are trainable or not.
-    encode_pseudoinputs_on_eval_mode
-        Pseudoinputs are in the data space and are transferred to the latent spase on each iteration.
-        Set this to True if you want this transfer to be made in eval mode (no dropout and batchnorm).
-    pseudoinputs_data_init
-        Set to True if you want pseudoinputs to be chosen randomly from the input adata.
-        Otherwise they will be initiated randomly.
-        Always set to true.
-    pseudoinputs_data_indices
-        By default (based on pseudoinputs_data_init), VAMP prior pseudoinputs are randomly selected from data.
-        Alternatively, one can feed pseudoinputs using this parameter. The input should be a numpy array.
-    adata_eval
-        Adata used for eval. Should be set up as adata and have eval info in uns['eval_info'] given as
-        dict(metric_name:dict(cells_in, switch_ system, cells_target, genes)) where metric_name is name of metric
-        cells_in are obs names
-        to be used for prediction (list), switch_system determines if system is switched in prediction (dict),
-        cells_target are obs names to  evaluate prediction against (list),
-        genes - genes to use for evaluation (list/set).
-        List specifies multiple eval settings. Eval metric is correlation between mean of predicted and target cells
-        on the specified genes. Uses null cov for predicted cells.
-    **model_kwargs
-        Keyword args for :class:`~mypackage.MyModule`
-    Examples
-    --------
-    """
 
     def __init__(
             self,
@@ -85,6 +38,47 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             adata_eval: Optional[AnnData] = None,
             **model_kwargs,
     ):
+        """
+        Architecture with a single encoder and decoder for two systems
+
+        Parameters
+        ----------
+        adata
+            AnnData object that has been registered via :meth:`setup_anndata`.
+        mixup_alpha
+            Alpha for mixup. If None dont use mixup. Should be set to None.
+        system_decoders
+            Separate decoders for each system . Should be False
+        prior
+            The prior model to be used. You can choose between "standard_normal", "vamp", and "gmm".
+        n_prior_components
+            Number of prior components in multimodal prior. Only used if you use multimodal prior
+        trainable_priors
+            Whether the priors in VAMP are trainable or not.
+        encode_pseudoinputs_on_eval_mode
+            Pseudoinputs are in the data space and are transferred to the latent spase on each iteration.
+            Set this to True if you want this transfer to be made in eval mode (no dropout and batchnorm).
+        pseudoinputs_data_init
+            Set to True if you want pseudoinputs to be chosen randomly from the input adata.
+            Otherwise they will be initiated randomly.
+            Always set to true for VAMP
+        pseudoinputs_data_indices
+            By default (based on pseudoinputs_data_init), pseudoinputs are randomly selected from data.
+            Alternatively, one can feed pseudoinputs using this parameter. The input should be a numpy array.
+        adata_eval
+            Adata used for eval metric computation.
+            Should be set up as the main adata and have eval info in uns['eval_info'] given as
+            dict(metric_name:dict(cells_in, switch_ system, cells_target, genes)) where metric_name is name of metric
+            cells_in are obs names
+            to be used for prediction (list), switch_system determines if system is switched in prediction (dict),
+            cells_target are obs names to  evaluate prediction against (list),
+            genes - genes to use for evaluation (list/set).
+            List specifies multiple eval settings. Eval metric is correlation between mean of predicted and target cells
+            on the specified genes. Uses null cov for predicted cells.
+        model_kwargs
+            Passed to model
+            TODO add here params required by model
+        """
         super(XXJointModel, self).__init__(adata)
 
         use_group = 'group' in adata.obsm
@@ -125,7 +119,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     def _prepare_eval_data(self, adata: AnnData):
         """
         Prepare evaluation inputs
-        :param adata: adata_eval: set up as training adata and with eval_info in uns
+        :param adata: set up as training adata and with eval_info in uns
         :return:
         """
         adata = self._validate_anndata(adata)
@@ -172,12 +166,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         :param adata: Input adata based on which latent representation is obtained. Covariates are not used from here,
         see covariates param.
         :param switch_system: Should in translation system be switched or not
-        :param indices:
+        :param indices: Adata indices to use
         :param give_mean: In latent and expression prediction use mean rather than samples
         :param give_var: Also return var besides mean/sampled
         :param covariates: Covariates to be used for data generation. Can be None (uses all-0 covariates) or a series
-        with covariate metadata (same for all predicted samples) or dataframe (matching adata).
-        :param batch_size:
+        with covariate metadata (same for all predicted samples, dim=n_cov*1) or dataframe (matching adata).
+        :param batch_size: batch size for computation
         :param as_numpy:  Move output tensor to cpu and convert to numpy
         :return: mean/sample and optional var
         """
@@ -266,14 +260,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             as_numpy: bool = True
     ) -> (Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]):
         """
-        Translate expression - based on input expression and metadata
-        predict expression of data as if it had given metadata.
+        Produce latent embedding
         expression, metadata (from adata) -> latent
-        latent, new metadata -> translated expression
         :param adata: Input adata based on which latent representation is obtained.
-        :param indices:
-        :param cycle: Return z from cycle
-        :param give_mean: In latent and expression prediction use mean rather than samples
+        :param indices: Adata indices to use
+        :param cycle: Return latent from cycle
+        :param give_mean: In latent prediction use mean rather than samples
         :param batch_size:
         :param as_numpy:  Move output tensor to cpu and convert to numpy
         :return:
@@ -325,19 +317,30 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             **kwargs,
     ) -> Optional[AnnData]:
         """
-        %(summary)s.
+        Setup anndata for model
         Parameters
         ----------
-        %(param_adata)s
-        %(param_batch_key)s
-        %(param_labels_key)s
-        %(param_layer)s
-        %(param_cat_cov_keys)s
-        %(param_cont_cov_keys)s
-
+        adata
+            Adata to setup
+        system_key
+            obs col of system
+        group_key
+            obs col of cell type (used for contrastive learning)
+        input_gene_key
+            var col used to define which genes should be used (should be 0/1 for F/T). If None use all genes
+        layer
+            X or layer with expression
+        categorical_covariate_keys
+            Categorical covariates to correct for besides system, given as obs columns
+        continuous_covariate_keys
+            Continous covariates to correct for besides system, given as obs columns
+        covariate_orders
+            Information on covariate order in the parsed covariate data, if None will be created during setup
+        kwargs
+            For AnnDataManager.register_fields
         Returns
         -------
-        %(returns)s
+
         """
         setup_method_args = cls._get_setup_method_args(**locals())
 
@@ -351,6 +354,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         # Make system to categorical for cov
         if adata.obs[system_key].nunique() != 2:
             raise ValueError('There must be exactly two systems')
+        # TODO add option to specify systems dict/order
         system_order = sorted(adata.obs[system_key].unique())
         systems_dict = dict(zip(system_order, [0.0, 1.0]))
         adata.uns['system_order'] = system_order
