@@ -147,7 +147,7 @@ adata.write(path_sub+'Hs10X.h5ad')
 # # Combien adatas for training
 
 # %% [markdown]
-# Sn need to subset to same type of fat as sc as else unmatched cts. In cs dont need to remove cancer partients as this does not seem to affect fat.
+# Sn need to subset to same type of fat as sc as else there are a lot of unmatched cts. In cs dont need to remove cancer partients as this does not seem to affect fat.
 
 # %%
 # PP sc
@@ -198,11 +198,17 @@ display(adata_sn)
 shared_hvgs=list(set(adata_sc.var_names) & set(adata_sn.var_names))
 len(shared_hvgs)
 
+# %% [markdown]
+# Match cell type names
+
 # %%
 sorted(adata_sc.obs.cluster.unique())
 
 # %%
 sorted(adata_sc.obs.cluster.unique())
+
+# %% [markdown]
+# Joint adata
 
 # %%
 # Subset to shraed HVGs and concat
@@ -271,34 +277,17 @@ adata_embed.write(path_save+'adiposeHsSAT_sc_sn_embed.h5ad')
 
 # %%
 # Reload
-#adata_embed=sc.read(path_save+'adiposeHsSAT_sc_sn_embed.h5ad')
+adata_embed=sc.read(path_save+'adiposeHsSAT_sc_sn_embed.h5ad')
 
 # %%
-ilisi_system, ilisi_system_macro, ilisi_system_data_label=ilisi(
-        X=adata_embed.obsp['distances'],
-        batches=adata_embed.obs['system'], 
-        labels=adata_embed.obs['cluster'])
-
-# %%
-ilisi_system, ilisi_system_macro, ilisi_system_data_label
-
-# %% [markdown]
-# C: iLISI is not sensitive enough
-
-# %%
-sm.graph_connectivity( X=adata_embed.obsp['distances'],
-        labels=adata_embed.obs['system'])
-
-# %% [markdown]
-# C: Grapn connectivity does not account for labels
-
-# %%
+# Check ranges of individual PCs
 rcParams['figure.figsize']=(6,2)
 _=plt.boxplot(adata_embed.X)
 plt.ylabel('PCA value')
 plt.xlabel('PCs')
 
 # %%
+# Compute ASW
 asw, asw_macro, asw_data_label=asw_batch(
     X=adata_embed.X,
     batches=adata_embed.obs['system'], 
@@ -320,11 +309,11 @@ pkl.dump({'asw_batch':asws},open(path_save+'adiposeHsSAT_sc_sn_embed_integration
 
 # %% [markdown]
 # # Moran's I for eval
-# Find genes that would be appropriate for computing Moran's I on for evaluation in every sample-cell type group (of appropriate size) by computing Moran's I on per-sample non integrated data. This I can then also be used as a reference later on to compute relative preservation of Moran's I.
+# Find genes that would be appropriate for computing Moran's I on for evaluation in every sample-cell type group (of appropriate size) by computing Moran's I on per-sample non integrated data. This can then also be used as a reference later on to compute relative preservation of Moran's I.
 #
 
 # %%
-#adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
+adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
 
 # %%
 # Potential groups to compute Moran's I on (batch-system and group)
@@ -348,7 +337,7 @@ for group in groups.index:
         (adata.obs.system==group[1]).values&\
         (adata.obs.donor_id==group[2]).values,:].copy()
     # Remove lowly expr genes before Moran's I computation as they will be less likely relevant
-    # As this is done per small cell group within sample+cell type there is not many genes (200-500)
+    # As this is done per small cell group within sample+cell type and HVGs there is not many genes (200-500)
     # so all can be used for Moran's I computation
     sc.pp.filter_genes(adata_sub, min_cells=adata_sub.shape[0]*0.1) 
     # Compute embedding of group
@@ -392,7 +381,7 @@ plt.xscale('log')
 # %% [markdown]
 # C: Thr of 0.2 seems to separate in general approximately between highly and lowly variable genes and has at least some genes for every group and not too many in any of the groups.
 #
-# C: There is no clear bias between N cells in group and N genes, although such bias was observed within a cell type accross genes. Likely due to sample/cell type specific effects.
+# C: There is no clear bias between N cells in group and N genes.
 #
 # C: Selected genes may not be diverse though - they may capture the same pattern and maybe more subtle patterns are at lower Moran's I.
 
@@ -412,7 +401,7 @@ pkl.dump(selected,open(path_save+'adiposeHsSAT_sc_sn_moransiGenes.pkl','wb'))
 # # Batch effects within and between systems
 
 # %%
-#adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
+adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
 
 # %%
 # Compute PCA on the whole data
@@ -498,16 +487,5 @@ signif
 # %%
 # Save signif
 signif.to_csv(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
-
-# %% [markdown]
-# AUC based on Mann-Whitney U (using within system as one group and between system as the other)
-
-# %%
-auc_roc={}
-for ct,dat in distances.items():
-    x_within=np.concatenate([dat['s0'],dat['s1']])
-    x_between=dat['s0s1']
-    auc_roc[ct]=mannwhitneyu(x_between,x_within)[0]/(x_within.shape[0]*x_between.shape[0])
-print(auc_roc)
 
 # %%

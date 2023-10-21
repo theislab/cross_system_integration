@@ -52,7 +52,7 @@ adata=sc.concat([
 adata.X=adata.raw.X
 
 # %% [markdown]
-# C: Unclear what batch may be
+# Inspect adata
 
 # %%
 adata.obs.filtered_out_cells.sum()
@@ -93,6 +93,7 @@ sc.pp.normalize_total(adata_sub, target_sum=1e4)
 sc.pp.log1p(adata_sub)
 
 # %%
+# Shared HVGs
 hvgs=set(sc.pp.highly_variable_genes(
     adata_sub[adata_sub.obs.material=="adult",:], 
     n_top_genes=4000, flavor='cell_ranger', inplace=False, batch_key='sample_id').query('highly_variable==True').index)&\
@@ -102,9 +103,14 @@ set(sc.pp.highly_variable_genes(
 print(len(hvgs))
 
 # %%
+# Subset to HVGs
 adata_sub=adata_sub[:,list(hvgs)]
 
+# %% [markdown]
+# Prepare adata slots
+
 # %%
+# Add system info
 adata_sub.obs['system']=adata_sub.obs['material'].map({"organoid":0,'adult':1})
 
 # %%
@@ -178,28 +184,17 @@ adata_embed.write(path_train+'combined_HVG_embed.h5ad')
 
 # %%
 # Reload
-#adata_embed=sc.read(path_train+'combined_HVG_embed.h5ad')
+adata_embed=sc.read(path_train+'combined_HVG_embed.h5ad')
 
 # %%
-ilisi_system, ilisi_system_macro, ilisi_system_data_label=ilisi(
-        X=adata_embed.obsp['distances'],
-        batches=adata_embed.obs['system'], 
-        labels=adata_embed.obs['cell_type'])
-
-# %%
-ilisi_system, ilisi_system_macro, ilisi_system_data_label
-
-# %%
-sm.graph_connectivity( X=adata_embed.obsp['distances'],
-        labels=adata_embed.obs['system'])
-
-# %%
+# Check ranges of individual PCs
 rcParams['figure.figsize']=(6,2)
 _=plt.boxplot(adata_embed.X)
 plt.ylabel('PCA value')
 plt.xlabel('PCs')
 
 # %%
+# Compute ASW
 asw, asw_macro, asw_data_label=asw_batch(
     X=adata_embed.X,
     batches=adata_embed.obs['system'], 
@@ -221,12 +216,13 @@ pkl.dump({'asw_batch':asws},open(path_train+'combined_HVG_embed_integrationMetri
 
 # %% [markdown]
 # # Moran's I for eval
+# Find genes that would be appropriate for computing Moran's I on for evaluation in every sample-cell type group (of appropriate size) by computing Moran's I on per-sample non integrated data. This can then also be used as a reference later on to compute relative preservation of Moran's I.
 
 # %%
 #adata=adata_sub
 
 # %%
-#adata=sc.read(path_train+'combined_HVG.h5ad')
+adata=sc.read(path_train+'combined_HVG.h5ad')
 
 # %%
 # Potential groups to compute Moran's I on (batch-system and group)
@@ -256,7 +252,7 @@ for group in groups.index:
         (adata.obs.system==group[1]).values&\
         (adata.obs.sample_id==group[2]).values,:].copy()
     # Remove lowly expr genes before Moran's I computation as they will be less likely relevant
-    # As this is done per small cell group within sample+cell type there is not many genes (200-500)
+    # As this is done per small cell group within sample+cell type and HVGs there is not many genes (200-500)
     # so all can be used for Moran's I computation
     sc.pp.filter_genes(adata_sub, min_cells=adata_sub.shape[0]*0.1) 
     # Compute embedding of group
@@ -303,7 +299,7 @@ plt.xscale('log')
 # %% [markdown]
 # C: Thr of 0.15 has at least some genes for every group and not too many in any of the groups. Some groups would need lower/higher thr potentially.
 #
-# C: There is no clear bias between N cells in group and N genes, although such bias was observed within a cell type accross genes. Likely due to sample/cell type specific effects.
+# C: There is no clear bias between N cells in group and N genes.
 #
 # C: Selected genes may not be diverse though - they may capture the same pattern and maybe more subtle patterns are at lower Moran's I.
 
@@ -319,14 +315,11 @@ for group,data_sub in data.groupby(['group','system','batch']):
 # Save
 pkl.dump(selected,open(path_train+'combined_HVG_moransiGenes.pkl','wb'))
 
-# %%
-path_train
-
 # %% [markdown]
 # # Batch effects within and between systems
 
 # %%
-#adata=sc.read(path_train+'combined_HVG.h5ad')
+adata=sc.read(path_train+'combined_HVG.h5ad')
 
 # %%
 # Compute PCA on the whole data
@@ -413,16 +406,5 @@ signif
 # %%
 # Save signif
 signif.to_csv(path_train+'combined_HVG_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
-
-# %% [markdown]
-# AUC based on Mann-Whitney U (using within system as one group and between system as the other)
-
-# %%
-auc_roc={}
-for ct,dat in distances.items():
-    x_within=np.concatenate([dat['s0'],dat['s1']])
-    x_between=dat['s0s1']
-    auc_roc[ct]=mannwhitneyu(x_between,x_within)[0]/(x_within.shape[0]*x_between.shape[0])
-print(auc_roc)
 
 # %%
