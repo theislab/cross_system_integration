@@ -13,20 +13,36 @@ Data for integration is prepared and analysed within _data_ directory:
 
 ## Integration evaluation
 
-### Integration
+### Integration and evaluation
+
+All the scripts are in eval/cleaned/, except where otherwise specified.
 
 Integration benchmark was performed with [seml](https://github.com/TUM-DAML/seml). For this, we used yaml config files to specify the parameter settings of individual models to be run, a python script that executes integration and integration evaluation based on specified parameters (run_integration_seml.py) by calling additional scripts for running individual tasks: integration with different models (see below) and evaluation (run_neighbors.py to compute neighbours and UMAPs on integrated data and run_metrics.py for metric computation).
 
-Parameter yaml files:
-
 Integration method scripts:
-- newly implemented models (cVAE, VAMP, CYC, VAMP+CYC):
-- scVI:
-- GLUE:
-- SATURN:
+- Main benchmark:
+  - newly implemented models (cVAE, VAMP, CYC, VAMP+CYC): run_integration.py
+  - scVI: run_integration_scvi.py
+  - GLUE: run_integration_glue.py
+  - SATURN: run_integration_saturn.py' 
+- Other:
+  - scGEN (used only in the supplement and not part of the main benchmark): run_integration_scgen.py
 
+Parameter yaml files:
+- Main benchmark:
+  - mouse-human: seml_pancreas_conditions_MIA_HPAP2.yaml
+  - organoid-tissue: seml_retina_adult_organoid.yaml
+  - cell-nuclei: seml_adipose_sc_sn_updated.yaml
+- Other:
+  - analysis of VampPrior initialisation with one/multiple cell types/systems: seml_pancreas_conditions_MIA_HPAP2_priorLoc.yaml
 
-### Analysis of integration results
+Based on the integration evaluation results, the optimal parameter values were selected in eval_summary.ipynb. Parameter values considered for selection are specified in results/names_parsed.ipynb (as for some models we ran additional parameter settings on some of the datasets before deciding what would be a sensible parameter range to use on all datasets).
+
+Additional scripts:
+- integration metrics helper functions, including some metric adjustments/implementations: metrics.py
+- Mapping of run names used in the yaml files to optimised parameter names and adjusted run names: params_opt_maps.py
+  
+### Additional analysis of integration results
 
 ### Analysis of VampPrior model
 
