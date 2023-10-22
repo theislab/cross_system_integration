@@ -37,24 +37,6 @@ path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_eval=path_data+'eval/'
 path_names=path_data+'names_parsed/'
 
-
-# %%
-def metrics_data_heatmap(metrics_data,res,metric='jaccard_label'):
-    dat={}
-    for metrics_res in metrics_data:
-        dat[metrics_res['name']]=metrics_res[metric]
-    dat=pd.DataFrame(dat).T
-    dat=dat.loc[res.sort_values(['params_opt','param_opt_val']).index,:]
-    #dat['params_opt']=dat.index.map(lambda x: res.at[x,'params_opt'])
-    #dat['param_opt_val']=dat.index.map(lambda x: res.at[x,'param_opt_val'])
-    #dat=dat.groupby(['params_opt','param_opt_val']).mean()
-    dat.index=dat.index.map(lambda x: '-'.join(
-    [str(res.at[x,'params_opt']),
-     str(res.at[x,'param_opt_val'])]))
-    dat=dat/np.clip(dat.max(axis=0),a_min=1e-3, a_max=None)
-    sb.clustermap(dat,row_cluster=False, xticklabels=True,yticklabels=True)
-
-
 # %%
 # Map between params and model
 params_opt_map=pkl.load(open(path_names+'params_opt_model.pkl','rb'))# Query to remove irrelevant runs accross all models for final model selection
@@ -62,12 +44,13 @@ params_opt_map=pkl.load(open(path_names+'params_opt_model.pkl','rb'))# Query to 
 param_opt_vals=pkl.load(open(path_names+'optimized_parameter_values.pkl','rb'))
 def get_top_runs(res,param_opt_vals=param_opt_vals,params_opt_map=params_opt_map):
     """
-    Find best runs for each method accross tunned params. 
+    Find best runs for each method-and-parameter accross tunned params values. 
     For brevity find just one saturn and scGLUE methods for orthologues and non-orthologues. 
     Compute overall score (for each method) by first minmax-normalizing scores within method 
     and then having ilisi for batch and mean of moransi and nmi_opt for bio; 
     overall score is mean of bio and batch.
-    Return top runs and top setting (mean over runs) longside with median run in the setting
+    Return top runs and top setting (mean over runs with same param values) 
+    alongside with median run in the setting.
     """
     # Keep relevant params and name model
     params_opt_vals=set(params_opt_map.keys())
@@ -124,6 +107,9 @@ params_opt_colors=sb.color_palette(cc.glasbey, n_colors=len(param_opt_col_map))
 # %% [markdown]
 # ## Pancreas conditions MIA HPAP2
 
+# %% [markdown]
+# Load data
+
 # %%
 path_integration=path_eval+'pancreas_conditions_MIA_HPAP2/integration/'
 
@@ -150,229 +136,18 @@ for run in glob.glob(path_integration+'*/'):
 res=pd.concat(res,axis=1).T
 
 # %%
-#  Param that was optimised
+#  Parse param that was optimised
 res['params_opt']=res.params_opt.replace(params_opt_correct_map)
 res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
-
-# %%
 res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
-
-# %%
-# List all param values by param opt
-#res.groupby(['param_opt_col']).apply(lambda x: sorted(x['param_opt_val'].unique())).to_dict()
-
-# %%
-g=sb.catplot( x='param_opt_val', y="asw_group",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.56,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.85,lw=0.5,c='gray')
-    ax.axhline(0.80,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.85,lw=0.5,c='gray')
-    ax.axhline(0.80,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ari",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-#Check vamp, gmm, and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.90,lw=0.5,c='gray')
-#     ax.axhline(0.85,lw=0.5,c='gray')
-#     ax.axhline(0.80,lw=0.5,c='gray')
-
-# %%
-# Check saturn only in more detail
-res_temp=res.query( 'params_opt.str.startswith("saturn") & not params_opt.str.contains("super")', 
-               engine='python').copy()
-res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-           kind="swarm", data=res_temp,
-             sharex=False, height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ari_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-res_sub=res.query('seed==1')
-metrics_data_heatmap(
-    metrics_data=[run for run in metrics_data if run['name'] in res_sub.index],
-    res=res_sub,metric='jaccard_label')
-
-# %% [markdown]
-# C: For example scglue_cXxtBJm8 has mixing of acinar and immune.
-
-# %%
-g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.93,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-# # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.94,lw=0.5,c='gray')
-#     ax.axhline(0.93,lw=0.5,c='gray')
-#     ax.axhline(0.90,lw=0.5,c='gray')
-
-# %%
-# Check saturn only in more detail
-res_temp=res.query( 'params_opt.str.startswith("saturn") & not params_opt.str.contains("super")', 
-               engine='python').copy()
-res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-           kind="swarm", data=res_temp,
-             sharex=False, height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.93,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-
-# %%
-# # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.2,lw=0.5,c='gray')
-#     ax.axhline(0.15,lw=0.5,c='gray')
-#     ax.axhline(0.1,lw=0.5,c='gray')
-
-# %%
-# Check saturn only in more detail
-res_temp=res.query( 'params_opt.str.startswith("saturn") & not params_opt.str.contains("super")', 
-               engine='python').copy()
-res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-           kind="swarm", data=res_temp,
-             sharex=False, height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-
-# %% [markdown]
-# C: Scalling may affect VAMP differently as the prior is not N(0,1) in the first place so maybe different features really have different importance. - Not just pushed to low values to satisfy prior.
-#
-# C: z_dist_cycle_w_std combats the effect of pushing towards N(0,1) as does by scaled z_dist_cyc and not KL to N(0,1).
-
-# %%
-rcParams['figure.figsize']=(2,2)
-g=sb.scatterplot(x='ilisi_system',y='nmi_opt',
-               hue='params_opt',
-               data=res.groupby(['params_opt','param_opt_val'],observed=True
-                               ).mean().reset_index(),
-                palette=params_opt_colors,s=10)
-sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
-
-# %%
-rcParams['figure.figsize']=(2,2)
-g=sb.scatterplot(x='ilisi_system',y='moransi',
-               hue='params_opt',
-               data=res.groupby(['params_opt','param_opt_val'],observed=True
-                               ).mean().reset_index(),
-                palette=params_opt_colors,s=10)
-sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
-
-# %% [markdown]
-# rcParams['figure.figsize']=(2,2)
-# g=sb.scatterplot(x='ilisi_system',y='moransi',
-#                hue='params_opt',
-#                data=res.groupby(['params_opt','param_opt_val'],observed=True
-#                                ).mean().reset_index(),
-#                 palette='tab20')
-# sb.move_legend(g, loc='upper right',bbox_to_anchor=(3, 1))
 
 # %% [markdown]
 # ### Best runs
 
 # %%
+# Top runs/settings
 top_runs,top_settings=get_top_runs(res)
 print('Top runs')
 display(top_runs)
@@ -383,14 +158,15 @@ for model,setting in top_settings.items():
     print(setting['mid_run'])
 
 # %%
-res.loc[top_runs.values(),['params_opt','param_opt_val','seed']]
-
-# %%
+# Save
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
 
 # %% [markdown]
 # ## Retina adult organoid
+
+# %% [markdown]
+# Load data
 
 # %%
 path_integration=path_eval+'retina_adult_organoid/integration/'
@@ -418,230 +194,17 @@ for run in glob.glob(path_integration+'*/'):
 res=pd.concat(res,axis=1).T
 
 # %%
-#  Param that was optimised
+#  Parse param that was optimised
 res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
-
-# %%
 res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
-
-# %%
-g=sb.catplot( x='param_opt_val', y="asw_group",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.55,lw=0.5,c='gray')
-    ax.axhline(0.65,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="asw_group_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.55,lw=0.5,c='gray')
-    ax.axhline(0.65,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="asw_group_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.88,lw=0.5,c='gray')
-    ax.axhline(0.92,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.88,lw=0.5,c='gray')
-    ax.axhline(0.92,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ari",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.95,lw=0.5,c='gray')
-#     ax.axhline(0.90,lw=0.5,c='gray')
-#     ax.axhline(0.85,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ari_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-res_sub=res.query('seed==1')
-metrics_data_heatmap(
-    metrics_data=[run for run in metrics_data if run['name'] in res_sub.index],
-    res=res_sub,metric='jaccard_label')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="clisi_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.92,lw=0.5,c='gray')
-    ax.axhline(0.94,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi_ct",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-# Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.96,lw=0.5,c='gray')
-#     ax.axhline(0.95,lw=0.5,c='gray')
-#     ax.axhline(0.94,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.92,lw=0.5,c='gray')
-    ax.axhline(0.94,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.02,lw=0.5,c='gray')
-    ax.axhline(0.12,lw=0.5,c='gray')
-    ax.axhline(0.22,lw=0.5,c='gray')
-
-# %%
-# # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.2,lw=0.5,c='gray')
-#     ax.axhline(0.15,lw=0.5,c='gray')
-#     ax.axhline(0.1,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.02,lw=0.5,c='gray')
-    ax.axhline(0.12,lw=0.5,c='gray')
-    ax.axhline(0.22,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_macro_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-rcParams['figure.figsize']=(2,2)
-g=sb.scatterplot(x='ilisi_system',y='nmi_opt',
-               hue='params_opt',
-               data=res.groupby(['params_opt','param_opt_val'],observed=True
-                               ).mean().reset_index(),
-                palette=params_opt_colors,s=10)
-sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
-
-# %%
-rcParams['figure.figsize']=(2,2)
-g=sb.scatterplot(x='ilisi_system',y='moransi',
-               hue='params_opt',
-               data=res.groupby(['params_opt','param_opt_val'],observed=True
-                               ).mean().reset_index(),
-                palette=params_opt_colors,s=10)
-sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
-
-# %%
-# Examples
-# for params,run_dir in res.groupby(['params_opt','param_opt_val']).apply(
-#     lambda x: x.sort_values('ilisi_system',ascending=True).index[0]).iteritems():
-    
-#     print(params,run_dir)
-#     display(res.loc[run_dir,['ilisi_system','asw_group']])
-#     with plt.rc_context({'figure.figsize':(40,10)}):
-#         path_run=path_integration+run_dir+'/'
-#         for img_fn in ['umap.png','losses.png']:
-#             img = mpimg.imread(path_run+img_fn)
-#             imgplot = plt.imshow(img)
-#             plt.show()
 
 # %% [markdown]
 # ### Best runs
 
 # %%
+# Top runs/settings
 top_runs,top_settings=get_top_runs(res)
 print('Top runs')
 display(top_runs)
@@ -652,14 +215,12 @@ for model,setting in top_settings.items():
     print(setting['mid_run'])
 
 # %%
-res.loc[top_runs.values(),['params_opt','param_opt_val','seed']]
-
-# %%
+# Save
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
 
 # %% [markdown]
-# ### Example runs - nonbenchmarked
+# ### Select example scGEN runs (non-benchmarked)
 
 # %%
 example_runs={
@@ -670,6 +231,9 @@ pkl.dump(example_runs,open(path_integration.rstrip('/')+'_summary/example_runs.p
 
 # %% [markdown]
 # ## Adipose sc sn updated
+
+# %% [markdown]
+# Load data
 
 # %%
 path_integration=path_eval+'adipose_sc_sn_updated/integration/'
@@ -697,183 +261,19 @@ for run in glob.glob(path_integration+'*/'):
 res=pd.concat(res,axis=1).T
 
 # %%
-#  Param that was optimised
+#  Parse param that was optimised
 res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
               else x[x['param_opt_col']]['weight_end']) 
     if x['param_opt_col'] is not None else 0,axis=1)
-
-# %%
 res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
-
-# %%
-g=sb.catplot( x='param_opt_val', y="asw_group",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.56,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.85,lw=0.5,c='gray')
-    ax.axhline(0.80,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.85,lw=0.5,c='gray')
-    ax.axhline(0.80,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ari",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-# # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.85,lw=0.5,c='gray')
-#     ax.axhline(0.80,lw=0.5,c='gray')
-#     ax.axhline(0.75,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ari_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-res_sub=res.query('seed==1')
-metrics_data_heatmap(
-    metrics_data=[run for run in metrics_data if run['name'] in res_sub.index],
-    res=res_sub,metric='jaccard_label')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.93,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-# # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.95,lw=0.5,c='gray')
-#     ax.axhline(0.94,lw=0.5,c='gray')
-#     ax.axhline(0.93,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.90,lw=0.5,c='gray')
-    ax.axhline(0.93,lw=0.5,c='gray')
-    ax.axhline(0.96,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-    ax.axhline(0.15,lw=0.5,c='gray')
-
-# %%
-# # Check vamp and cVAE in more detail only
-# res_temp=res.query( '(params_opt.str.startswith("vamp") & not params_opt.str.contains("cycle")) | params_opt.str.startswith("gmm") | params_opt=="kl_weight"', 
-#                engine='python').copy()
-# res_temp['params_opt']=res_temp['params_opt'].cat.remove_unused_categories()
-# g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-#            kind="swarm", data=res_temp,
-#              sharex=False, height=2.5,aspect=1.3,color='k')
-# for ax in g.axes.ravel():
-#     ax.axhline(0.2,lw=0.5,c='gray')
-#     ax.axhline(0.15,lw=0.5,c='gray')
-#     ax.axhline(0.1,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_scaled",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system_macro",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-
-# %%
-rcParams['figure.figsize']=(2,2)
-g=sb.scatterplot(x='ilisi_system',y='nmi_opt',
-               hue='params_opt',
-               data=res.groupby(['params_opt','param_opt_val'],observed=True
-                               ).mean().reset_index(),
-                palette=params_opt_colors,s=10)
-sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
-
-# %%
-rcParams['figure.figsize']=(2,2)
-g=sb.scatterplot(x='ilisi_system',y='moransi',
-               hue='params_opt',
-               data=res.groupby(['params_opt','param_opt_val'],observed=True
-                               ).mean().reset_index(),
-                palette=params_opt_colors,s=10)
-sb.move_legend(g, loc='upper right',bbox_to_anchor=(3.2, 1))
 
 # %% [markdown]
 # ### Best runs
 
 # %%
+# Top runs/settings
 top_runs,top_settings=get_top_runs(res)
 print('Top runs')
 display(top_runs)
@@ -884,96 +284,6 @@ for model,setting in top_settings.items():
     print(setting['mid_run'])
 
 # %%
-res.loc[top_runs.values(),['params_opt','param_opt_val','seed']]
-
-# %%
+# Save
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
-
-# %% [markdown]
-# ## Pancreas conditions MIA HPAP2 - prior init
-
-# %%
-path_integration=path_eval+'pancreas_conditions_MIA_HPAP2_priorLoc/integration/'
-path_integration_sup=path_eval+'pancreas_conditions_MIA_HPAP2/integration/'
-
-# %%
-# Load integration results - params and metrics
-res=[]
-metrics_data=[]
-for run in glob.glob(path_integration+'*/'):
-    if os.path.exists(run+'args.pkl') and \
-        os.path.exists(run+'scib_metrics.pkl') and \
-        os.path.exists(run+'scib_metrics_scaled.pkl') and\
-        os.path.exists(run+'scib_metrics_data.pkl'):
-        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
-        metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
-        metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
-        metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
-        data=pd.concat([args,metrics,metrics_scl])
-        name=run.split('/')[-2]
-        data.name=name
-        res.append(data)
-        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
-        metrics_data_sub['name']=name
-        metrics_data.append(metrics_data_sub)
-for run in glob.glob(path_integration_sup+'*/'):
-    if os.path.exists(run+'args.pkl') and \
-        os.path.exists(run+'scib_metrics.pkl') and \
-        os.path.exists(run+'scib_metrics_scaled.pkl') and\
-        os.path.exists(run+'scib_metrics_data.pkl'):
-        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
-        if args.params_opt=='vamp_eval':
-            metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
-            metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
-            metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
-            data=pd.concat([args,metrics,metrics_scl])
-            name=run.split('/')[-2]
-            data.name=name
-            res.append(data)
-            metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
-            metrics_data_sub['name']=name
-            metrics_data.append(metrics_data_sub)    
-res=pd.concat(res,axis=1).T
-
-# %%
-#  Param that was optimised
-res['params_opt']=res.params_opt.replace(params_opt_correct_map)
-res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
-res['param_opt_val']=res.apply(
-    lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
-
-
-# %%
-# Order mixed categories (str, num)
-res['param_opt_val']=pd.Categorical(
-    res['param_opt_val'],
-    sorted([i for i in res['param_opt_val'].unique() if not isinstance(i,str)],key=int)+\
-    sorted([i for i in res['param_opt_val'].unique() if isinstance(i,str)]), 
-    True)
-res=res.sort_values('param_opt_val')
-res['param_opt_val']=res['param_opt_val'].astype(str)
-
-# %%
-res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
-
-# %%
-g=sb.catplot( x='param_opt_val', y="nmi_opt",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="moransi",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-
-# %%
-g=sb.catplot( x='param_opt_val', y="ilisi_system",  col='params_opt',
-           kind="swarm", data=res,sharex=False,
-          height=2.5,aspect=1.3,color='k')
-for ax in g.axes.ravel():
-    ax.axhline(0.03,lw=0.5,c='gray')
-
-# %%
-
-# %%
