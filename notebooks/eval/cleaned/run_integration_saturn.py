@@ -114,6 +114,7 @@ parser.add_argument('--saturn_code', required=True, type=str,
 parser.add_argument('--conda_env', required=True, type=str,
                     help='Path to the conda env saturn is runnable in.')
 # %%
+# Set args for manual testing
 if False:
     args= parser.parse_args(args=[
         # Amir
@@ -175,11 +176,13 @@ if args.name is None:
         args.name='r'+str(args.seed)
 
 # %%
+# Saturn params
 SATURN_EMB_PATH = args.saturn_emb
 SATURN_GIT_LOCATION = args.saturn_code
 SATURN_CONDA_ENV = args.conda_env
 
 # %%
+# Will data be loaded form 1 or 2 adata files
 SINGLE_ADATA = True
 if args.path_adata_2 != "":
     SINGLE_ADATA = False
@@ -255,6 +258,7 @@ if TESTING:
         adata_2.obs[args.group_key]=[np.nan]*10+list(adata_2.obs[args.group_key].iloc[10:])
 
 # %%
+# List systems
 if SINGLE_ADATA:
     total_mods = list(adata.obs[args.system_key].unique())
 else:
@@ -289,6 +293,7 @@ def prepare_adata(adata_mod, cluster_key="", leiden_resolution=1., n_neighbors=1
 
 
 # %%
+# Prepare adata
 mods_adata = {}
 if SINGLE_ADATA:
     for mod in total_mods:
@@ -301,6 +306,7 @@ else:
         #print(f"mod: {mod}\n", mods_adata[mod])
 
 # %%
+# Prepare data
 species = []
 paths = []
 prot_embs = []
@@ -343,6 +349,7 @@ df.to_csv(run_info_path, index=False)
 print('Train')
 
 # %%
+# Saturn process params
 saturn_label_key = args.cluster_key or "leiden"
 saturn_wcd = os.path.join(path_save, "saturn_wcd")
 Path(saturn_wcd).mkdir(parents=True, exist_ok=True)
@@ -364,6 +371,7 @@ command = (
 print(" ".join(command))
 
 # %%
+# Train saturn
 process_saturn = subprocess.Popen(command, cwd=SATURN_GIT_LOCATION,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 # Make sure that process has finished
@@ -378,6 +386,7 @@ if process_saturn.returncode != 0:
     raise ValueError('Process saturn integration failed with', process_saturn.returncode)
 
 # %%
+# Get saved output files
 h5ad_output_filename = glob.glob(os.path.join(saturn_wcd, "saturn_results", f"*_seed_{args.seed}.h5ad"))
 assert len(h5ad_output_filename) == 1
 h5ad_output_filename = h5ad_output_filename[0]
@@ -401,7 +410,7 @@ latent = ad.read(h5ad_output_filename)
 latent
 
 # %%
-# Compute embedding
+# Prepare embedding adatas
 if SINGLE_ADATA:
     all_obs_names = list(adata.obs_names)
     obs = adata.obs

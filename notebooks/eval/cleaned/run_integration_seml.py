@@ -1,5 +1,3 @@
-# Seml run script for the eval experiments, runs individual eval scripts
-# Used either with the seml.yaml or seml_test.yaml for testing out that everything works
 import logging
 from sacred import Experiment
 import seml
@@ -22,7 +20,8 @@ def config():
         ex.observers.append(seml.create_mongodb_observer(db_collection, overwrite=overwrite))
 
 @ex.automain
-# Seed must be given as seed_num not to clash?
+# Run based on yaml specs
+# Seed must be given as seed_num not to clash
 def run(eval_type:str,
         conda_env:str,
         model:str=None, 
@@ -111,8 +110,6 @@ def run(eval_type:str,
 
     logging.info('Received the following configuration:')
     logging.info(str(params_info))
-    #print('All params:')
-    #print(params_info)
     
     # Prepare args for running script
     args=[]
@@ -124,17 +121,13 @@ def run(eval_type:str,
                 v=v+eval_type+'/'
             args.append('--'+k)
             args.append(str(v))
-    #print('Script args:')
-    #print(args)
     logging.info('Using the following args for the script')
     logging.info(str(args))
     
     # Run integration script
     
     # Script to run - based on eval_type
-    #script_dir='/lustre/groups/ml01/code/karin.hrovatin/cross_species_prediction/notebooks/eval/'
     model_fn_part='_'+model if model is not None else ''
-    #script=f'{script_dir}eval_{eval_type}{model_fn_part}.py' 
     script=f'run_{eval_type}{model_fn_part}.py' 
     logging.info('Running integration script')
     logging.info(script)
@@ -152,7 +145,7 @@ def run(eval_type:str,
         logging.info(line)
     # Check that child process did not fail - if this was not checked then
     # the status of the whole job would be succesfull 
-    # even if the child failed as error wouldn be passed upstream
+    # even if the child failed as error wouldnt be passed upstream
     if process_integration.returncode != 0:
         raise ValueError('Process integration failed with', process_integration.returncode)
     
@@ -175,7 +168,7 @@ def run(eval_type:str,
          logging.info(line)
     # Check that child process did not fail - if this was not checked then
     # the status of the whole job would be succesfull 
-    # even if the child failed as error wouldn be passed upstream
+    # even if the child failed as error wouldnt be passed upstream
     if process_neigh.returncode != 0:
         raise ValueError('Process neighbours failed with', process_neigh.returncode)
 
@@ -206,7 +199,7 @@ def run(eval_type:str,
              logging.info(line)
         # Check that child process did not fail - if this was not checked then
         # the status of the whole job would be succesfull 
-        # even if the child failed as error wouldn be passed upstream
+        # even if the child failed as error wouldnt be passed upstream
         if process_metrics.returncode != 0:
             raise ValueError('Process failed with', process_metrics.returncode)
     

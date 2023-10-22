@@ -98,6 +98,7 @@ parser.add_argument('--lam_graph', required=False, type=float, default=0.02,
 parser.add_argument('--lam_align', required=False, type=float, default=0.05,
                     help='lam_align in scGLUE')
 # %%
+# Set args for manual testing
 if False:
     args= parser.parse_args(args=[
         # Amir
@@ -144,6 +145,7 @@ if args.name is None:
         args.name='r'+str(args.seed)
 
 # %%
+# Is adata going to be loaded from 1 or 2 files (per system)
 SINGLE_ADATA = True
 if args.path_adata_2 != "":
     assert args.gene_graph != ""
@@ -205,6 +207,7 @@ if not SINGLE_ADATA:
 # print(adata_2)
 
 # %%
+# Load gene graph
 given_gene_graph = None
 if not SINGLE_ADATA:
     given_gene_graph = pd.read_csv(args.gene_graph, sep="\t")
@@ -226,6 +229,7 @@ if TESTING:
         adata_2.obs[args.group_key]=[np.nan]*10+list(adata_2.obs[args.group_key].iloc[10:])
 
 # %%
+# N systems
 if SINGLE_ADATA:
     total_mods = list(adata.obs[args.system_key].unique())
 else:
@@ -233,9 +237,8 @@ else:
         list(adata.obs[args.system_key].unique()) +
         list(adata_2.obs[args.system_key].unique())))
 
-#total_mods
-
 # %%
+# Prepare adatas
 mods_adata = {}
 if SINGLE_ADATA:
     for mod in total_mods:
@@ -258,6 +261,7 @@ else:
 print('Train')
 
 # %%
+# Prepare pca if not computed
 for adata_spc in mods_adata.values():
     if args.pca_key == "":
         # X contains normalized+log data
@@ -276,6 +280,7 @@ for adata_spc in mods_adata.values():
     )
 
 # %%
+# Prepare gene graph
 my_guidance = nx.DiGraph()
 for mod in total_mods:
     adata_mod = mods_adata[mod]
@@ -307,9 +312,11 @@ for i, mod in enumerate(total_mods):
 print("Done")
 
 # %%
+# File for saving
 filename = path_save + "scglue_model"
 
 # %%
+# Train
 max_epochs = args.max_epochs
 if max_epochs == -1:
     max_epochs = scglue.utils.AUTO
@@ -334,6 +341,7 @@ glue = scglue.models.fit_SCGLUE(
 
 # %%
 if False:
+    # Integration consistency
     try:
         mods_adata_temp={}
         for k, a in mods_adata.items():
@@ -357,21 +365,19 @@ if False:
 # ### Eval
 
 # %% [markdown]
-# #### Losses
-
-# %% [markdown]
 # #### Embedding
 
 # %%
 print('Get embedding')
 
 # %%
+# Get ebedding
 for mod, adata_mod in mods_adata.items():
     adata_mod.obsm["X_glue"] = glue.encode_data(mod, adata_mod)
 combined = ad.concat(mods_adata.values())
 
 # %%
-# Compute embedding
+# Prepare embedding adata
 if SINGLE_ADATA:
     all_obs_names = list(adata.obs_names)
 else:
@@ -393,6 +399,5 @@ embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
 embed.write(path_save+'embed.h5ad')
 embed_full.write(path_save+'embed_full.h5ad')
 
-# 
 # %%
 print('Finished integration!')

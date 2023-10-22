@@ -80,6 +80,7 @@ parser.add_argument('-nce', '--n_cells_eval', required=False, type=int, default=
 parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,default='0',
                     help='Testing mode')
 # %%
+# Set args for manual testing
 if False:
     args= parser.parse_args(args=[
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
@@ -146,8 +147,6 @@ if TESTING:
     random_idx=np.random.permutation(adata.obs_names)[:5000]
     adata=adata[random_idx,:].copy()
     print(adata.shape)
-    # Set some groups to nan for testing if this works
-    adata.obs[args.group_key]=[np.nan]*10+list(adata.obs[args.group_key].iloc[10:])
 
 # %% [markdown]
 # ### Training
@@ -210,12 +209,12 @@ for ax_i,l_train in enumerate(losses):
         l_val=l_train.replace('_train','_validation')
         l_name=l_train.replace('_train','')
         # Change idx of epochs to start with 1 so that below adjustment when 
-        # train on step which only works for wal leads to appropriate multiplication
+        # train on step which only works for val leads to appropriate multiplication
         l_val_values=model.trainer.logger.history[l_val].copy()
         l_val_values.index=l_val_values.index+1
         l_train_values=model.trainer.logger.history[l_train].copy()
         l_train_values.index=l_train_values.index+1
-        # This happens if log on step as currently tyhis works only for val loss
+        # This happens if log on step as currently this works only for val loss
         if l_train_values.shape[0]<l_val_values.shape[0]:
             l_train_values.index=\
                 l_train_values.index*int(l_val_values.shape[0]/l_train_values.shape[0])
