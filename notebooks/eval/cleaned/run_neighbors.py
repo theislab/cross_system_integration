@@ -36,6 +36,7 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
                     help='Testing mode')
 
 # %%
+# Set args for manual testing
 if False:
     args= parser.parse_args(args=[
         '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
@@ -59,12 +60,11 @@ save=False
 embed=sc.read(args.path+'embed.h5ad')
 
 # %%
+# Compute neighbors
 if 'neighbors' not in embed.uns:
     save=True
     print('Computing embedding')
     # Use 90 neighbours so that this can be also used for lisi metrics
-    # Scanpy umap and neihgbors have random seed set in params 
-    #  so they shouldn't be affected by the global one
     sc.pp.neighbors(embed, use_rep='X', n_neighbors=90)
     sc.tl.umap(embed)
     
@@ -77,6 +77,7 @@ if 'neighbors' not in embed.uns:
     plt.savefig(args.path+'umap.png',dpi=300,bbox_inches='tight')
 
 # %%
+# Compute neighbors on scaled data
 # Prepare scaled data if not yet present in adata
 if 'scaled_neighbors' not in embed.uns:
     save=True

@@ -13,9 +13,6 @@
 #     name: csi
 # ---
 
-# %% [markdown]
-# # Integration metrics
-
 # %%
 import scanpy as sc
 import pickle as pkl
@@ -55,6 +52,7 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
                     help='Testing mode')
 
 # %%
+# Set args for manual testing
 if False:
     args= parser.parse_args(args=[
         '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
@@ -74,7 +72,7 @@ TESTING=args.testing
 print(args)
 
 # %%
-# Load embedding (embed - may be a subset for eval, 
+# Load embedding (embed - subset for eval, 
 # embed_full is loaded below - all cells from integration data)
 embed = sc.read(args.path+'embed.h5ad')
 
@@ -87,16 +85,10 @@ else:
     neigh_prefix=''
 
 # %%
-# Which cells have group info - if nan dont use them for metrics computation      
+# Which cells have group info - if nan dont use them for metrics computation 
+# Used only for testing - otherwise this would require recomputing neighbors here which 
+# would be inefficient
 if embed.obs[args.group_key].isna().any():
-    # This shouldnt really happen in the current eval settings as may become inefficient - e
-    # print('Recomputting neighbours as adata was subsetted to annotated cells')
-    # embed_group=embed[~embed.obs[args.group_key].isna(),:].copy()
-    # neigh_key_added=neigh_prefix.rstrip('_')
-    # sc.pp.neighbors(embed_group, use_rep='X', n_neighbors=90,key_added=neigh_key_added)
-    # neigh_key_uns=(neigh_key_added+'_' if len(neigh_key_added)>0 else '')+'neighbors'
-    # embed_group.uns[neigh_key_uns]=embed_group.uns[neigh_key_added]
-    # del embed_group.uns[neigh_key_added]
     if TESTING:
         embed_group=embed
         embed_group.obs[args.group_key]=embed_group.obs[args.group_key].astype(str).fillna('NA')
@@ -154,11 +146,6 @@ if 'moransi' in metrics and 'moransi_label' in metrics_data and 'moransi_data' i
     MORANSI=False
 else:
     MORANSI=True   
-    
-# if 'moransi_ct' in metrics and 'moransi_ct_label' in metrics_data:
-#     MORANSI_CT=False
-# else:
-#     MORANSI_CT=True   
 
 if all(['ilisi_batch_system-'+system in metrics and 
     'ilisi_batch_label_system-'+system in metrics_data
@@ -188,6 +175,7 @@ if ASW_GROUP or TESTING:
         X=embed_group.X, 
         labels=embed_group.obs[args.group_key])
 
+# Cluster classification
 if CLUSTER_CLASSIFICATION or TESTING:
     print('cluster_classification')
     metrics['nmi'], metrics['ari'], \
@@ -205,7 +193,6 @@ if CLUSTER_OPTIMIZED or TESTING:
 
 # %%
 # Moran's I
-#if MORANSI or MORANSI_CT or TESTING:
 if MORANSI or  TESTING:
     # Load adata with expression and Moran's I base values and full embedding
     adata_expr=sc.read(args.fn_expr)
@@ -253,38 +240,6 @@ if MORANSI or  TESTING:
         # Average MI diffs accross cell types
         metrics['moransi']=metrics_data['moransi_label'].mean()[0]
 
-        # DOESNT really work as expected
-#     # Moransi per cell type
-#     if MORANSI_CT or TESTING:
-#         print('moransi_ct')
-#         # Union of genes across cell types
-#         moransi_genes=defaultdict(set)
-#         for group_mi in moransi_base:
-#             moransi_genes[group_mi['group']].update(group_mi['genes'].index)
-#         moransi_genes={group:list(genes) for group,genes in moransi_genes.items()}
-#         # Moransi per ct
-#         moransi_data={}
-#         for group,genes in moransi_genes.items():
-#             embed_sub=embed_full[
-#                 (embed_full.obs[args.group_key]==group).values,:].copy()
-#             # Check that there are enough cells for testing
-#             if embed_sub.shape[0]>50:
-#                 sc.pp.neighbors(embed_sub, use_rep='X')
-#                 moransi_data[group]=pd.Series(
-#                     (sc.metrics._morans_i._morans_i(
-#                         g=embed_sub.obsp['connectivities'],
-#                         vals=adata_expr[embed_sub.obs_names,genes].X.T)+1)/2,
-#                     index=genes)
-#         metrics_data['moransi_ct_data']=moransi_data
-
-#         # Average MI per cell type
-#         metrics_data['moransi_ct_label']=pd.DataFrame(pd.Series(
-#             {group:res.mean() for group,res in moransi_data.items()},
-#             name='moransi_ct'
-#         ))
-#         # Average MI diffs accross cell types
-#         metrics['moransi_ct']=metrics_data['moransi_ct_label'].mean()[0]
-
 # %%
 # Compute batch lisi metrics per system as else it would be confounded by system
 if ILISI_BATCH_SYSTEM or TESTING:
@@ -303,6 +258,7 @@ if ILISI_BATCH_SYSTEM or TESTING:
 print(metrics)
 
 # %%
+# Save metricsß
 pkl.dump(metrics,open(fn_metrics,'wb'))
 pkl.dump(metrics_data,open(fn_metrics_data,'wb'))
 
