@@ -44,6 +44,10 @@ Additional scripts:
   
 ### Additional analysis of integration results
 
+To make the final plotting of data-setting subsets quicker, integration result of cell subsets were preprocessed in advance (all notebooks in eval/cleaned/analysis/):
+- Moran's I of gene groups known to be variable in healthy adult beta cells: moransi_examples.ipynb
+- Correct sample and cell type alignment in the retinal dataset: bio_preservation_analysis_retina.ipynb
+
 ### Analysis of VampPrior model
 
 ### Analysis of integration metrics
