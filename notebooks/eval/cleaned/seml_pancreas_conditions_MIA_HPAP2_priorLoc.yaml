@@ -1,5 +1,3 @@
-# Pancreas conditions
-# Run selected params (worked well or for comparison) for presentation plots & eval
 seml:
   executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
   name: csi_eval
@@ -10,9 +8,9 @@ seml:
 slurm:
   sbatch_options_template: GPU
   sbatch_options:
-    mem: 50G          # memory, set to 32, for pancreas this could be 10Gb
-    cpus-per-task: 4  # num cores, set to 4
-    time: 0-05:00     # max time, D-HH:MM, set to 0-08:00
+    mem: 50G          
+    cpus-per-task: 4  
+    time: 0-05:00    
     nice: 10000
 
 fixed:

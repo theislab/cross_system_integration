@@ -1,5 +1,3 @@
-# Pancreas conditions
-# Run selected params (worked well or for comparison) for presentation plots & eval
 seml:
   executable: /om2/user/khrovati/code/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
   name: csi_eval
@@ -10,9 +8,9 @@ seml:
 slurm:
   sbatch_options_template: GPU
   sbatch_options:
-    mem: 20G          # memory, set to 32, for pancreas this could be 10Gb
-    cpus-per-task: 4  # num cores, set to 4
-    time: 0-03:00     # max time, D-HH:MM, set to 0-08:00
+    mem: 20G          
+    cpus-per-task: 4  
+    time: 0-03:00     
     nice: 10000
 
 fixed:
@@ -42,328 +40,218 @@ grid:
       - 2
       - 3 
       
-# klw_opt:
-#     fixed:
-#       params_opt: kl_weight
-#     grid:
-#       kl_weight:
-#         type: choice
-#         options:
-#           - 1
-#           - 1.5
-#           - 2
-#           - 5
+klw_opt:
+    fixed:
+      params_opt: kl_weight
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
+          - 1.5
+          - 2
+          - 5
 
-# klw_opt_anneal:
-#     fixed:
-#       params_opt: kl_weight_anneal
-#     grid:
-#       kl_weight:
-#         type: choice
-#         options:
-#           - w0_1_0_1600
-#           - w0_1.5_0_1600
-#           - w0_2_0_1600
-#           - w0_5_0_1600
+vamp_opt_eval:
+    fixed:
+      params_opt: vamp_eval
+      prior: vamp
+      encode_pseudoinputs_on_eval_mode: 1
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 100
+          - 5000
 
-# vamp_opt:
-#     fixed:
-#       params_opt: vamp
-#       prior: vamp
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 10
-#           - 50
-#           - 100
-#           - 500
-#           - 1000
-#           - 5000
+vamp_opt_eval_fixed:
+    fixed:
+      params_opt: vamp_eval_fixed
+      prior: vamp
+      encode_pseudoinputs_on_eval_mode: 1
+      trainable_priors: 0
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 100
+          - 5000
 
-# vamp_opt_eval:
-#     fixed:
-#       params_opt: vamp_eval
-#       prior: vamp
-#       encode_pseudoinputs_on_eval_mode: 1
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 2
-#           - 5
-#           - 10
-#           - 100
-#           - 5000
+gmm_opt_eval:
+    fixed:
+      params_opt: gmm_eval
+      prior: gmm
+      encode_pseudoinputs_on_eval_mode: 1 # not needed
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 100
+          - 5000
 
-# vamp_opt_eval_fixed:
-#     fixed:
-#       params_opt: vamp_eval_fixed
-#       prior: vamp
-#       encode_pseudoinputs_on_eval_mode: 1
-#       trainable_priors: 0
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 2
-#           - 5
-#           - 10
-#           - 100
-#           - 5000
+gmm_opt_eval_fixed:
+    fixed:
+      params_opt: gmm_eval_fixed
+      prior: gmm
+      trainable_priors: 0
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 100
+          - 5000
 
-# vamp_opt_kl_anneal:
-#     fixed:
-#       params_opt: vamp_kl_anneal
-#       prior: vamp
-#       kl_weight: w0_1_0_1600
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 10
-#           - 100
-#           - 1000
-#           - 5000
+gmm_opt_eval_ri:
+    fixed:
+      params_opt: gmm_eval_ri
+      prior: gmm
+      pseudoinputs_data_init: 0
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 100
+          - 5000
 
-# gmm_opt_eval:
-#     fixed:
-#       params_opt: gmm_eval
-#       prior: gmm
-#       encode_pseudoinputs_on_eval_mode: 1 # not needed
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 2
-#           - 5
-#           - 10
-#           - 100
-#           - 5000
+gmm_opt_eval_ri_fixed:
+    fixed:
+      params_opt: gmm_eval_ri_fixed
+      prior: gmm
+      trainable_priors: 0
+      pseudoinputs_data_init: 0
+    grid:
+      n_prior_components:
+        type: choice
+        options:
+          - 1
+          - 2
+          - 5
+          - 10
+          - 100
+          - 5000
 
-# gmm_opt_eval_fixed:
-#     fixed:
-#       params_opt: gmm_eval_fixed
-#       prior: gmm
-#       trainable_priors: 0
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 2
-#           - 5
-#           - 10
-#           - 100
-#           - 5000
+zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      params_opt: z_distance_cycle_weight_std
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50  
 
-# gmm_opt_eval_ri:
-#     fixed:
-#       params_opt: gmm_eval_ri
-#       prior: gmm
-#       pseudoinputs_data_init: 0
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 2
-#           - 5
-#           - 10
-#           - 100
-#           - 5000
+vamp_eval_zdcw_opt_std:
+    fixed:
+      z_dist_metric: MSE_standard 
+      prior: vamp
+      n_prior_components: 5
+      encode_pseudoinputs_on_eval_mode: 1
+      params_opt: vamp_z_distance_cycle_weight_std_eval
+    grid:
+      z_distance_cycle_weight:
+        type: choice
+        options:
+          - 2
+          - 5 
+          - 10
+          - 50  
 
-# gmm_opt_eval_ri_fixed:
-#     fixed:
-#       params_opt: gmm_eval_ri_fixed
-#       prior: gmm
-#       trainable_priors: 0
-#       pseudoinputs_data_init: 0
-#     grid:
-#       n_prior_components:
-#         type: choice
-#         options:
-#           - 1
-#           - 2
-#           - 5
-#           - 10
-#           - 100
-#           - 5000
+vamp_klw_opt_eval:
+    fixed:
+      prior: vamp
+      n_prior_components: 5
+      encode_pseudoinputs_on_eval_mode: 1
+      params_opt: vamp_kl_weight_eval
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
+          - 1.5
+          - 2
+          - 5   
 
-# zdcw_opt:
-#     fixed:
-#       z_dist_metric: MSE # DOnt use MSE standard at it may even perform worse
-#       params_opt: z_distance_cycle_weight
-#     grid:
-#       z_distance_cycle_weight:
-#         type: choice
-#         options:
-#           - 2
-#           - 5 
-#           - 10
-#           - 50
-# zdcw_opt_std:
-#     fixed:
-#       z_dist_metric: MSE_standard 
-#       params_opt: z_distance_cycle_weight_std
-#     grid:
-#       z_distance_cycle_weight:
-#         type: choice
-#         options:
-#           - 2
-#           - 5 
-#           - 10
-#           - 50  
+scvi_kl_anneal:
+    fixed:
+      model: scvi
+      params_opt: scvi_kl_anneal
+      use_n_steps_kl_warmup: 1
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 0.5
+          - 1
+          - 1.5
+          - 2
 
-# zdcw_opt_std_kl_anneal:
-#     fixed:
-#       z_dist_metric: MSE_standard 
-#       params_opt: z_distance_cycle_weight_std_kl_anneal
-#       kl_weight: w0_1_0_1600
-#     grid:
-#       z_distance_cycle_weight:
-#         type: choice
-#         options:
-#           - 2
-#           - 5 
-#           - 10
-#           - 50  
+scglue_rgw:
+    fixed:
+      model: scglue
+      conda_env: scglue
+      params_opt: scglue_rel_gene_weight
+      max_epochs: -1
+    grid:
+      rel_gene_weight:
+        type: choice
+        options:
+          - 0.4
+          - 0.6 
+          - 0.8
+          - 1       
 
-# vamp_zdcw_opt_std:
-#     fixed:
-#       z_dist_metric: MSE_standard 
-#       prior: vamp
-#       n_prior_components: 100
-#       params_opt: vamp_z_distance_cycle_weight_std
-#     grid:
-#       z_distance_cycle_weight:
-#         type: choice
-#         options:
-#           - 2
-#           - 5 
-#           - 10
-#           - 50  
+scglue_la:
+    fixed:
+      model: scglue
+      conda_env: scglue
+      params_opt: scglue_lam_align
+      max_epochs: -1
+    grid:
+      lam_align:
+        type: choice
+        options:
+          - 0.0005
+          - 0.005
+          - 0.05
+          - 0.5
 
-# vamp_eval_zdcw_opt_std:
-#     fixed:
-#       z_dist_metric: MSE_standard 
-#       prior: vamp
-#       n_prior_components: 5
-#       encode_pseudoinputs_on_eval_mode: 1
-#       params_opt: vamp_z_distance_cycle_weight_std_eval
-#     grid:
-#       z_distance_cycle_weight:
-#         type: choice
-#         options:
-#           - 2
-#           - 5 
-#           - 10
-#           - 50  
-
-# vamp_klw_opt:
-#     fixed:
-#       prior: vamp
-#       n_prior_components: 100
-#       params_opt: vamp_kl_weight
-#     grid:
-#       kl_weight:
-#         type: choice
-#         options:
-#           #- 0.1
-#           - 0.5
-#           - 1
-#           - 2
-#           - 5 
-#           #- 10
-
-# vamp_klw_opt_eval:
-#     fixed:
-#       prior: vamp
-#       n_prior_components: 5
-#       encode_pseudoinputs_on_eval_mode: 1
-#       params_opt: vamp_kl_weight_eval
-#     grid:
-#       kl_weight:
-#         type: choice
-#         options:
-#           - 1
-#           - 1.5
-#           - 2
-#           - 5   
-
-# scvi:
-#     fixed:
-#       model: scvi
-#       params_opt: scvi
-
-# scvi_kl_anneal:
-#     fixed:
-#       model: scvi
-#       params_opt: scvi_kl_anneal
-#       use_n_steps_kl_warmup: 1
-#     grid:
-#       kl_weight:
-#         type: choice
-#         options:
-#           - 0.1
-#           - 0.5
-#           #- 1
-#           - 1.5
-#           - 2
-#           - 5
-
-
-# scglue_rgw:
-#     fixed:
-#       model: scglue
-#       conda_env: scglue
-#       params_opt: scglue_rel_gene_weight
-#       max_epochs: -1
-#     grid:
-#       rel_gene_weight:
-#         type: choice
-#         options:
-#           - 0.4
-#           - 0.6 
-#           - 0.8
-#           - 1       
-
-# scglue_la:
-#     fixed:
-#       model: scglue
-#       conda_env: scglue
-#       params_opt: scglue_lam_align
-#       max_epochs: -1
-#     grid:
-#       lam_align:
-#         type: choice
-#         options:
-#           - 0.0005
-#           - 0.005
-#           - 0.05
-#           #- 0.2
-#           - 0.5
-
-# scglue_lg:
-#     fixed:
-#       model: scglue
-#       conda_env: scglue
-#       params_opt: scglue_lam_graph
-#       max_epochs: -1
-#     grid:
-#       lam_graph:
-#         type: choice
-#         options:
-#           - 0.005
-#           # - 0.02
-#           - 0.1
-#           - 0.5
-#           #- 1
-#           - 2
+scglue_lg:
+    fixed:
+      model: scglue
+      conda_env: scglue
+      params_opt: scglue_lam_graph
+      max_epochs: -1
+    grid:
+      lam_graph:
+        type: choice
+        options:
+          - 0.005
+          - 0.1
+          - 0.5
+          - 2
 
 scgen:
     fixed:
@@ -374,10 +262,7 @@ scgen:
       kl_weight:
         type: choice
         options:
-          - 0.01
           - 0.1
-          - 1
-          - 2
 
 scgen_sample:
     fixed:
@@ -389,7 +274,4 @@ scgen_sample:
       kl_weight:
         type: choice
         options:
-          - 0.01
           - 0.1
-          - 1
-          - 2

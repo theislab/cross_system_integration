@@ -1,2 +1,0 @@
-# Tar all subfolders with a given pattern in file name
-find /path/to/directory -type f -name "pattern" -exec tar -cvf archive.tar {} +
