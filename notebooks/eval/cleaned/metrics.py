@@ -6,7 +6,14 @@ from sklearn.metrics import jaccard_score
 
 import scib_metrics as sm
 
+# labels - cell types
+# batches - batch info
+
 def asw_label(X,labels):
+    """
+    ASW label reimplementation with macro/micro scores
+    :param X: Embedding
+    """
     asw=sm.utils.silhouette_samples(
         X=X, 
         labels=labels, 
@@ -18,6 +25,10 @@ def asw_label(X,labels):
     return asw_micro, asw_macro, asw_label
 
 def asw_batch(X,batches,labels):
+    """
+    ASW batch reimplementation with macro/micro scores
+    :param X: Embedding 
+    """
     asw_label={}
     asws=[]
     for label in np.unique(labels):
@@ -45,6 +56,10 @@ def asw_batch(X,batches,labels):
     return asw_micro, asw_macro, asw_label
 
 def clisi(X, labels):
+    """
+    clisi with macro/micro scores
+    :param X: Scanpy distance matrix
+    """
     labels_code = np.asarray(pd.Categorical(labels).codes)
     clisi = sm.lisi_knn(X, labels_code, perplexity=None)
     nlabels = len(np.unique(labels))
@@ -57,6 +72,10 @@ def clisi(X, labels):
 
 
 def ilisi(X, labels, batches):
+    """
+    ilisi with macro/micro scores
+    :param X: Scanpy distance matrix
+    """
     batches_code = np.asarray(pd.Categorical(batches).codes)
     ilisi = sm.lisi_knn(X, batches_code, perplexity=None)
     nbatches = len(np.unique(batches))
@@ -69,6 +88,10 @@ def ilisi(X, labels, batches):
 
 
 def _cluster_classification_metrics(labels,clusters, jaccard:bool=True):
+    """
+    Compute clusters classification metrics based on true labels and data-driven clusters
+    Jaccard computed as micro/macro
+    """
     
     labels_df=pd.DataFrame({'labels':labels,
                             'clusters':clusters})
@@ -95,6 +118,9 @@ def _cluster_classification_metrics(labels,clusters, jaccard:bool=True):
 
 
 def _compute_cluster_clasification_leiden(X,labels,resolution):
+    """
+    Cluster classification metrics for given leiden resolution
+    """
     import random
     random.seed(0)
     labels_pred = sm._nmi_ari._compute_clustering_leiden(X, resolution)
@@ -103,8 +129,9 @@ def _compute_cluster_clasification_leiden(X,labels,resolution):
 
 def cluster_classification_optimized(X,labels):
     """
-    reimplemented NMI ARI metrics to add random seed
-    X: connectivity graph
+    Cluster classification metrics where clusters are selected based on optimal cluster resolution
+    reimplemented scIB NMI ARI metrics to add random seed
+    X: connectivity graph of Scanpy
     """
     from sklearn.utils import check_array
     
@@ -132,6 +159,9 @@ def cluster_classification_optimized(X,labels):
     return nmi, ari
 
 def cluster_classification(labels,clusters):
+    """
+    Cluster classification metrics where clusters are mapped to labels based on majority vote
+    """
 
     # Map clusters to labels by mode-label assignment
     labels_df=pd.DataFrame({'labels':labels,'clusters':clusters})
