@@ -54,6 +54,8 @@ To make the final plotting of data-setting subsets quicker, the integration resu
 
 All scripts are within results/, except where otherwise specified.
 
+A list of unified names and colors for plotting is specified within names_parsed.ipynb
+
 Pre-integration batch strength analysis (within batch_strength/ sub-directory):
 - Batch effects within and between systems: plots batch_strength/batch_strength_plot.ipynb, supplementary table batch_strength_table.ipynb
 - Comparison of batch effect strength between data settings (including significance test): batch_strength_across_datasets.ipynb
