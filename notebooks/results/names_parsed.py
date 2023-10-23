@@ -335,5 +335,3 @@ palette={
     'adipose_sc_sn_updated':'#92C2D0',
 }
 pkl.dump(palette,open(path_save+'dataset_cmap.pkl','wb'))
-
-# %%
