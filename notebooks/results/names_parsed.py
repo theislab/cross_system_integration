@@ -43,7 +43,7 @@ model_map={
 pkl.dump(model_map,open(path_save+'models.pkl','wb'))
 
 # %%
-# Models
+# Models extended
 model_map_additional={
     'vamp_fixed': 'VAMP - FP',
     'gmm':'GMM',
@@ -93,7 +93,6 @@ param_vals=[
         ('lam_graph',[0.005, 0.1, 0.5, 2.0]),
         ('rel_gene_weight',[0.4, 0.6, 0.8, 1.0]) ]),
     (['vamp'],[
-        #('n_prior_components',[10.0, 100.0, 1000.0, 5000.0]),
         ('kl_weight',[1.0, 1.5, 2.0, 5]) 
     ]),
     (['saturn','saturn_super'],[
@@ -105,7 +104,7 @@ param_vals=[
 pkl.dump(param_vals,open(path_save+'optimized_parameter_values.pkl','wb'))
 
 # %%
-# Optimized parameter values to be used alongside relevant models
+# Optimized parameter values to be used alongside relevant models - extended
 param_vals_additional=[
     (['vamp','vamp_fixed','gmm','gmm_fixed','gmm_ri'],[
         ('n_prior_components',[1.0,2.0,5.0,10.0, 100.0, 5000.0]),
@@ -140,7 +139,7 @@ params_opt_map={
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
 
 # %%
-# Params opt 
+# Map params_opt to model name - extended 
 params_opt_map_additional={
      'vamp_eval':'vamp',
      'vamp_eval_fixed':'vamp_fixed',
@@ -167,7 +166,7 @@ param_names={
 pkl.dump(param_names,open(path_save+'params.pkl','wb'))
 
 # %%
-# Map param names to pretty names
+# Map param names to pretty names - extended
 param_names_additional={
     'prior_components_group':'Prior init. cell type',
     'prior_components_system':'Prior init. system',
@@ -205,7 +204,7 @@ system_map={
 pkl.dump(system_map,open(path_save+'systems.pkl','wb'))
 
 # %%
-# Cell type labels
+# Cell type labels name mapping
 cell_type_map={
     'pancreas_conditions_MIA_HPAP2':{
         'acinar': 'Acinar', 
@@ -270,6 +269,7 @@ cell_type_map={
 pkl.dump(cell_type_map,open(path_save+'cell_types.pkl','wb'))
 
 # %%
+# Prior init name mapping
 prior_init_map={
     'prior_components_group':{'BALANCED':'Balanced'},
     'prior_components_system':{'-1':'Balanced'},
@@ -277,7 +277,7 @@ prior_init_map={
 pkl.dump(prior_init_map,open(path_save+'prior_init.pkl','wb'))
 
 # %% [markdown]
-# ## Cmaps
+# ## Color maps
 
 # %%
 import scanpy as sc
@@ -295,7 +295,7 @@ palette=dict(zip(models,colors[:len(models)]))
 pkl.dump(palette,open(path_save+'model_cmap.pkl','wb'))
 
 # %%
-# UMAP col colloring for datasets
+# UMAP metadata colloring for individual datasets
 cmaps=defaultdict(dict)
 for fn,cols in [
     ('adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad',
