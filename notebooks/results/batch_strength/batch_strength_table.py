@@ -23,6 +23,7 @@ path_names=path_data+'names_parsed/'
 path_tables=path_data+'tables/'
 
 # %%
+# Names
 dataset_map=pkl.load(open(path_names+'datasets.pkl','rb'))
 system_map=pkl.load(open(path_names+'systems.pkl','rb'))
 cell_type_map=pkl.load(open(path_names+'cell_types.pkl','rb'))
@@ -34,6 +35,7 @@ dataset_metric_fns={
     'retina_adult_organoid':'combined_HVG',
     'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn',
 }
+# Save results in single excel file with parsed names
 writer = pd.ExcelWriter(path_tables+'PcaSysBatchDist_Signif.xlsx',engine='xlsxwriter') 
 for dataset,fn_part in dataset_metric_fns.items():
     table_sub=pd.read_table(f'{path_data}{dataset}/{fn_part}_PcaSysBatchDist_Signif.tsv')

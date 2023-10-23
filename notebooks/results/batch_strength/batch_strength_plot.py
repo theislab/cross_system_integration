@@ -31,10 +31,11 @@ path_res_panc=path_data+'pancreas_conditions_MIA_HPAP2/'
 path_fig=path_data+'figures/'
 
 # %%
+# Load distances from mouse-human dataset
 distances=pkl.load(open(path_res_panc+'combined_orthologuesHVG_PcaSysBatchDist.pkl','rb'))
 
 # %%
-# Prepare df for plotting
+# Prepare df for plotting (focus on delta cells)
 plot=[]
 ct='delta'
 dat=distances[ct]
@@ -47,7 +48,7 @@ for comparison,dist in dat.items():
 plot=pd.concat(plot)
 
 # %%
-# Make data prettier
+# Make data names prettier
 plot.rename({'dist':'Distance'},axis=1,inplace=True)
 plot.replace({'s0_within':'Mouse\n(within datasets)',
               's0_between':'Mouse\n(between datasets)',
@@ -55,6 +56,7 @@ plot.replace({'s0_within':'Mouse\n(within datasets)',
               's0s1':'Mouse vs human'},inplace=True)
 
 # %%
+# Plot
 fig,ax=plt.subplots(figsize=(1.5,2))
 sb.violinplot(y=y_col,x='Distance',data=plot,inner=None,linewidth=0.5,ax=ax)
 fig.set(facecolor = (0,0,0,0))
@@ -65,7 +67,7 @@ plt.savefig(path_fig+f'batch_strength-pancreas_{ct}-violin.pdf',dpi=300,bbox_inc
 plt.savefig(path_fig+f'batch_strength-pancreas_{ct}-violin.png',dpi=300,bbox_inches='tight')
 
 # %%
-# N comparisons per group
+# N comparisons (samples) per group
 plot.groupby(y_col).size()
 
 # %%

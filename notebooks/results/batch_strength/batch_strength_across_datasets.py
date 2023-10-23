@@ -35,7 +35,6 @@ path_fig=path_data+'figures/'
 model_map=pkl.load(open(path_names+'models.pkl','rb'))
 param_map=pkl.load(open(path_names+'params.pkl','rb'))
 metric_map=pkl.load(open(path_names+'metrics.pkl','rb'))
-# Here NMI fixed is used
 metric_map=dict([(k,v) if k!='nmi_opt' else ('nmi','NMI fixed') for k,v in metric_map.items() ])
 dataset_map=pkl.load(open(path_names+'datasets.pkl','rb'))
 metric_meaning_map=pkl.load(open(path_names+'metric_meanings.pkl','rb'))
@@ -67,13 +66,14 @@ for dataset,fn_part in dataset_metric_fns.items():
                               ))['asw_batch']['asw_data_label'].values
 
 # %%
-# Make DF from results for plotting/analysis
+# Make DF from results for plotting
 score_name='ASW system'
 ds_name='Dataset'
 res=pd.Series(res).explode().rename(score_name).reset_index().rename({'index':'dataset'},axis=1)
 res[ds_name]=res['dataset'].map(dataset_map)
 
 # %%
+# Plot
 fig,ax=plt.subplots(figsize=(1,1))
 sb.swarmplot(x=score_name,y=ds_name,data=res,s=3,c='k')
 ax.set(facecolor = (0,0,0,0))
@@ -88,6 +88,7 @@ plt.savefig(path_fig+'batch_strength_datasets-asw_label-swarm.png',
             dpi=300,bbox_inches='tight')
 
 # %%
+# Significance of batch effect differences across data asettings
 dss=sorted(res['dataset'].unique())
 for i in range(len(dss)-1):
     for j in range(i+1,len(dss)):
