@@ -50,6 +50,10 @@ To make the final plotting of data-setting subsets quicker, the integration resu
 
 ### Analysis of VampPrior model
 
-### Analysis of integration metrics
-
 ## Preparation of final plots/tables for the paper
+
+All scripts are within results/, except where otherwise specified.
+
+Pre-integration batch strength analysis (within batch_strength/ sub-directory):
+- Batch effects within and between systems: plots batch_strength/batch_strength_plot.ipynb, supplementary table batch_strength_table.ipynb
+- Comparison of batch effect strength between data settings: batch_strength_across_datasets.ipynb
