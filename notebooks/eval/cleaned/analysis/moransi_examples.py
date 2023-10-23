@@ -13,9 +13,6 @@
 #     name: csi
 # ---
 
-# %% [markdown]
-# # Morans I examples on integrated pancreas
-
 # %%
 import pandas as pd
 import numpy as np
@@ -64,7 +61,7 @@ for hc,data in gene_groups:
     sc.tl.score_genes(adata, gene_list=data.EID, score_name=score_name, use_raw=False)
 
 # %%
-# Store embeddings (integrated an non-integrated)
+# Store embeddings (integrated and non-integrated)
 embeds={}
 
 # %%
@@ -97,7 +94,7 @@ for model,embed_dir in {model:dat['mid_run'] for model,dat in
     embeds[model]=embed
 
 # %%
-# Compute UMAP and moran's I for every embedding for the gene group scores
+# Compute UMAP and Moran's I for every embedding for the gene group scores
 scores=[c for c in adata.obs.columns if 'gene_score' in c]
 for embed in embeds.values():
     sc.tl.umap(embed)
@@ -113,17 +110,3 @@ for embed in embeds.values():
 # %%
 # Save embeddings
 pkl.dump(embeds,open(path_save+'pancreas_STZG1_healthyvar_topmodels.pkl','wb'))
-
-# %%
-nrows=len(scores)
-ncols=len(embeds)
-fig,axs=plt.subplots(nrows,ncols,figsize=(3*ncols,3*nrows))
-for col,(model,embed) in enumerate(embeds.items()):
-    for row,score in enumerate(scores):
-        ax=axs[row,col]
-        mi=embed.uns['moransi'][score]
-        sc.pl.umap(embed,color=score,ax=ax,show=False,
-                   title=f"{model}\n{score.replace('gene_score_','')} MI={round(mi,2)}")
-fig.tight_layout()
-
-# %%

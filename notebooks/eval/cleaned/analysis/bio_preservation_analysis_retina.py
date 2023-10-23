@@ -71,12 +71,12 @@ for model,model_setting in top_settings.items():
             embeds[model]=sc.read(path_integration+run+'/embed.h5ad')
 
 # %% [markdown]
-# ## Distinct ct locations
+# ## Distinct cell type locations
 #
-# Astrocites sem to differ while other cell types are aligned. Same for RPE (also reported in the paper).
+# RPE were reproted in the paper to differ between tissue and organoid. We also observe some (but smaller) differences between astrocytes.
 
 # %%
-# Astrocytes and retinal pigment epithelial cell
+# Astrocytes and retinal pigment epithelial cell on integrated UMAPs
 nrow=len(embeds)
 ncol=2
 fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
@@ -91,7 +91,7 @@ for i,(method,embed) in enumerate(embeds.items()):
             ax.get_legend().remove()
 
 # %% [markdown]
-# ## Adata for analys of markers
+# ## Prepare adata for analys of markers
 
 # %%
 # Load expression for plotting markers
@@ -134,37 +134,10 @@ for embed in embeds_sub.values():
     sc.tl.umap(embed)
 
 # %% [markdown]
-# Sample metdata UMPAs
-
-# %%
-# Add organoid age info
-org_age=embeds_sub['cVAE'].obs.apply(
-    lambda x: x.condition.split('W')[1].split('_')[0] if  x.system=='0' else np.nan,
-    axis=1)
-for embed in embeds_sub.values():
-    embed.obs['org_age']=org_age
-
-# %%
-# Sample info on Mueller cells
-nrow=len(embeds_sub)
-ncol=2
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    for j, system in enumerate(sorted(embed.obs.system.unique())[::-1]):
-        ax=axs[i,j]
-        sc.pl.umap(embed,ax=ax,show=False,frameon=False)
-        if system=='0':
-            sc.pl.umap(embed[embed.obs.system==system,:],color='org_age',
-                       ax=ax,show=False,title=method+' '+system,frameon=False,s=1)
-        else:
-            sc.pl.umap(embed[embed.obs.system==system,:],color='region',
-                       ax=ax,show=False,title=method+' '+system,frameon=False,s=1)
-plt.subplots_adjust(wspace=1)
-
-# %% [markdown]
 # Periphery/fovea markers
 
 # %%
+# Get exaple adata for extracting info below
 adata_sub=adata[embeds_sub['cVAE'].obs_names,:]
 
 # %%
@@ -197,7 +170,7 @@ for embed in embeds_sub.values():
     embed.uns['umap_density_system_region_params']['covariate']=None
 
 # %%
-# MEbedding density
+# Embedding density
 nrow=len(embeds_sub)
 groups=sorted(system_region.unique())
 ncol=len(groups)
@@ -232,17 +205,12 @@ except:
     pass
 
 # %%
-# Save embeds with constant model names
+# Add constant model names to embeds
 embeds_sub={model_map_rev[k]:v for k,v in embeds_sub.items()}
 
 # %%
 # Save embeds
 pkl.dump(embeds_sub,open(path_save_mueller+'density_topmodels.pkl','wb'))
-
-# %%
-# Reload
-# embeds_sub={model_map[k]:v for k,v in 
-#             pkl.load(open(path_save_mueller+'density_topmodels.pkl','rb')).items()}
 
 # %%
 # Save expression
@@ -255,9 +223,10 @@ adata_sub[:,adata_sub.var.query('feature_name in @genes').index].write(
 # ## scGEN analysis
 
 # %% [markdown]
-# Analyse scGEN example with sample-level integration, kl=0.1 and seed=1. Use vamp+cycle for comparison.
+# Analyse scGEN examples with kl=0.1 and seed=1. Use vamp+cycle for comparison.
 
 # %%
+# Create new embeds dict and add model results
 embeds_sub1={}
 embeds_sub1['vamp_cycle']=embeds[model_map['vamp_cycle']]
 example_runs=pkl.load(open(f'{path_data}eval/{dataset}/integration_summary/example_runs.pkl','rb'))
@@ -286,10 +255,11 @@ for embed in embeds_sub.values():
 # Markers
 
 # %%
+# Example adata for downstream info extraction
 adata_sub=adata[embed.obs_names,:]
 
 # %%
-# Expression of periphery/fovea markers, limiting value range
+# Expression of periphery/fovea markers
 nrow=len(embeds_sub)
 genes=['ATP1A2','COL2A1','FAM237B','RHCG']
 ncol=len(genes)
@@ -302,7 +272,7 @@ for i,(method,embed) in enumerate(embeds_sub.items()):
                    title=gene+ ' '+ method,frameon=False)
 
 # %%
-# Expression of periphery/fovea markers
+# Expression of periphery/fovea marker per material group
 gene='RHCG'
 nrow=len(embeds_sub)
 ncol=len(embed.obs.system_region.unique())
@@ -317,6 +287,9 @@ for i,(method,embed) in enumerate(embeds_sub.items()):
         print( adata_sub_group.shape)
         sc.pl.umap(adata_sub_group,ax=ax,show=False,color=gene,gene_symbols='feature_name',
                    title=group+ ' '+ method,frameon=False,s=50,sort_order=True,vmax=3.5)
+
+# %% [markdown]
+# Plot author annotated cell sub-types within Mueller cells on individual embeddings
 
 # %%
 rcParams['figure.figsize']=(2,2)
@@ -338,7 +311,7 @@ for embed in embeds_sub.values():
     embed.uns['umap_density_system_region_params']['covariate']=None
 
 # %%
-# MEbedding density
+# Embedding density
 nrow=len(embeds_sub)
 groups=sorted(system_region.unique())
 ncol=len(groups)
@@ -379,95 +352,17 @@ pkl.dump(
      open(path_save_mueller+'density_scgen_example.pkl','wb'))
 
 # %% [markdown]
-# ### Cones
-
-# %%
-pd.crosstab(
-    adata.obs.query('cell_type=="retinal cone cell"')['system_region'],
-    adata.obs.query('cell_type=="retinal cone cell"')['author_cell_type'])
-
-# %%
-# Subset to mueller cells and recompute embedding
-embeds_sub={model:embed[embed.obs.cell_type=="retinal cone cell",:].copy() for model,embed in embeds_sub1.items()}
-for embed in embeds_sub.values():
-    print(embed.shape)
-    sc.pp.neighbors(embed, use_rep='X', n_neighbors=90)
-    sc.tl.umap(embed)
-
-# %%
-# Make categories to analyse (organoid/fovea/periphery)
-system_region=embed.obs.apply(
-        lambda x: x['material']+('_'+x['region'] if x['material']=='adult' else ''),axis=1)
-for embed in embeds_sub.values():
-    embed.obs['system_region']=system_region
-
-# %%
-adata_sub=adata[embed.obs_names,:]
-
-# %%
-# Expression of periphery/fovea markers
-nrow=len(embeds_sub)
-genes=['ARR3','OPN1SW']
-ncol=len(genes)
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    for j, gene in enumerate(genes):
-        ax=axs[i,j]
-        adata_sub.obsm['X_umap']=embed[adata_sub.obs_names,:].obsm['X_umap']
-        sc.pl.umap(adata_sub,ax=ax,show=False,color=gene,gene_symbols='feature_name',
-                   title=gene+ ' '+ method,frameon=False)
-
-# %%
-# Expression of periphery/fovea markers
-gene='OPN1SW'
-nrow=len(embeds_sub)
-ncol=len(embed.obs.system_region.unique())
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    adata_sub.obsm['X_umap']=embed[adata_sub.obs_names,:].obsm['X_umap']
-    for j, group in enumerate(sorted(adata.obs.system_region.unique())):
-        ax=axs[i,j]
-        sc.pl.umap(adata_sub,ax=ax,show=False,frameon=False,s=50)
-        adata_sub_group=adata_sub[adata_sub.obs.system_region==group,:].copy()
-        adata_sub_group.obsm['X_umap']=embed[adata_sub_group.obs_names,:].obsm['X_umap']
-        print( adata_sub_group.shape)
-        sc.pl.umap(adata_sub_group,ax=ax,show=False,color=gene,gene_symbols='feature_name',
-                   title=group+ ' '+ method,frameon=False,s=100)
-
-# %%
-rcParams['figure.figsize']=(2,2)
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    sc.pl.umap(embed,color=['system_region','author_cell_type'],wspace=0.8)
-
-# %%
-# Astrocytes and retinal pigment epithelial cell
-nrow=len(embeds_sub)
-ncol=3
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    for j, group in enumerate(sorted(embed.obs.system_region.unique())):
-        ax=axs[i,j]
-        sc.pl.umap(embed,ax=ax,show=False,frameon=False)
-        sc.pl.umap(embed[embed.obs.system_region==group,:],color='author_cell_type',
-                   groups=['L/M cone','S cone'],
-                   ax=ax,show=False,title=method+'\n'+group,frameon=False)
-        if j<2:
-            ax.get_legend().remove()
-
-# %% [markdown]
-# C: Cone cells are not the best example as they dont have enough cells per ct of interest
-
-# %% [markdown]
 # ### Amarcine
-# AC_Y_03, AC_B_16
+# Analyse amarcine cell type subtypes on different embeddings
 
 # %%
+# List subtype counts
 pd.crosstab(
     adata.obs.query('cell_type=="amacrine cell"')['system_region'],
     adata.obs.query('cell_type=="amacrine cell"')['author_cell_type']).T
 
 # %%
-# Subset to mueller cells and recompute embedding
+# Subset to amarcine cells and recompute embedding
 embeds_sub={model:embed[embed.obs.cell_type=="amacrine cell",:].copy() for model,embed in embeds_sub1.items()}
 for embed in embeds_sub.values():
     print(embed.shape)
@@ -482,40 +377,11 @@ for embed in embeds_sub.values():
     embed.obs['system_region']=system_region
 
 # %%
-# Astrocytes and retinal pigment epithelial cell
-nrow=len(embeds_sub)
-ncol=3
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    for j, group in enumerate(sorted(embed.obs.system_region.unique())):
-        ax=axs[i,j]
-        sc.pl.umap(embed,ax=ax,show=False,frameon=False)
-        sc.pl.umap(embed[embed.obs.system_region==group,:],color='author_cell_type',
-                   groups=['AC_Y_03','AC_B_16'],
-                   palette={**{ct:'lightgray' for ct in embed.obs.author_cell_type.unique()},
-                            **{'AC_Y_03':'r','AC_B_16':'b',}},
-                   ax=ax,show=False,title=method+'\n'+group,frameon=False,s=30)
-        if j<2:
-            ax.get_legend().remove()
-
-# %%
+# Get example adata for downstream metadata extraction
 adata_sub=adata[embed.obs_names,:]
 
 # %%
-# Expression of periphery/fovea markers
-nrow=len(embeds_sub)
-genes=['GJD2','SLC18A3']
-ncol=len(genes)
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    for j, gene in enumerate(genes):
-        ax=axs[i,j]
-        adata_sub.obsm['X_umap']=embed[adata_sub.obs_names,:].obsm['X_umap']
-        sc.pl.umap(adata_sub,ax=ax,show=False,color=gene,gene_symbols='feature_name',
-                   title=gene+ ' '+ method,frameon=False,s=50)
-
-# %%
-# Expression of periphery/fovea markers
+# Expression of starburst amacrine subtype marker
 gene='SLC18A3'
 nrow=len(embeds_sub)
 ncol=len(embed.obs.system_region.unique())
@@ -530,51 +396,6 @@ for i,(method,embed) in enumerate(embeds_sub.items()):
         print( adata_sub_group.shape)
         sc.pl.umap(adata_sub_group,ax=ax,show=False,color=gene,gene_symbols='feature_name',
                    title=group+ ' '+ method,frameon=False,s=100)
-
-# %%
-gene='GJD2'
-nrow=len(embeds_sub)
-ncol=len(embed.obs.system_region.unique())
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    adata_sub.obsm['X_umap']=embed[adata_sub.obs_names,:].obsm['X_umap']
-    for j, group in enumerate(sorted(adata.obs.system_region.unique())):
-        ax=axs[i,j]
-        sc.pl.umap(adata_sub,ax=ax,show=False,frameon=False,s=50)
-        adata_sub_group=adata_sub[adata_sub.obs.system_region==group,:].copy()
-        adata_sub_group.obsm['X_umap']=embed[adata_sub_group.obs_names,:].obsm['X_umap']
-        print( adata_sub_group.shape)
-        sc.pl.umap(adata_sub_group,ax=ax,show=False,color=gene,gene_symbols='feature_name',
-                   title=group+ ' '+ method,frameon=False,s=100)
-
-# %%
-sc.pl.umap(embeds_sub['vamp_cycle'],color='author_cell_type')
-
-# %%
-sc.pl.umap(embeds_sub['scgen_sample'],color='author_cell_type')
-
-# %%
-sc.pl.umap(embeds_sub['scgen_system'],color='author_cell_type')
-
-# %%
-# Expression of periphery/fovea markers
-gene='PRDM13'
-nrow=len(embeds_sub)
-ncol=len(embed.obs.system_region.unique())
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*2, nrow*2))
-for i,(method,embed) in enumerate(embeds_sub.items()):
-    adata_sub.obsm['X_umap']=embed[adata_sub.obs_names,:].obsm['X_umap']
-    for j, group in enumerate(sorted(adata.obs.system_region.unique())):
-        ax=axs[i,j]
-        sc.pl.umap(adata_sub,ax=ax,show=False,frameon=False,s=50)
-        adata_sub_group=adata_sub[adata_sub.obs.system_region==group,:].copy()
-        adata_sub_group.obsm['X_umap']=embed[adata_sub_group.obs_names,:].obsm['X_umap']
-        print( adata_sub_group.shape)
-        sc.pl.umap(adata_sub_group,ax=ax,show=False,color=gene,gene_symbols='feature_name',
-                   title=group+ ' '+ method,frameon=False,s=100)
-
-# %% [markdown]
-# C: It may be better to rely on expression of markers than author annotation as it may be biased & noisy
 
 # %%
 # remove old entries
@@ -593,18 +414,19 @@ except:
     pass
 
 # %%
-# Save embeds
+# Save scGEN embeds
 pkl.dump(
     {'scgen_'+batch:embeds_sub['scgen_'+batch] for batch in ['sample','system']},
      open(path_save_amacrine+'density_scgen_example.pkl','wb'))
 
 # %%
-# Save embeds
+# Save other embeds
 pkl.dump({'vamp_cycle':embeds_sub['vamp_cycle']},
          open(path_save_amacrine+'density_topmodels.pkl','wb'))
 
 # %%
 # Save expression
+# Only SLC18A3 used downstream
 genes=['SLC18A3','PRDM13']
 adata_sub[:,adata_sub.var.query('feature_name in @genes').index].write(
     path_save_amacrine+'adata_markers.h5ad')
