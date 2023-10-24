@@ -50,12 +50,29 @@ To make the final plotting of data-setting subsets quicker, the integration resu
 
 ### Analysis of VampPrior model
 
+The evaluation of the effect of prior initialization and fixed or learnable priors: Integration runs are specified in the above yaml files used for running integration models. The final plots for the paper were created as described in the below section.
+
 ## Preparation of final plots/tables for the paper
 
 All scripts are within results/, except where otherwise specified.
 
 A list of unified names and colors for plotting is specified within names_parsed.ipynb
 
-Pre-integration batch strength analysis (within batch_strength/ sub-directory):
+Pre-integration batch strength analysis (within batch_strength/ subdirectory):
 - Batch effects within and between systems: plots batch_strength/batch_strength_plot.ipynb, supplementary table batch_strength_table.ipynb
 - Comparison of batch effect strength between data settings (including significance test): batch_strength_across_datasets.ipynb
+
+Analysis of integration metrics (within metrics_analysis/ subdirectory):
+- Effect of noise dimensions range on graph- and distance-based metrics: metric_bias.ipynb
+
+Integration results (within performance/ subdirectory):
+- Overview of performance across models: performance.ipynb
+- Correlation between metric scores and optimised parameter values: HP_metric_corr.ipynb
+- Gene group variation preservation on healthy adult beta cells (mouse-human dataset) with Moran's I: moransi_example.ipynb
+- Correct sample alignment on organoid-tissue retinal dataset: retina_bio_analysis.ipynb
+- Effect of embedding scaling on KL-based regularisation in cVAE: scaling_embed.ipynb
+- Cell type conservation/mixing in adversarial learning compared to cycle consistency: adversarial_cell_mixing.ipynb
+- Effect of prior cell type clusters on SATURN: saturn_prior.ipynb
+
+VampPrior analysis:
+- Different initializations and fixed/trainable prior: performance_vamp.ipynb
