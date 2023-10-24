@@ -26,11 +26,8 @@ import matplotlib.pyplot as plt
 # %%
 path_fig='/om2/user/khrovati/data/cross_system_integration/figures/'
 
-# %% [markdown]
-# ## Graph (LISI) vs distance metrics (ASW)
-
 # %%
-# Prepare mock data
+# Prepare mock data with group and random features
 n_noise=15
 n=100
 group=np.array(['a']*n+['b']*n) # Batch of cell type
@@ -46,6 +43,7 @@ for i in range (10):
     xs.append(x)
 
 # %%
+# Compute metrics when different number of random features is shrunk
 res=[]
 for n_small in range(0,n_noise+1,3):
     print(n_small)
@@ -71,6 +69,7 @@ for n_small in range(0,n_noise+1,3):
 res=pd.DataFrame(res)
 
 # %%
+# Plot metric results
 g=sb.catplot(x='N low var. noise feats.',y='value',col='metric',row='type',data=res,kind='swarm',
            sharey=False,height=1.5,aspect=1.5,s=3)
 for ax in g.axes.ravel():
@@ -90,8 +89,5 @@ g.fig.set(facecolor = (0,0,0,0))
 plt.tight_layout()
 plt.savefig(path_fig+'metric_bias-n_noise_ASW_LISI-swarm.pdf',dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'metric_bias-n_noise_ASW_LISI-swarm.png',dpi=300,bbox_inches='tight')
-
-# %% [markdown]
-# C: The background is set as non-transparent in jupyter lab, but is in fact transparent (e.g. if you copy the plot)
 
 # %%
