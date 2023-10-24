@@ -165,13 +165,17 @@ corrs=pd.DataFrame(corrs)
 corrs.rename({'dataset_parsed':'Dataset'},axis=1,inplace=True)
 
 # %%
+# Plot
 palette={dataset_map[dataset]:color for dataset,color in dataset_cmap.items()}
 g=sb.catplot(x='Optimized',y='HP corr.',hue='Dataset',row='metric', data=corrs, 
              height=1.5,aspect=3, kind='swarm',palette=palette)
+# Make pretty
 g.axes[-1][0].set_xticklabels(g.axes[-1][0].get_xticklabels(),rotation=90)
 for ax in g.axes:
     ax[0].axhline(0,c='gray',lw=1)
     ax[0].set_title(ax[0].get_title().replace('metric = ',''),fontsize=10)
+    
+# Save
 plt.savefig(path_fig+f'HP_metric_corr-corrs_all-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+f'HP_metric_corr-corrs_all-swarm.png',

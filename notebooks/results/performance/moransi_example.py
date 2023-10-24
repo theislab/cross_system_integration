@@ -38,6 +38,7 @@ embeds=pkl.load(open(path_embed+'pancreas_STZG1_healthyvar_topmodels.pkl','rb'))
 embeds={parsed:embeds[name] for name,parsed in model_map.items()}
 
 # %%
+# gene group score columns
 scores=[c for c in embeds['Non-integrated'].obs.columns if 'gene_score' in c]
 
 # %%

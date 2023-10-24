@@ -173,7 +173,7 @@ ress['param_opt_val_str']=pd.Categorical(
     ordered=True)
 
 # %%
-# Load metrics data for retained runs
+# Load detailed metrics data for retained runs
 metrics_datas={}
 for run,dataset in zip(ress.index,ress.dataset):
     metrics_data_sub=pkl.load(open(
@@ -198,9 +198,6 @@ for dataset,file,group_key in [
     gc.collect()
 
 # %%
-dat.columns
-
-# %%
 # heatmap per dataset
 for dataset,dataset_name in dataset_map.items():
     metric='jaccard_label'
@@ -213,7 +210,7 @@ for dataset,dataset_name in dataset_map.items():
     for metrics_res in metrics_data:
         dat[metrics_res['name']]=metrics_res[metric]
     dat=pd.DataFrame(dat).T
-    # Run order applied to cell metric data and batch score
+    # Run order applied to model/params and batch score
     run_order=res.sort_values(['model_parsed','param_parsed','param_opt_val','ilisi_system']).index
     dat=dat.loc[run_order,:]
     batch_score=res.loc[run_order,'ilisi_system']
@@ -222,20 +219,20 @@ for dataset,dataset_name in dataset_map.items():
         lambda x:  f"{res.at[x,'model_parsed']}: {res.at[x,'param_parsed']}")
     params_opt_colors=[model_cmap[i.split(':')[0]] for i in list(dict.fromkeys(params_opt_parsed))]
     run_names=dat.index.map(lambda x: res.at[x,'param_opt_val_str'])
-    # Max scale metric data by ct
+    # Max scale cell metric data by cell type
     dat=dat/np.clip(dat.max(axis=0),a_min=1e-3, a_max=None)
 
     # Cell type prportions and max N cells per system
     ct_prop=ct_counts[dataset_map_rev[dataset_name]].groupby('group')['n_cells'].apply(
                 lambda x: x.min()/x.max())
     ct_max=np.log10(ct_counts[dataset_map_rev[dataset_name]].groupby('group')['n_cells'].max())
-    # Sort cell types by cell proportion and then max
+    # Sort cell types by cell proportion and then max N cells
     ct_order=pd.concat([ct_prop.rename('prop'),ct_max.rename('max')],axis=1
                       ).sort_values(['prop','max']).index
     ct_prop=ct_prop.loc[ct_order]
     ct_max=ct_max.loc[ct_order]
     dat=dat.loc[:,ct_prop.index]
-    # Now replace cell types after matching has ben done on non-parsed cell type names
+    # Now replace cell types nmes after matching has ben done on non-parsed cell type names
     dat.rename(cell_type_map[dataset],axis=1,inplace=True)
 
 
@@ -328,7 +325,8 @@ for dataset,dataset_name in dataset_map.items():
         annotation_name_gp = gpar(fontsize=12),
         height = 2*unit(5, "mm"),width=ncol(x)*unit(5,"mm")
     )
-
+    
+    # heatmap
     h<-Heatmap(x,col=viridis(256),
            row_labels = rownames,
            cluster_columns = FALSE, cluster_rows = FALSE,
@@ -365,9 +363,5 @@ for dataset,dataset_name in dataset_map.items():
     _=ro.r(r_command)
 
 
-
-# %% magic_args=" -w 600 -h 800" language="R"
-# # Draw out one example
-# draw(h)
 
 # %%

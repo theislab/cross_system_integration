@@ -84,6 +84,7 @@ for i,(model,model_name) in enumerate([(k,v) for k,v in model_map.items() if k i
     for j,col in enumerate(cols):
         ax=axs[i,j]
         adata.obsm['X_umap']=embed[adata.obs_names,:].obsm['X_umap']
+        # Plot density or expression
         if col in genes:
             sc.pl.umap( adata,color=col,gene_symbols='feature_name',
                      title='',ax=ax,show=False, frameon=False)
@@ -93,6 +94,8 @@ for i,(model,model_name) in enumerate([(k,v) for k,v in model_map.items() if k i
                 embed[embed.obs.system_region==col,:],fg_dotsize=10,
                 basis='umap', key='umap_density_system_region', title='',
                 ax=ax,show=False, frameon=False)
+        
+        # make pretty
         if j==0:
             ax.axis('on')
             ax.tick_params(
@@ -104,7 +107,8 @@ for i,(model,model_name) in enumerate([(k,v) for k,v in model_map.items() if k i
         if i==0:
             ax.set_title(conditions_map[col] if col in conditions_map else '$\it{'+col+'}$',
                          fontsize=10)
-            
+        
+        # Edit cmaps
         cmaps=[a for a in fig.axes if a.get_label()=='<colorbar>']
         if i==0 and j>=len(conditions_map)-1:
             cmap=cmaps[-1]
@@ -131,10 +135,11 @@ plt.savefig(path_fig+'retina_bio_analysis-density_expr-umap.png',
             dpi=300,bbox_inches='tight')
 
 # %%
-# Subset of models
+# Plot for subset of models
 genes=['RHCG']
 cols=list(conditions_map)+genes
 ncol=len(cols)
+# Model subset
 models=['vamp_cycle','scglue']
 nrow=len(models)
 fig,axs=plt.subplots(nrow,ncol,figsize=(2*ncol,2*nrow))
@@ -200,6 +205,7 @@ embeds={'vamp_cycle':pkl.load(open(path_summaries_amacrine+'density_topmodels.pk
 adata=sc.read(path_summaries_amacrine+'adata_markers.h5ad')
 
 # %%
+# Plot expression per bio material source
 gene='SLC18A3'
 eid=adata.var.query('feature_name==@gene').index[0]
 vmax=adata[:,eid].X.max()
@@ -211,11 +217,14 @@ for i,(method,embed) in enumerate(embeds.items()):
     adata.obsm['X_umap']=embed[adata.obs_names,:].obsm['X_umap']
     for j, group in enumerate(conditions_map):
         ax=axs[i,j]
+        # Plot background and group's expression
         sc.pl.umap(adata,ax=ax,show=False,frameon=False,s=50)
         adata_group=adata[adata.obs.system_region==group,:].copy()
         adata_group.obsm['X_umap']=embed[adata_group.obs_names,:].obsm['X_umap']
         sc.pl.umap(adata_group,ax=ax,show=False,color=gene,gene_symbols='feature_name',
                    title='',frameon=False,s=100,vmin=0,vmax=adata[:,eid].X.max())
+        
+        # Make pretty
         if i==0:
             ax.set_title(conditions_map[group]+'\n',fontsize=10)
         if j==0:
@@ -226,6 +235,8 @@ for i,(method,embed) in enumerate(embeds.items()):
             ax.set_ylabel(model_map[method]+'\n',fontsize=10)
             ax.set_xlabel('')
             ax.set(frame_on=False)
+        
+        # Adjust cmaps
         cmaps=[a for a in fig.axes if a.get_label()=='<colorbar>']
         if j==(ncol-1) and i==0:
             cmap=cmaps[-1]
@@ -243,6 +254,8 @@ for idx,cmap in enumerate(cmaps_keep):
     pos.y1 = pos.y1-0.05 
     pos.y0 = pos.y0-0.05  
     cmap.set_position(pos)
+    
+# Save
 plt.savefig(path_fig+'retina_bio_analysis-amacrine_expr_subScgen-umap.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'retina_bio_analysis-amacrine_expr_subScgen-umap.png',

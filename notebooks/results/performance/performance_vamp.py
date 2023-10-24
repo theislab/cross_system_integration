@@ -63,7 +63,10 @@ obs_col_cmap=pkl.load(open(path_names+'obs_col_cmap.pkl','rb'))
 metric_background_cmap=pkl.load(open(path_names+'metric_background_cmap.pkl','rb'))
 
 # %% [markdown]
-# ### Load data
+# ### Metric scores for VAMP & GMM with different number of trainable/fixed prior components
+
+# %% [markdown]
+# #### Load data
 
 # %%
 # Load data and keep relevant runs
@@ -157,10 +160,8 @@ ress['param_opt_val_str']=pd.Categorical(
                ]+['none'],
     ordered=True)
 
-# %% [markdown]
-# ### Metric scores for all VAMP & GMM models
-
 # %%
+# Plot
 params=ress.groupby(['model_parsed','param_parsed'],observed=True,sort=True
             ).size().index.to_frame().reset_index(drop=True)
 nrow=params.shape[0]
@@ -176,6 +177,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
      model_parsed in models_parsed_ds and 
      param_parsed in params_parsed_ds ])
     
+    # Plot model + optimized param combination
     for icol_metric,(metric,metric_name) in enumerate(metric_map.items()):
         icol=icol_ds*n_metrics+icol_metric
         for irow,(_,param_data) in enumerate(params.iterrows()):
@@ -189,6 +191,8 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
                     res_sub['param_opt_val_str'].cat.remove_unused_categories()
                 sb.swarmplot(x=metric,y='param_opt_val_str',data=res_sub,ax=ax, 
                             hue='param_opt_val_str',palette='cividis')
+                
+                # make pretty
                 ax.set(facecolor = metric_background_cmap[metric])
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
@@ -223,6 +227,7 @@ fig.set(facecolor = (0,0,0,0))
 # Turn off tight layout as it messes up spacing if adding xlabels on intermediate plots
 #fig.tight_layout()
 
+# Save
 plt.savefig(path_fig+'performance_vamp-score_all-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'performance_vamp-score_all-swarm.png',
@@ -230,7 +235,7 @@ plt.savefig(path_fig+'performance_vamp-score_all-swarm.png',
 
 
 # %% [markdown]
-# ### Metric scores for subset of models on pancreas
+# #### Simplified summary of selected models on pancreas data
 
 # %%
 # Subset to models and datasets
@@ -239,92 +244,19 @@ dataset_names=[dataset_map['pancreas_conditions_MIA_HPAP2']]
 ress_sub=ress.query('model in @models & dataset_parsed in @dataset_names')
 
 # %%
-params=ress_sub.groupby(['model_parsed','param_parsed'],observed=True,sort=True
-            ).size().index.to_frame().reset_index(drop=True)
-nrow=params.shape[0]
-n_metrics=len(metric_map)
-ncol=ress_sub['dataset_parsed'].nunique()*n_metrics
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*1.9,nrow*2),sharex='col',sharey='row')
-for icol_ds, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed',observed=True)):
-    
-    # Max row for ds
-    models_parsed_ds=set(res_ds.model_parsed)
-    params_parsed_ds=set(res_ds.param_parsed)
-    irow_max_ds=max([irow for irow,(model_parsed,param_parsed) in params.iterrows() if 
-     model_parsed in models_parsed_ds and 
-     param_parsed in params_parsed_ds ])
-    
-    for icol_metric,(metric,metric_name) in enumerate(metric_map.items()):
-        icol=icol_ds*n_metrics+icol_metric
-        for irow,(_,param_data) in enumerate(params.iterrows()):
-            ax=axs[irow,icol]
-            res_sub=res_ds.query(
-                f'model_parsed=="{param_data.model_parsed}" & '+\
-                f'param_parsed=="{param_data.param_parsed}" ')
-            if res_sub.shape[0]>0:
-                res_sub=res_sub.copy()
-                res_sub['param_opt_val_str']=\
-                    res_sub['param_opt_val_str'].cat.remove_unused_categories()
-                sb.swarmplot(x=metric,y='param_opt_val_str',data=res_sub,ax=ax, 
-                            hue='param_opt_val_str',palette='cividis')
-                ax.set(facecolor = metric_background_cmap[metric])
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.grid(axis='x', linestyle='--', color='gray')
-                ax.get_legend().remove()
-                if irow!=irow_max_ds:
-                    ax.set_xlabel('')
-                else:
-                    # Add xaxis
-                    # Must turn label to visible as sb will set it off if sharex
-                    # Must reset ticks as will be of due to sharex
-                    ax.set_xlabel(metric_name,visible=True)
-                    #ax.xaxis.set_label_position('bottom') 
-                    ax.xaxis.set_ticks_position('bottom')
-                if irow==0:
-                    title=''
-                    #if icol%3==0:
-                    #    title=title+dataset_name+'\n\n'
-                    ax.set_title(title+metric_meaning_map[metric]+'\n',fontsize=10)
-                if icol==0:
-                    ax.set_ylabel(
-                        param_data.model_parsed+'\n'+\
-                        param_data.param_parsed+'\n')
-                else:
-                    ax.set_ylabel('')
-            else:
-                ax.remove()
-            
+# Plot
 
-plt.subplots_adjust(wspace=0.2,hspace=0.2)
-fig.set(facecolor = (0,0,0,0))
-# Turn off tight layout as it messes up spacing if adding xlabels on intermediate plots
-#fig.tight_layout()
-
-plt.savefig(path_fig+'performance_vamp-score_vampSub_pancreas-swarm.pdf',
-            dpi=300,bbox_inches='tight')
-plt.savefig(path_fig+'performance_vamp-score_vampSub_pancreas-swarm.png',
-            dpi=300,bbox_inches='tight')
-
-
-# %% [markdown]
-# #### 2D summary
-
-# %%
 res_plot=ress_sub.copy()
 param_opt_val_col=param_map['n_prior_components']
 # Make categorical for coloring
 res_plot[param_opt_val_col]=pd.Categorical(res_plot['param_opt_val'],sorted(res_plot['param_opt_val'].unique()),ordered=True)
 res_plot['model_parsed']=res_plot['model_parsed'].cat.remove_unused_categories()
-# Combine run and avg dfs
+# avg DF
 res_plot_me=res_plot.groupby(['model_parsed',param_opt_val_col]
                             )[['nmi_opt','ilisi_system']].mean().reset_index()
 # Shuffle points as else some param_opt_vals are on top
 res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),:]
-# res_plot['Average']='No - run'
-# res_plot_me['Average']='Yes'
-# res_plot=pd.concat([res_plot,res_plot_me])[
-#     ['ilisi_system','nmi_opt',param_opt_val_col,'model_parsed','Average']]
+
 # Plot
 s_run=10
 s_avg=70
@@ -334,6 +266,7 @@ fig,axs=plt.subplots(1,ncol,figsize=(2*ncol,2),sharey=True,sharex=True)
 # Assert that all models have same category values (as not checked for legend below)
 assert res_plot.groupby('model_parsed')['param_opt_val'].apply(
     lambda x: ','.join(sorted(set(x.astype(str))))).nunique()==1
+# Plot per model
 for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
     ax=axs[idx]
     sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,s=s_avg,palette=colors,
@@ -343,6 +276,7 @@ for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
                    s=s_run,palette=colors,lw=0,
                    data=res_plot.query('model_parsed==@model_name'),ax=ax)
     
+    # Make pretty
     ax.set_title(model_name,fontsize=10)
     if idx==0:
         ax.set_ylabel(metric_map['ilisi_system'])
@@ -368,6 +302,7 @@ for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
                 text.set_position((text.get_position()[0] - 29,text.get_position()[1]))
 fig.subplots_adjust(wspace=0.05)
 _=fig.set(facecolor = (0,0,0,0))
+
 # Save
 plt.savefig(path_fig+'performance_vamp-score_vampSub_pancreas_2d-scatter.pdf',
             dpi=300,bbox_inches='tight')
@@ -375,7 +310,7 @@ plt.savefig(path_fig+'performance_vamp-score_vampSub_pancreas_2d-scatter.png',
             dpi=300,bbox_inches='tight')
 
 # %% [markdown]
-# ### Initialisation
+# ### Effect of initialisation
 
 # %% [markdown]
 # #### Load data
@@ -473,6 +408,7 @@ ress['dataset_parsed']=pd.Categorical(
     values=ress['dataset_parsed'],
     categories=list(dataset_map.values()), ordered=True)
 
+# Categories for prior component initialisation
 categs=[]
 idx=ress.query('param_opt_col=="prior_components_group"').index
 ress.loc[idx,'param_opt_val_str']=ress.loc[idx,'param_opt_val_str'].map({
@@ -495,6 +431,8 @@ ress['param_opt_val_str']=pd.Categorical(
     ordered=True)
 
 # %%
+# Plot
+
 params=ress.groupby(['model_parsed','param_parsed'],observed=True,sort=True
             ).size().index.to_frame().reset_index(drop=True)
 nrow=params.shape[0]
@@ -510,6 +448,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed',ob
      model_parsed in models_parsed_ds and 
      param_parsed in params_parsed_ds ])
     
+    # plot metrics for every optimised param
     for icol_metric,(metric,metric_name) in enumerate(metric_map.items()):
         icol=icol_ds*n_metrics+icol_metric
         for irow,(_,param_data) in enumerate(params.iterrows()):
@@ -523,6 +462,8 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed',ob
                     res_sub['param_opt_val_str'].cat.remove_unused_categories()
                 sb.swarmplot(x=metric,y='param_opt_val_str',data=res_sub,ax=ax, 
                             hue='param_opt_val_str',palette='cividis')
+                
+                # make pretty
                 ax.set(facecolor = metric_background_cmap[metric])
                 ax.spines['top'].set_visible(False)
                 ax.spines['right'].set_visible(False)
@@ -535,16 +476,12 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed',ob
                     # Must turn label to visible as sb will set it off if sharex
                     # Must reset ticks as will be of due to sharex
                     ax.set_xlabel(metric_name,visible=True)
-                    #ax.xaxis.set_label_position('bottom') 
                     ax.xaxis.set_ticks_position('bottom')
                 if irow==0:
                     title=''
-                    #if icol%3==0:
-                    #    title=title+dataset_name+'\n\n'
                     ax.set_title(title+metric_meaning_map[metric]+'\n',fontsize=10)
                 if icol==0:
                     ax.set_ylabel(
-                        #param_data.model_parsed+'\n'+\
                         param_data.param_parsed+'\n')
                 else:
                     ax.set_ylabel('')
@@ -557,6 +494,7 @@ fig.set(facecolor = (0,0,0,0))
 # Turn off tight layout as it messes up spacing if adding xlabels on intermediate plots
 #fig.tight_layout()
 
+# Save
 plt.savefig(path_fig+'performance_vamp-score_init_pancreas-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'performance_vamp-score_init_pancreas-swarm.png',

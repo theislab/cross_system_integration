@@ -56,6 +56,7 @@ obs_col_cmap=pkl.load(open(path_names+'obs_col_cmap.pkl','rb'))
 metric_background_cmap=pkl.load(open(path_names+'metric_background_cmap.pkl','rb'))
 
 # %%
+# Selected dataset
 dataset='pancreas_conditions_MIA_HPAP2'
 
 # %%
@@ -68,7 +69,10 @@ args=pkl.load(open(path_run+'args.pkl','rb'))
 
 # %%
 # Prepare data
-# The system cl will be ordered automatically as cl is number and na system is alphabetical
+
+# Prepare cov categories for plotting
+# The system cl categs will be ordered automatically 
+# as cl is number and the NA system is alphabetical so will be put last
 embed.obs['leiden_system_mm']=embed.obs.apply(
     lambda x: x['leiden_system'].split('_')[1] if x.system=='0' else 'Human',axis=1)
 embed.obs['leiden_system_hs']=embed.obs.apply(
@@ -88,12 +92,13 @@ embed.obs['mm_study_parsed']=\
 embed.obs['cell_type_parsed']=embed.obs[args.group_key].map(cell_type_map[dataset])
 embed.obs['system_parsed']=embed.obs[args.system_key].map(system_map[dataset])
 
+# NA system for every plotted categ
 col_na_system={
     'mm_study_parsed':'Human',
     'leiden_system_mm':'Human',
     'leiden_system_hs':'Mouse'
 }
-# Cmap for 'other system' categ in lightgray
+# Add to cmap the 'other system'/NA categ in lightgray
 for col,system in col_na_system.items():
     if embed.obs[col].dtype.name!='category':      
         embed.obs[col]=pd.Categorical(values=embed.obs[col],
@@ -103,10 +108,12 @@ for col,system in col_na_system.items():
     obs_col_cmap[dataset][col][system]='lightgray'
 
 # %%
+# Plot
 ncol=5
 system_col='System'
 ct_col='Cell type'
 fig,axs=plt.subplots(1,ncol,figsize=(2*ncol,2))
+# plot each cov col to be colored by
 for icol,(col_name,col) in enumerate(zip(
     [ct_col,system_col,'Mouse dataset','Prior clusters mouse','Prior clusters human'],
     ['cell_type_parsed','system_parsed','mm_study_parsed','leiden_system_mm','leiden_system_hs'])):
@@ -142,6 +149,8 @@ for icol,(col_name,col) in enumerate(zip(
         ax.legend(bbox_to_anchor=(0.4,-1),frameon=False, ncol=1,title=col_name)
 
 fig.set(facecolor = (0,0,0,0))
+
+# Save
 plt.savefig(path_fig+f'saturn_prior-embed_cl-umap.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+f'saturn_prior-embed_cl-umap.png',
