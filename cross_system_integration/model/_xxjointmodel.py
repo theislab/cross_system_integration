@@ -80,7 +80,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             encode_pseudoinputs_on_eval_mode=True,
             pseudoinputs_data_init: bool = True,
             pseudoinputs_data_indices: Optional[np.array] = None,
-            adata_eval: Optional[AnnData] = None,
             **model_kwargs,
     ):
         super(XXJointModel, self).__init__(adata)
@@ -106,7 +105,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             trainable_priors=trainable_priors,
             encode_pseudoinputs_on_eval_mode=encode_pseudoinputs_on_eval_mode,
             pseudoinput_data=pseudoinput_data,
-            data_eval=self._prepare_eval_data(adata_eval) if adata_eval is not None else None,
+            data_eval= None,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
