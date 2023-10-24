@@ -52,18 +52,16 @@ class XXJointModule(BaseModuleClass):
             self,
             n_input: int,
             n_output: int,
-            # system_decoders: bool, #remove system_decoders
             gene_map: GeneMapInput,
             n_cov: int,
-            n_system: int,  # This should be one anyways
+            n_system: int,  
             use_group: bool,
-            # mixup_alpha: Optional[float] = None, #remove mixup_alpha 
-            prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
-            n_prior_components=100,
+            prior: Literal["standard_normal", "vamp", "gmm"] = 'vamp',
+            n_prior_components=5,
             trainable_priors=True,
-            encode_pseudoinputs_on_eval_mode=False,
+            encode_pseudoinputs_on_eval_mode=True,
             pseudoinput_data=None,
-            z_dist_metric: str = 'MSE',
+            z_dist_metric: str = 'MSE_standard',
             n_latent: int = 15,
             n_hidden: int = 256,
             n_layers: int = 2,
@@ -79,8 +77,6 @@ class XXJointModule(BaseModuleClass):
         #  it was used only to return tensors on correct device for this specific model type
         self.register_buffer('gm_input_filter', gene_map.input_filter(), persistent=False)
         self.use_group = use_group
-        # self.mixup_alpha = mixup_alpha #commented out
-        # self.system_decoders = system_decoders #commented out
         self.n_output = n_output
         self.z_dist_metric = z_dist_metric
         self.data_eval = data_eval
@@ -99,11 +95,10 @@ class XXJointModule(BaseModuleClass):
             **kwargs
         )
 
-        # if not self.system_decoders:
         self.decoder = EncoderDecoder(
             n_input=n_latent,
             n_output=n_output,
-            n_cov=n_cov + n_system,
+            n_cov=n_cov_encoder,
             n_hidden=n_hidden,
             n_layers=n_layers,
             dropout_rate=dropout_rate,
@@ -111,34 +106,7 @@ class XXJointModule(BaseModuleClass):
             var_mode=out_var_mode,
             **kwargs
             )
-        # else:
-        #     # Must first assign decoders to self, as in the super base model only the params that belong to self
-        #     # are moved to the correct device
-        #     self.decoder_0 = EncoderDecoder(
-        #         n_input=n_latent,
-        #         n_output=n_output,
-        #         n_cov=n_cov,
-        #         n_hidden=n_hidden,
-        #         n_layers=n_layers,
-        #         dropout_rate=dropout_rate,
-        #         sample=True,
-        #         var_mode=out_var_mode,
-        #         **kwargs
-        #     )
-        #     self.decoder_1 = EncoderDecoder(
-        #         n_input=n_latent,
-        #         n_output=n_output,
-        #         n_cov=n_cov,
-        #         n_hidden=n_hidden,
-        #         n_layers=n_layers,
-        #         dropout_rate=dropout_rate,
-        #         sample=True,
-        #         var_mode=out_var_mode,
-        #         **kwargs
-        #     )
-        #     # Which decoder belongs to which system
-        #     self.decoder = {0: self.decoder_0, 1: self.decoder_1}
-
+        
         if prior == 'standard_normal':
             self.prior = StandardPrior()
         elif prior == 'vamp':
@@ -184,13 +152,12 @@ class XXJointModule(BaseModuleClass):
         return input_dict
 
     @auto_move_data
-    def _get_inference_cycle_input(self, tensors, generative_outputs, **kwargs):
+    def _get_inference_cycle_input(self, tensors, generative_outputs, selected_system, **kwargs):
         """Parse the dictionary to get appropriate args"""
         input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
         expr = generative_outputs['y_m'][:, input_features]
         cov = self._mock_cov(tensors['covariates'])
-        system = self.random_select_systems(tensors['system'])
-        # system = self._negate_zero_one(tensors['system']) #commented out because >2 systems
+        system = selected_system
         input_dict = dict(expr=expr, cov=cov, system=system)
         return input_dict
 
@@ -205,40 +172,21 @@ class XXJointModule(BaseModuleClass):
             cov = {'x': tensors['covariates'], 'y': self._mock_cov(tensors['covariates'])}
         else:
             cov = {'x': cov_replace, 'y': cov_replace}
-        system = {'x': tensors['system'], 'y': self.random_select_systems(tensors['system'])}
+        selected_system = self.random_select_systems(tensors['system'])
+        system = {'x': tensors['system'], 'y': selected_system}
                                                #self._negate_zero_one(tensors['system'] #commented out because >2 systems
 
         input_dict = dict(z=z, cov=cov, system=system)
-        return input_dict
+        return input_dict, selected_system
 
     @auto_move_data
-    def _get_generative_cycle_input(self, tensors, inference_cycle_outputs, **kwargs):
+    def _get_generative_cycle_input(self, tensors, inference_cycle_outputs, selected_system, **kwargs):
         """Parse the dictionary to get appropriate args"""
         z = inference_cycle_outputs["z"]
         cov = {'x': self._mock_cov(tensors['covariates']), 'y': tensors['covariates']}
-        system = {'x': self.random_select_systems(tensors['system']), 'y': tensors['system']}
-                  #self._negate_zero_one(tensors['system']) #commented out because >2 systems
-
+        system = {'x': selected_system, 'y': tensors['system']}
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
-
-    @auto_move_data
-    def _get_generative_mixup_input(self, tensors, inference_outputs, mixup_setting):
-        z = mixup_data(x=inference_outputs["z"], **mixup_setting)
-        cov = {'x': mixup_data(x=tensors['covariates'], **mixup_setting),
-               # This wouldn't really need mixup as currently use all-0 cov, but added for safety if mock covar change
-               'y': mixup_data(x=self._mock_cov(tensors['covariates']), **mixup_setting)}
-        system = {'x': mixup_data(x=tensors['system'], **mixup_setting),
-                  'y': mixup_data(x= self.random_select_systems(tensors['system']), **mixup_setting)}
-                                  #self._negate_zero_one(tensors['system']) #commented out because >2 systems
-
-        input_dict = dict(z=z, cov=cov, system=system)
-        return input_dict
-
-    @staticmethod
-    def _negate_zero_one(x):
-        # return torch.negative(x - 1)
-        return torch.logical_not(x).float()
 
     @staticmethod
     def _merge_cov(cov, system):
@@ -283,16 +231,7 @@ class XXJointModule(BaseModuleClass):
 
         def outputs(compute, name, res, x, cov, system):
             if compute:
-                # if not self.system_decoders:
                 res_sub = self.decoder(x=x, cov=self._merge_cov(cov=cov, system=system))
-                # else:
-                #     res_sub = {k: torch.zeros((x.shape[0], self.n_output), device=self.device)
-                #                for k in ['y', 'y_m', 'y_v']}
-                #     system_idx = group_indices(system, return_tensors=True, device=self.device)
-                #     for group, idxs in system_idx.items():
-                #         res_sub_parts = self.decoder[group](x=x[idxs, :], cov=cov[idxs, :])
-                #         for k, v in res_sub_parts.items():
-                #             res_sub[k][idxs, :] = v
                 res[name] = res_sub['y']
                 res[name + '_m'] = res_sub['y_m']
                 res[name + '_v'] = res_sub['y_v']
@@ -340,7 +279,6 @@ class XXJointModule(BaseModuleClass):
 
         # TODO currently some forward paths are computed despite potentially having loss weight=0 -
         #  don't compute if not needed
-
         inference_kwargs = _get_dict_if_none(inference_kwargs)
         generative_kwargs = _get_dict_if_none(generative_kwargs)
         loss_kwargs = _get_dict_if_none(loss_kwargs)
@@ -353,41 +291,25 @@ class XXJointModule(BaseModuleClass):
         )
         inference_outputs = self.inference(**inference_inputs, **inference_kwargs)
         # Generative
-        generative_inputs = self._get_generative_input(
+        generative_inputs, selected_system = self._get_generative_input(
             tensors, inference_outputs, **get_generative_input_kwargs
         )
         generative_outputs = self.generative(**generative_inputs, x_x=True, x_y=True, **generative_kwargs)    
-        # Generative mixup
-        # Remove mixup_alpha 
-        # if self.mixup_alpha is not None:
-        #     mixup_setting = mixup_setting_generator(
-        #         alpha=self.mixup_alpha, device=self.device, within_group=tensors['system'])
-        #     generative_mixup_inputs = self._get_generative_mixup_input(
-        #         tensors=tensors, inference_outputs=inference_outputs, mixup_setting=mixup_setting)
-        #     generative_mixup_outputs = self.generative(
-        #         **generative_mixup_inputs, x_x=True, x_y=False, **generative_kwargs)
-
+        
         # Inference cycle
         inference_cycle_inputs = self._get_inference_cycle_input(
-            tensors=tensors, generative_outputs=generative_outputs, **get_inference_input_kwargs)
-        # print(inference_cycle_inputs['system'])
+            tensors=tensors, generative_outputs=generative_outputs, selected_system=selected_system, **get_inference_input_kwargs)
         inference_cycle_outputs = self.inference(**inference_cycle_inputs, **inference_kwargs)
         # Generative cycle
         generative_cycle_inputs = self._get_generative_cycle_input(
-            tensors=tensors, inference_cycle_outputs=inference_cycle_outputs, **get_generative_input_kwargs)
+            tensors=tensors, inference_cycle_outputs=inference_cycle_outputs, selected_system=selected_system, **get_generative_input_kwargs)
         generative_cycle_outputs = self.generative(**generative_cycle_inputs, x_x=False, x_y=True, **generative_kwargs)
-        # print(generative_cycle_inputs['system'])
 
         # Combine outputs of all forward passes
         inference_outputs_merged = dict(**inference_outputs)
         inference_outputs_merged.update(
             **{k.replace('z', 'z_cyc'): v for k, v in inference_cycle_outputs.items()})
         generative_outputs_merged = dict(**generative_outputs)
-        # Remove mixup_alpha 
-        # if self.mixup_alpha is not None:
-        #     generative_outputs_merged.update(
-        #         **{k.replace('x', 'x_mixup'): v for k, v in generative_mixup_outputs.items()})
-        #     generative_outputs_merged['x_true_mixup'] = mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
         generative_outputs_merged.update(
         #     # y_cyc (from output x) won't be present as we don't predict x in the cycle
               **{k.replace('y', 'x_cyc'): v for k, v in generative_cycle_outputs.items()})
@@ -409,13 +331,8 @@ class XXJointModule(BaseModuleClass):
             inference_outputs,
             generative_outputs,
             kl_weight: float = 1.0,
-            # kl_cycle_weight: float = 1, # not needed 
             reconstruction_weight: float = 1,
-            # reconstruction_mixup_weight: float = 1, # not needed 
-            # reconstruction_cycle_weight: float = 1, # not needed 
-            z_distance_cycle_weight: float = 1,
-            # translation_corr_weight: float = 1, # not needed 
-            # z_contrastive_weight: float = 1, # not needed 
+            z_distance_cycle_weight: float = 2,
     ):
 
         x_true = tensors[REGISTRY_KEYS.X_KEY]
@@ -436,30 +353,10 @@ class XXJointModule(BaseModuleClass):
         reconst_loss_x = reconst_loss_part(x_m=generative_outputs['x_m'], x=x_true, x_v=generative_outputs['x_v'])
         reconst_loss = reconst_loss_x
 
-        # Remove mixup_alpha
-        # Reconstruction loss in mixup
-        # if self.mixup_alpha is not None:
-        #     reconst_loss_x_mixup = reconst_loss_part(x_m=generative_outputs['x_mixup_m'],
-        #                                              x=generative_outputs['x_true_mixup'],
-        #                                              x_v=generative_outputs['x_mixup_v'])
-        #     reconst_loss_mixup = reconst_loss_x_mixup
-        # else:
-        # reconst_loss_mixup = torch.zeros_like(reconst_loss)
-
-        # Reconstruction loss in cycle
-        reconst_loss_x_cyc = reconst_loss_part(x_m=generative_outputs['x_cyc_m'], x=x_true,
-                                                x_v=generative_outputs['x_cyc_v'])
-        reconst_loss_cyc = reconst_loss_x_cyc
-
         # Kl divergence on latent space
         kl_divergence_z = self.prior.kl(m_q=inference_outputs['z_m'], v_q=inference_outputs['z_v'],
                                         z=inference_outputs['z'])
         
-        # not needed
-        # KL on the cycle z 
-        # kl_divergence_z_cyc = self.prior.kl(m_q=inference_outputs['z_cyc_m'], v_q=inference_outputs['z_cyc_v'],
-                                            # z=inference_outputs['z_cyc'])
-
         # Distance between modality latent space embeddings
         def z_dist(z_x_m, z_y_m, z_x_v, z_y_v):
             """
@@ -519,11 +416,6 @@ class XXJointModule(BaseModuleClass):
         def expr_correlation_loss(x, y):
             return 1 - torch.nn.CosineSimilarity()(center_samples(x), center_samples(y))
 
-        transl_corr = expr_correlation_loss(
-            x=generative_outputs['y_m'],
-            y=generative_outputs['x_m'])
-
-        # Contrastive loss
 
         def product_cosine(x, y, eps=1e-8):
             """
@@ -546,48 +438,6 @@ class XXJointModule(BaseModuleClass):
 
             return cos
 
-        if self.use_group:
-            # Contrastive loss between samples of the same group across systems,
-            # based on cosine similarity between latent embeddings
-            # sum_over_groups(mean(-log(cos(within_group))) + mean(-log(1-cos(between_groups))))
-
-            # Cosine similarity between samples from the two systems
-            system_idx = group_indices(tensors['system'], return_tensors=True, device=self.device)
-            # TODO BUG this fails if only 1 system is present -
-            #  system_idx does not have 2nd element (index out of shape)
-            idx_i = system_idx[0]
-            idx_j = system_idx[1]
-            sim = product_cosine(inference_outputs['z_m'][idx_i, :], inference_outputs['z_m'][idx_j, :])
-            eps = 1e-8
-            # Precompute loss components used for positive and negative pairs
-            pos_l_parts = -torch.log(torch.clamp(sim, min=eps))
-            neg_l_parts = -torch.log(torch.clamp(1 - sim, min=eps))
-            # Sample indices in similarity matrix belonging to each group
-            group_idx_i = group_indices(tensors['group'][idx_i, :], return_tensors=False)
-            group_idx_j = group_indices(tensors['group'][idx_j, :], return_tensors=False)
-            n_pairs = sim.shape[0] * sim.shape[1]
-            z_contrastive_pos = 0
-            z_contrastive_neg = 0
-            # For each group compute positive and negative loss components
-            # Potential refs (similar): https://arxiv.org/pdf/1902.01889.pdf , https://arxiv.org/pdf/1511.06452.pdf
-            for group, idx_group_i in group_idx_i.items():
-                idx_group_j = group_idx_j.get(group, None)
-                if idx_group_j is not None:
-                    # Which pairs are from the same/different class
-                    indices = torch.tensor(list(itertools.product(idx_group_i, idx_group_j)), device=self.device)
-                    n_pos = indices.shape[0]
-                    pos_pairs = torch.zeros_like(sim)
-                    pos_pairs[indices[:, 0], indices[:, 1]] = 1.0
-                    neg_pairs = self.random_select_systems(tensors['system'])
-                    #self._negate_zero_one(pos_pairs)
-                    # Similarity with positive and negative examples
-                    # Up-weights bad examples (of negatives/positives),
-                    # assuming we use similarity bounded by [0,1] (cosine)
-                    z_contrastive_pos += (pos_l_parts * pos_pairs).sum() / n_pos
-                    z_contrastive_neg += (neg_l_parts * neg_pairs).sum() / (n_pairs - n_pos)
-        else:
-            z_contrastive_pos, z_contrastive_neg = 0, 0
-        z_contrastive = z_contrastive_pos + z_contrastive_neg
         # TODO due to class imbalance we may not get positive samples for some classes (very often).
         #  An alternative would be to construct data batches that contain more positive pairs:
         #  If batch size=n, sample n/2 points from system 1 and then find from system 2 one sample with matching class
@@ -598,13 +448,8 @@ class XXJointModule(BaseModuleClass):
 
         # Overall loss
         loss = (reconst_loss * reconstruction_weight +
-                # reconst_loss_mixup * reconstruction_mixup_weight +
-                # reconst_loss_cyc * reconstruction_cycle_weight +
                 kl_divergence_z * kl_weight +
-                # kl_divergence_z_cyc * kl_cycle_weight +
                 z_distance_cyc * z_distance_cycle_weight)
-                # transl_corr * translation_corr_weight +
-                # z_contrastive * z_contrastive_weight)
 
         return LossRecorder(
             n_obs=loss.shape[0],
@@ -612,14 +457,7 @@ class XXJointModule(BaseModuleClass):
             loss_sum=loss.sum(),
             reconstruction_loss=reconst_loss.sum(),
             kl_local=kl_divergence_z.sum(),
-            # reconstruction_loss_mixup=reconst_loss_mixup.sum(), # not needed 
-            reconstruction_loss_cycle=reconst_loss_cyc.sum(),
-            # kl_local_cycle=kl_divergence_z_cyc.sum(), # not needed 
-            z_distance_cycle=z_distance_cyc.sum(),
-            # translation_corr=transl_corr.sum(), # not needed 
-            z_contrastive=z_contrastive,
-            z_contrastive_pos=z_contrastive_pos,
-            z_contrastive_neg=z_contrastive_neg,
+            z_distance_cycle=z_distance_cyc.sum(), 
         )
 
     @torch.no_grad()
@@ -633,43 +471,29 @@ class XXJointModule(BaseModuleClass):
     @auto_move_data
     def _compute_eval_metrics(self, inference_tensors, generative_cov, generative_kwargs, genes, target_x_m,
                               target_x_std):
-        inference_inputs = self._get_inference_input(inference_tensors)
-        generative_inputs = self._get_generative_input(
-            tensors=inference_tensors,
-            inference_outputs=self.inference(**inference_inputs),
-            cov_replace=generative_cov)
-        generative_outputs = self.generative(
-            **generative_inputs,
-            x_x=generative_kwargs['x_x'],
-            x_y=generative_kwargs['x_y'])
-        pred_x = generative_outputs[generative_kwargs['pred_key'] + "_m"][:, genes]
-        corr = torch.corrcoef(torch.concat([pred_x.mean(axis=0).unsqueeze(0), target_x_m.unsqueeze(0)]))[0, 1].item()
-        # Dont use 0-std genes for ll
-        std_filter = target_x_std > 0
-        gll = torch.distributions.Normal(loc=target_x_m[std_filter], scale=target_x_std[std_filter]
-                                         ).log_prob(pred_x[:, std_filter]).mean(axis=1).mean()
-        return {'correlation': corr, 'GaussianLL': gll}
+        raise NotImplementedError
+
     
     def random_select_systems(self, tensors):
         """
-        Randomly selects one system for each row from the available systems.
+        For every cell randomly selects a new system that is different from the original system
 
         Parameters:
-        - tensors: dict, input data dictionary containing 'system' key.
+        - tensors: torch.Tensor, tensor containing system information for each cell
 
         Returns:
-        - new_tensor: torch.Tensor, a new tensor with dimensions from systems.
+        - new_tensor:  torch.Tensor, new tensor with the same shape as the input tensors, specifying the newly selected systems for each cell
         """
         #get available systems
         available_systems = 1 - tensors
-        #Get row col indices
+        #Get indices for each cell
         row_indices, col_indices = torch.nonzero(available_systems, as_tuple=True)
         #Gather cols for a single row
         col_pairs = col_indices.view(-1, tensors.shape[1]-1)
-        #Create new tensor with dimensions from systems
+        #Select system for every cell from available systems
         randomly_selected_indices = col_pairs.gather(1, torch.randint(0, tensors.shape[1]-1, size=(col_pairs.size(0), 1), dtype=torch.int64))
         new_tensor = torch.zeros_like(available_systems)
-        #populate the tensor with one from the index selected for column
+        #generate system covariate tensor
         new_tensor.scatter_(1, randomly_selected_indices, 1)    
 
         return new_tensor

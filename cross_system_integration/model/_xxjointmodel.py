@@ -74,12 +74,10 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     def __init__(
             self,
             adata: AnnData,
-            # mixup_alpha: Optional[float] = None, #remove mixup_alpha 
-            # system_decoders: bool = False, #remove system_decoders  
-            prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
-            n_prior_components=100,
+            prior: Literal["standard_normal", "vamp", "gmm"] = 'vamp',
+            n_prior_components=5,
             trainable_priors=True,
-            encode_pseudoinputs_on_eval_mode=False,
+            encode_pseudoinputs_on_eval_mode=True,
             pseudoinputs_data_init: bool = True,
             pseudoinputs_data_indices: Optional[np.array] = None,
             adata_eval: Optional[AnnData] = None,
@@ -87,7 +85,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     ):
         super(XXJointModel, self).__init__(adata)
 
-        use_group = 'group' in adata.obsm
 
         if pseudoinputs_data_init:
             if pseudoinputs_data_indices is None:
@@ -101,12 +98,9 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         self.module = XXJointModule(
             n_input=adata.var['input'].sum(),
             n_output=adata.shape[1],
-            # system_decoders=system_decoders, #commented out
             gene_map=GeneMapInput(adata=adata),
             n_cov=adata.obsm['covariates'].shape[1],
             n_system=adata.obsm['system'].shape[1],
-            use_group=use_group,
-            # mixup_alpha=mixup_alpha, #commented out
             prior=prior,
             n_prior_components=n_prior_components,
             trainable_priors=trainable_priors,
@@ -118,7 +112,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
         # necessary line to get params that will be used for saving/loading
         self.init_params_ = self._get_init_params(locals())
-        self.init_params_['use_group'] = use_group
 
         logger.info("The model has been initialized")
 
@@ -322,6 +315,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             categorical_covariate_keys: Optional[List[str]] = None,
             continuous_covariate_keys: Optional[List[str]] = None,
             covariate_orders: Optional[Dict] = None,
+            system_order: Optional [List[str]] = None,
             **kwargs,
     ) -> Optional[AnnData]:
         """
@@ -349,14 +343,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         # adata = adata.copy()
 
         # Make system to categorical for cov
-        # if adata.obs[system_key].nunique() != 2: #commented out because > 2 systems
-        #     raise ValueError('There must be exactly two systems')
-        system_order = sorted(adata.obs[system_key].unique())
+        if system_order is None:
+            system_order = sorted(adata.obs[system_key].unique())
         systems_dict = dict(zip(system_order, ([float(i) for i in range(0,len(system_order))])))
         adata.uns['system_order'] = system_order
-        # adata.obsm['system'] = adata.obs[system_key].map(systems_dict).to_frame() #commented out because > 2 systems
-        #create one hot for systems
-        adata.obsm['system'] = pd.get_dummies((adata.obs[system_key]), dtype=float)
+        system_cat = pd.Series(pd.Categorical(values=adata.obs[system_key],categories=system_order,ordered=True), index=adata.obs.index, name='system')
+        adata.obsm['system'] = pd.get_dummies(system_cat, dtype=float)
 
         # Remove any "group" column from obs (if group_key is None) as this is used to determine
         # if group info will be used
