@@ -1,5 +1,9 @@
 # Integrating single-cell RNA-seq datasets with substantial batch effects
 
+This repository contains newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects and reproducibility code for Hrovatin et al. (2023). TODO CITATION
+
+## Abstract
+
 Computational methods for integrating scRNA-seq datasets often struggle to unify datasets with strong differences driven by technical or biological variation, such as between different species, organoids and primary tissue, or different scRNA-seq protocols, including single-cell and single-nuclei. Since many popular and scalable batch effect approaches are based on conditional variational autoencoders (cVAE), we hypothesize that machine learning interventions to standard cVAEs can help to improve batch effect removal while potentially better preserving biological variation. For this, we evaluate four strategies applied to commonly used cVAE models: the previously proposed Kullback–Leibler divergence (KL) regularization tuning and adversarial learning, as well as cycle-consistency loss (previously applied to multi-omic integration), and the multimodal variational mixture of posteriors prior (VampPrior) that has not yet been applied to integration. We evaluated performance in three settings, namely cross-species, organoid-tissue, and cell-nuclei integration. Cycle-consistency and VampPrior improved batch correction while retaining high biological preservation, with their combination further increasing the performance. While adversarial learning led to the strongest batch correction, its preservation of within-cell type variation did not match that of VampPrior or cycle-consistency models and it was also prone to mixing unrelated cell types with differences in proportions across batches. KL regularization strength tuning did not perform well, as it jointly removed biological and batch variation by reducing the number of effectively used embedding dimensions. Based on our results, we recommend the use of the VampPrior combined with cycle-consistency loss for integrating datasets with substantial batch effects. 
 
 ![figur_batch_strength](https://github.com/theislab/cross_system_integration/assets/47607471/6fde6b70-1beb-4c0a-8a2f-580eab35de78)
@@ -14,6 +18,7 @@ Clone the git repository and run `pip install -e .` from within the cloned repos
 
 For model use instructions see readme in the model (_cross_system_integration_ ) directory.
 
-## Reproducibility code
-- Model analysis and comparison: _notebooks_ directory
+## Repository structure
+
 - Implementation of the model with VampPrior and cycle-consistency: _cross_system_integration_ directory
+- Model analysis and comparison: _notebooks_ directory
