@@ -22,3 +22,4 @@ For model use instructions see readme in the model (_cross_system_integration_ )
 
 - Implementation of the model with VampPrior and cycle-consistency: _cross_system_integration_ directory
 - Model analysis and comparison: _notebooks_ directory
+- Environments: _envs_ directory
