@@ -12,14 +12,15 @@ Figure 1: The challenge of integrating datasets with substantial batch effects. 
 
 ## Citation
 
-## Installation
-
-Clone the git repository and run `pip install -e .` from within the cloned repository.
-
-For model use instructions see readme in the model (_cross_system_integration_ ) directory.
-
 ## Repository structure
 
 - Implementation of the model with VampPrior and cycle-consistency: _cross_system_integration_ directory
 - Model analysis and comparison: _notebooks_ directory
 - Environments: _envs_ directory
+
+## Installation of the new models
+
+Clone the git repository and run `pip install -e .` from within the cloned repository.
+
+For model use instructions see readme in the model (_cross_system_integration_ ) directory.
+
