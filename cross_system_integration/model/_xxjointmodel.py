@@ -74,8 +74,8 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     def __init__(
             self,
             adata: AnnData,
-            mixup_alpha: Optional[float] = None,
-            system_decoders: bool = False,
+            # mixup_alpha: Optional[float] = None, #remove mixup_alpha 
+            # system_decoders: bool = False, #remove system_decoders  
             prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
             n_prior_components=100,
             trainable_priors=True,
@@ -101,12 +101,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         self.module = XXJointModule(
             n_input=adata.var['input'].sum(),
             n_output=adata.shape[1],
-            system_decoders=system_decoders,
+            # system_decoders=system_decoders, #commented out
             gene_map=GeneMapInput(adata=adata),
             n_cov=adata.obsm['covariates'].shape[1],
             n_system=adata.obsm['system'].shape[1],
             use_group=use_group,
-            mixup_alpha=mixup_alpha,
+            # mixup_alpha=mixup_alpha, #commented out
             prior=prior,
             n_prior_components=n_prior_components,
             trainable_priors=trainable_priors,
@@ -349,12 +349,14 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         # adata = adata.copy()
 
         # Make system to categorical for cov
-        if adata.obs[system_key].nunique() != 2:
-            raise ValueError('There must be exactly two systems')
+        # if adata.obs[system_key].nunique() != 2: #commented out because > 2 systems
+        #     raise ValueError('There must be exactly two systems')
         system_order = sorted(adata.obs[system_key].unique())
-        systems_dict = dict(zip(system_order, [0.0, 1.0]))
+        systems_dict = dict(zip(system_order, ([float(i) for i in range(0,len(system_order))])))
         adata.uns['system_order'] = system_order
-        adata.obsm['system'] = adata.obs[system_key].map(systems_dict).to_frame()
+        # adata.obsm['system'] = adata.obs[system_key].map(systems_dict).to_frame() #commented out because > 2 systems
+        #create one hot for systems
+        adata.obsm['system'] = pd.get_dummies((adata.obs[system_key]), dtype=float)
 
         # Remove any "group" column from obs (if group_key is None) as this is used to determine
         # if group info will be used

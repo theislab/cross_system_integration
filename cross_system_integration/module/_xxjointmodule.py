@@ -52,12 +52,12 @@ class XXJointModule(BaseModuleClass):
             self,
             n_input: int,
             n_output: int,
-            system_decoders: bool,
+            # system_decoders: bool, #remove system_decoders
             gene_map: GeneMapInput,
             n_cov: int,
             n_system: int,  # This should be one anyways
             use_group: bool,
-            mixup_alpha: Optional[float] = None,
+            # mixup_alpha: Optional[float] = None, #remove mixup_alpha 
             prior: Literal["standard_normal", "vamp", "gmm"] = 'standard_normal',
             n_prior_components=100,
             trainable_priors=True,
@@ -79,8 +79,8 @@ class XXJointModule(BaseModuleClass):
         #  it was used only to return tensors on correct device for this specific model type
         self.register_buffer('gm_input_filter', gene_map.input_filter(), persistent=False)
         self.use_group = use_group
-        self.mixup_alpha = mixup_alpha
-        self.system_decoders = system_decoders
+        # self.mixup_alpha = mixup_alpha #commented out
+        # self.system_decoders = system_decoders #commented out
         self.n_output = n_output
         self.z_dist_metric = z_dist_metric
         self.data_eval = data_eval
@@ -99,45 +99,45 @@ class XXJointModule(BaseModuleClass):
             **kwargs
         )
 
-        if not self.system_decoders:
-            self.decoder = EncoderDecoder(
-                n_input=n_latent,
-                n_output=n_output,
-                n_cov=n_cov + n_system,
-                n_hidden=n_hidden,
-                n_layers=n_layers,
-                dropout_rate=dropout_rate,
-                sample=True,
-                var_mode=out_var_mode,
-                **kwargs
+        # if not self.system_decoders:
+        self.decoder = EncoderDecoder(
+            n_input=n_latent,
+            n_output=n_output,
+            n_cov=n_cov + n_system,
+            n_hidden=n_hidden,
+            n_layers=n_layers,
+            dropout_rate=dropout_rate,
+            sample=True,
+            var_mode=out_var_mode,
+            **kwargs
             )
-        else:
-            # Must first assign decoders to self, as in the super base model only the params that belong to self
-            # are moved to the correct device
-            self.decoder_0 = EncoderDecoder(
-                n_input=n_latent,
-                n_output=n_output,
-                n_cov=n_cov,
-                n_hidden=n_hidden,
-                n_layers=n_layers,
-                dropout_rate=dropout_rate,
-                sample=True,
-                var_mode=out_var_mode,
-                **kwargs
-            )
-            self.decoder_1 = EncoderDecoder(
-                n_input=n_latent,
-                n_output=n_output,
-                n_cov=n_cov,
-                n_hidden=n_hidden,
-                n_layers=n_layers,
-                dropout_rate=dropout_rate,
-                sample=True,
-                var_mode=out_var_mode,
-                **kwargs
-            )
-            # Which decoder belongs to which system
-            self.decoder = {0: self.decoder_0, 1: self.decoder_1}
+        # else:
+        #     # Must first assign decoders to self, as in the super base model only the params that belong to self
+        #     # are moved to the correct device
+        #     self.decoder_0 = EncoderDecoder(
+        #         n_input=n_latent,
+        #         n_output=n_output,
+        #         n_cov=n_cov,
+        #         n_hidden=n_hidden,
+        #         n_layers=n_layers,
+        #         dropout_rate=dropout_rate,
+        #         sample=True,
+        #         var_mode=out_var_mode,
+        #         **kwargs
+        #     )
+        #     self.decoder_1 = EncoderDecoder(
+        #         n_input=n_latent,
+        #         n_output=n_output,
+        #         n_cov=n_cov,
+        #         n_hidden=n_hidden,
+        #         n_layers=n_layers,
+        #         dropout_rate=dropout_rate,
+        #         sample=True,
+        #         var_mode=out_var_mode,
+        #         **kwargs
+        #     )
+        #     # Which decoder belongs to which system
+        #     self.decoder = {0: self.decoder_0, 1: self.decoder_1}
 
         if prior == 'standard_normal':
             self.prior = StandardPrior()
@@ -189,7 +189,8 @@ class XXJointModule(BaseModuleClass):
         input_features = torch.ravel(torch.nonzero(self.gm_input_filter))
         expr = generative_outputs['y_m'][:, input_features]
         cov = self._mock_cov(tensors['covariates'])
-        system = self._negate_zero_one(tensors['system'])
+        system = self.random_select_systems(tensors['system'])
+        # system = self._negate_zero_one(tensors['system']) #commented out because >2 systems
         input_dict = dict(expr=expr, cov=cov, system=system)
         return input_dict
 
@@ -204,7 +205,8 @@ class XXJointModule(BaseModuleClass):
             cov = {'x': tensors['covariates'], 'y': self._mock_cov(tensors['covariates'])}
         else:
             cov = {'x': cov_replace, 'y': cov_replace}
-        system = {'x': tensors['system'], 'y': self._negate_zero_one(tensors['system'])}
+        system = {'x': tensors['system'], 'y': self.random_select_systems(tensors['system'])}
+                                               #self._negate_zero_one(tensors['system'] #commented out because >2 systems
 
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
@@ -214,7 +216,8 @@ class XXJointModule(BaseModuleClass):
         """Parse the dictionary to get appropriate args"""
         z = inference_cycle_outputs["z"]
         cov = {'x': self._mock_cov(tensors['covariates']), 'y': tensors['covariates']}
-        system = {'x': self._negate_zero_one(tensors['system']), 'y': tensors['system']}
+        system = {'x': self.random_select_systems(tensors['system']), 'y': tensors['system']}
+                  #self._negate_zero_one(tensors['system']) #commented out because >2 systems
 
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
@@ -226,7 +229,8 @@ class XXJointModule(BaseModuleClass):
                # This wouldn't really need mixup as currently use all-0 cov, but added for safety if mock covar change
                'y': mixup_data(x=self._mock_cov(tensors['covariates']), **mixup_setting)}
         system = {'x': mixup_data(x=tensors['system'], **mixup_setting),
-                  'y': mixup_data(x=self._negate_zero_one(tensors['system']), **mixup_setting)}
+                  'y': mixup_data(x= self.random_select_systems(tensors['system']), **mixup_setting)}
+                                  #self._negate_zero_one(tensors['system']) #commented out because >2 systems
 
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
@@ -279,16 +283,16 @@ class XXJointModule(BaseModuleClass):
 
         def outputs(compute, name, res, x, cov, system):
             if compute:
-                if not self.system_decoders:
-                    res_sub = self.decoder(x=x, cov=self._merge_cov(cov=cov, system=system))
-                else:
-                    res_sub = {k: torch.zeros((x.shape[0], self.n_output), device=self.device)
-                               for k in ['y', 'y_m', 'y_v']}
-                    system_idx = group_indices(system, return_tensors=True, device=self.device)
-                    for group, idxs in system_idx.items():
-                        res_sub_parts = self.decoder[group](x=x[idxs, :], cov=cov[idxs, :])
-                        for k, v in res_sub_parts.items():
-                            res_sub[k][idxs, :] = v
+                # if not self.system_decoders:
+                res_sub = self.decoder(x=x, cov=self._merge_cov(cov=cov, system=system))
+                # else:
+                #     res_sub = {k: torch.zeros((x.shape[0], self.n_output), device=self.device)
+                #                for k in ['y', 'y_m', 'y_v']}
+                #     system_idx = group_indices(system, return_tensors=True, device=self.device)
+                #     for group, idxs in system_idx.items():
+                #         res_sub_parts = self.decoder[group](x=x[idxs, :], cov=cov[idxs, :])
+                #         for k, v in res_sub_parts.items():
+                #             res_sub[k][idxs, :] = v
                 res[name] = res_sub['y']
                 res[name + '_m'] = res_sub['y_m']
                 res[name + '_v'] = res_sub['y_v']
@@ -352,38 +356,41 @@ class XXJointModule(BaseModuleClass):
         generative_inputs = self._get_generative_input(
             tensors, inference_outputs, **get_generative_input_kwargs
         )
-        generative_outputs = self.generative(**generative_inputs, x_x=True, x_y=True, **generative_kwargs)
-
+        generative_outputs = self.generative(**generative_inputs, x_x=True, x_y=True, **generative_kwargs)    
         # Generative mixup
-        if self.mixup_alpha is not None:
-            mixup_setting = mixup_setting_generator(
-                alpha=self.mixup_alpha, device=self.device, within_group=tensors['system'])
-            generative_mixup_inputs = self._get_generative_mixup_input(
-                tensors=tensors, inference_outputs=inference_outputs, mixup_setting=mixup_setting)
-            generative_mixup_outputs = self.generative(
-                **generative_mixup_inputs, x_x=True, x_y=False, **generative_kwargs)
+        # Remove mixup_alpha 
+        # if self.mixup_alpha is not None:
+        #     mixup_setting = mixup_setting_generator(
+        #         alpha=self.mixup_alpha, device=self.device, within_group=tensors['system'])
+        #     generative_mixup_inputs = self._get_generative_mixup_input(
+        #         tensors=tensors, inference_outputs=inference_outputs, mixup_setting=mixup_setting)
+        #     generative_mixup_outputs = self.generative(
+        #         **generative_mixup_inputs, x_x=True, x_y=False, **generative_kwargs)
 
         # Inference cycle
         inference_cycle_inputs = self._get_inference_cycle_input(
             tensors=tensors, generative_outputs=generative_outputs, **get_inference_input_kwargs)
+        # print(inference_cycle_inputs['system'])
         inference_cycle_outputs = self.inference(**inference_cycle_inputs, **inference_kwargs)
         # Generative cycle
         generative_cycle_inputs = self._get_generative_cycle_input(
             tensors=tensors, inference_cycle_outputs=inference_cycle_outputs, **get_generative_input_kwargs)
         generative_cycle_outputs = self.generative(**generative_cycle_inputs, x_x=False, x_y=True, **generative_kwargs)
+        # print(generative_cycle_inputs['system'])
 
         # Combine outputs of all forward passes
         inference_outputs_merged = dict(**inference_outputs)
         inference_outputs_merged.update(
             **{k.replace('z', 'z_cyc'): v for k, v in inference_cycle_outputs.items()})
         generative_outputs_merged = dict(**generative_outputs)
-        if self.mixup_alpha is not None:
-            generative_outputs_merged.update(
-                **{k.replace('x', 'x_mixup'): v for k, v in generative_mixup_outputs.items()})
-            generative_outputs_merged['x_true_mixup'] = mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
+        # Remove mixup_alpha 
+        # if self.mixup_alpha is not None:
+        #     generative_outputs_merged.update(
+        #         **{k.replace('x', 'x_mixup'): v for k, v in generative_mixup_outputs.items()})
+        #     generative_outputs_merged['x_true_mixup'] = mixup_data(tensors[REGISTRY_KEYS.X_KEY], **mixup_setting)
         generative_outputs_merged.update(
-            # y_cyc (from output x) won't be present as we don't predict x in the cycle
-            **{k.replace('y', 'x_cyc'): v for k, v in generative_cycle_outputs.items()})
+        #     # y_cyc (from output x) won't be present as we don't predict x in the cycle
+              **{k.replace('y', 'x_cyc'): v for k, v in generative_cycle_outputs.items()})
 
         if compute_loss:
             losses = self.loss(
@@ -402,13 +409,13 @@ class XXJointModule(BaseModuleClass):
             inference_outputs,
             generative_outputs,
             kl_weight: float = 1.0,
-            kl_cycle_weight: float = 1,
+            # kl_cycle_weight: float = 1, # not needed 
             reconstruction_weight: float = 1,
-            reconstruction_mixup_weight: float = 1,
-            reconstruction_cycle_weight: float = 1,
+            # reconstruction_mixup_weight: float = 1, # not needed 
+            # reconstruction_cycle_weight: float = 1, # not needed 
             z_distance_cycle_weight: float = 1,
-            translation_corr_weight: float = 1,
-            z_contrastive_weight: float = 1,
+            # translation_corr_weight: float = 1, # not needed 
+            # z_contrastive_weight: float = 1, # not needed 
     ):
 
         x_true = tensors[REGISTRY_KEYS.X_KEY]
@@ -429,27 +436,29 @@ class XXJointModule(BaseModuleClass):
         reconst_loss_x = reconst_loss_part(x_m=generative_outputs['x_m'], x=x_true, x_v=generative_outputs['x_v'])
         reconst_loss = reconst_loss_x
 
+        # Remove mixup_alpha
         # Reconstruction loss in mixup
-        if self.mixup_alpha is not None:
-            reconst_loss_x_mixup = reconst_loss_part(x_m=generative_outputs['x_mixup_m'],
-                                                     x=generative_outputs['x_true_mixup'],
-                                                     x_v=generative_outputs['x_mixup_v'])
-            reconst_loss_mixup = reconst_loss_x_mixup
-        else:
-            reconst_loss_mixup = torch.zeros_like(reconst_loss)
+        # if self.mixup_alpha is not None:
+        #     reconst_loss_x_mixup = reconst_loss_part(x_m=generative_outputs['x_mixup_m'],
+        #                                              x=generative_outputs['x_true_mixup'],
+        #                                              x_v=generative_outputs['x_mixup_v'])
+        #     reconst_loss_mixup = reconst_loss_x_mixup
+        # else:
+        # reconst_loss_mixup = torch.zeros_like(reconst_loss)
 
         # Reconstruction loss in cycle
         reconst_loss_x_cyc = reconst_loss_part(x_m=generative_outputs['x_cyc_m'], x=x_true,
-                                               x_v=generative_outputs['x_cyc_v'])
+                                                x_v=generative_outputs['x_cyc_v'])
         reconst_loss_cyc = reconst_loss_x_cyc
 
         # Kl divergence on latent space
         kl_divergence_z = self.prior.kl(m_q=inference_outputs['z_m'], v_q=inference_outputs['z_v'],
                                         z=inference_outputs['z'])
-
-        # KL on the cycle z
-        kl_divergence_z_cyc = self.prior.kl(m_q=inference_outputs['z_cyc_m'], v_q=inference_outputs['z_cyc_v'],
-                                            z=inference_outputs['z_cyc'])
+        
+        # not needed
+        # KL on the cycle z 
+        # kl_divergence_z_cyc = self.prior.kl(m_q=inference_outputs['z_cyc_m'], v_q=inference_outputs['z_cyc_v'],
+                                            # z=inference_outputs['z_cyc'])
 
         # Distance between modality latent space embeddings
         def z_dist(z_x_m, z_y_m, z_x_v, z_y_v):
@@ -569,7 +578,8 @@ class XXJointModule(BaseModuleClass):
                     n_pos = indices.shape[0]
                     pos_pairs = torch.zeros_like(sim)
                     pos_pairs[indices[:, 0], indices[:, 1]] = 1.0
-                    neg_pairs = self._negate_zero_one(pos_pairs)
+                    neg_pairs = self.random_select_systems(tensors['system'])
+                    #self._negate_zero_one(pos_pairs)
                     # Similarity with positive and negative examples
                     # Up-weights bad examples (of negatives/positives),
                     # assuming we use similarity bounded by [0,1] (cosine)
@@ -588,13 +598,13 @@ class XXJointModule(BaseModuleClass):
 
         # Overall loss
         loss = (reconst_loss * reconstruction_weight +
-                reconst_loss_mixup * reconstruction_mixup_weight +
-                reconst_loss_cyc * reconstruction_cycle_weight +
+                # reconst_loss_mixup * reconstruction_mixup_weight +
+                # reconst_loss_cyc * reconstruction_cycle_weight +
                 kl_divergence_z * kl_weight +
-                kl_divergence_z_cyc * kl_cycle_weight +
-                z_distance_cyc * z_distance_cycle_weight +
-                transl_corr * translation_corr_weight +
-                z_contrastive * z_contrastive_weight)
+                # kl_divergence_z_cyc * kl_cycle_weight +
+                z_distance_cyc * z_distance_cycle_weight)
+                # transl_corr * translation_corr_weight +
+                # z_contrastive * z_contrastive_weight)
 
         return LossRecorder(
             n_obs=loss.shape[0],
@@ -602,11 +612,11 @@ class XXJointModule(BaseModuleClass):
             loss_sum=loss.sum(),
             reconstruction_loss=reconst_loss.sum(),
             kl_local=kl_divergence_z.sum(),
-            reconstruction_loss_mixup=reconst_loss_mixup.sum(),
+            # reconstruction_loss_mixup=reconst_loss_mixup.sum(), # not needed 
             reconstruction_loss_cycle=reconst_loss_cyc.sum(),
-            kl_local_cycle=kl_divergence_z_cyc.sum(),
+            # kl_local_cycle=kl_divergence_z_cyc.sum(), # not needed 
             z_distance_cycle=z_distance_cyc.sum(),
-            translation_corr=transl_corr.sum(),
+            # translation_corr=transl_corr.sum(), # not needed 
             z_contrastive=z_contrastive,
             z_contrastive_pos=z_contrastive_pos,
             z_contrastive_neg=z_contrastive_neg,
@@ -639,6 +649,30 @@ class XXJointModule(BaseModuleClass):
         gll = torch.distributions.Normal(loc=target_x_m[std_filter], scale=target_x_std[std_filter]
                                          ).log_prob(pred_x[:, std_filter]).mean(axis=1).mean()
         return {'correlation': corr, 'GaussianLL': gll}
+    
+    def random_select_systems(self, tensors):
+        """
+        Randomly selects one system for each row from the available systems.
+
+        Parameters:
+        - tensors: dict, input data dictionary containing 'system' key.
+
+        Returns:
+        - new_tensor: torch.Tensor, a new tensor with dimensions from systems.
+        """
+        #get available systems
+        available_systems = 1 - tensors
+        #Get row col indices
+        row_indices, col_indices = torch.nonzero(available_systems, as_tuple=True)
+        #Gather cols for a single row
+        col_pairs = col_indices.view(-1, tensors.shape[1]-1)
+        #Create new tensor with dimensions from systems
+        randomly_selected_indices = col_pairs.gather(1, torch.randint(0, tensors.shape[1]-1, size=(col_pairs.size(0), 1), dtype=torch.int64))
+        new_tensor = torch.zeros_like(available_systems)
+        #populate the tensor with one from the index selected for column
+        new_tensor.scatter_(1, randomly_selected_indices, 1)    
+
+        return new_tensor
 
 
 def _get_dict_if_none(param):
