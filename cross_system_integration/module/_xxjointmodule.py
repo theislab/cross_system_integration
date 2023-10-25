@@ -55,7 +55,6 @@ class XXJointModule(BaseModuleClass):
             gene_map: GeneMapInput,
             n_cov: int,
             n_system: int,  
-            use_group: bool,
             prior: Literal["standard_normal", "vamp", "gmm"] = 'vamp',
             n_prior_components=5,
             trainable_priors=True,
@@ -76,7 +75,6 @@ class XXJointModule(BaseModuleClass):
         # TODO transfer functionality of gene maps to not need the class itself needed anymore -
         #  it was used only to return tensors on correct device for this specific model type
         self.register_buffer('gm_input_filter', gene_map.input_filter(), persistent=False)
-        self.use_group = use_group
         self.n_output = n_output
         self.z_dist_metric = z_dist_metric
         self.data_eval = data_eval
@@ -162,7 +160,7 @@ class XXJointModule(BaseModuleClass):
         return input_dict
 
     @auto_move_data
-    def _get_generative_input(self, tensors, inference_outputs, cov_replace: torch.Tensor = None, **kwargs):
+    def _get_generative_input(self, tensors, inference_outputs, selected_system, cov_replace: torch.Tensor = None,  **kwargs):
         """
         Parse the dictionary to get appropriate args
         :param cov_replace: Replace cov from tensors with this covariate vector
@@ -172,21 +170,14 @@ class XXJointModule(BaseModuleClass):
             cov = {'x': tensors['covariates'], 'y': self._mock_cov(tensors['covariates'])}
         else:
             cov = {'x': cov_replace, 'y': cov_replace}
-        selected_system = self.random_select_systems(tensors['system'])
+
         system = {'x': tensors['system'], 'y': selected_system}
-                                               #self._negate_zero_one(tensors['system'] #commented out because >2 systems
-
-        input_dict = dict(z=z, cov=cov, system=system)
-        return input_dict, selected_system
-
-    @auto_move_data
-    def _get_generative_cycle_input(self, tensors, inference_cycle_outputs, selected_system, **kwargs):
-        """Parse the dictionary to get appropriate args"""
-        z = inference_cycle_outputs["z"]
-        cov = {'x': self._mock_cov(tensors['covariates']), 'y': tensors['covariates']}
-        system = {'x': selected_system, 'y': tensors['system']}
         input_dict = dict(z=z, cov=cov, system=system)
         return input_dict
+ 
+    @auto_move_data
+    def _get_generative_cycle_input(self, tensors, inference_cycle_outputs, selected_system, **kwargs):
+        raise NotImplementedError
 
     @staticmethod
     def _merge_cov(cov, system):
@@ -291,28 +282,21 @@ class XXJointModule(BaseModuleClass):
         )
         inference_outputs = self.inference(**inference_inputs, **inference_kwargs)
         # Generative
-        generative_inputs, selected_system = self._get_generative_input(
-            tensors, inference_outputs, **get_generative_input_kwargs
+        selected_system = self._get_selected_system(tensors['system'])
+        generative_inputs = self._get_generative_input(
+            tensors, inference_outputs, selected_system=selected_system, **get_generative_input_kwargs
         )
         generative_outputs = self.generative(**generative_inputs, x_x=True, x_y=True, **generative_kwargs)    
-        
         # Inference cycle
         inference_cycle_inputs = self._get_inference_cycle_input(
             tensors=tensors, generative_outputs=generative_outputs, selected_system=selected_system, **get_inference_input_kwargs)
         inference_cycle_outputs = self.inference(**inference_cycle_inputs, **inference_kwargs)
-        # Generative cycle
-        generative_cycle_inputs = self._get_generative_cycle_input(
-            tensors=tensors, inference_cycle_outputs=inference_cycle_outputs, selected_system=selected_system, **get_generative_input_kwargs)
-        generative_cycle_outputs = self.generative(**generative_cycle_inputs, x_x=False, x_y=True, **generative_kwargs)
-
         # Combine outputs of all forward passes
         inference_outputs_merged = dict(**inference_outputs)
         inference_outputs_merged.update(
             **{k.replace('z', 'z_cyc'): v for k, v in inference_cycle_outputs.items()})
         generative_outputs_merged = dict(**generative_outputs)
-        generative_outputs_merged.update(
-        #     # y_cyc (from output x) won't be present as we don't predict x in the cycle
-              **{k.replace('y', 'x_cyc'): v for k, v in generative_cycle_outputs.items()})
+       
 
         if compute_loss:
             losses = self.loss(
@@ -497,7 +481,14 @@ class XXJointModule(BaseModuleClass):
         new_tensor.scatter_(1, randomly_selected_indices, 1)    
 
         return new_tensor
-
+            
+    def _get_selected_system(self, tensors):
+        """
+        Tensor of selected systems 
+        """
+        selected_system = self.random_select_systems(tensors)
+        return selected_system
+   
 
 def _get_dict_if_none(param):
     param = {} if not isinstance(param, dict) else param

@@ -196,9 +196,11 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             # Inference
             idx_next = idx_previous + tensors['covariates'].shape[0]
             inference_inputs = self.module._get_inference_input(tensors)
+            selected_system = self.module._get_selected_system(tensors['system'])
             generative_inputs = self.module._get_generative_input(
                 tensors=tensors,
                 inference_outputs=self.module.inference(**inference_inputs),
+                selected_system= selected_system,
                 cov_replace=cov_replace[idx_previous:idx_next, :])
             generative_outputs = self.module.generative(**generative_inputs, x_x=x_x, x_y=x_y)
             if give_mean:
@@ -285,11 +287,12 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             # Inference
             inference_inputs = self.module._get_inference_input(tensors)
             inference_outputs = self.module.inference(**inference_inputs)
+            selected_system = self.module._get_selected_system(tensors['system'])
             if cycle:
-                generative_inputs = self.module._get_generative_input(tensors, inference_outputs)
+                generative_inputs = self.module._get_generative_input(tensors, inference_outputs, selected_system=selected_system,)
                 generative_outputs = self.module.generative(**generative_inputs, x_x=False, x_y=True)
                 inference_cycle_inputs = self.module._get_inference_cycle_input(
-                    tensors=tensors, generative_outputs=generative_outputs)
+                    tensors=tensors, generative_outputs=generative_outputs, selected_system=selected_system,)
                 inference_outputs = self.module.inference(**inference_cycle_inputs)
             if give_mean:
                 predicted += [inference_outputs['z_m']]
@@ -325,7 +328,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         %(param_batch_key)s
         %(param_labels_key)s
         %(param_layer)s
-        %(param_cat_cov_keys)s
+        %(param_cat_cov_keys)s 
         %(param_cont_cov_keys)s
 
         Returns
@@ -337,6 +340,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         # Make sure var names are unique
         if adata.shape[1] != len(set(adata.var_names)):
             raise ValueError('Adata var_names are not unique')
+        
 
         # User should copy its anndata itself if does not telerate changes.
         # adata = adata.copy()
@@ -344,6 +348,11 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         # Make system to categorical for cov
         if system_order is None:
             system_order = sorted(adata.obs[system_key].unique())
+    
+        # Validate that the provided system_order matches the categories in adata.obs[system_key]
+        if set(system_order) != set(adata.obs[system_key].unique()):
+            raise ValueError("Provided system_order does not match the categories in adata.obs[system_key]")
+        
         systems_dict = dict(zip(system_order, ([float(i) for i in range(0,len(system_order))])))
         adata.uns['system_order'] = system_order
         system_cat = pd.Series(pd.Categorical(values=adata.obs[system_key],categories=system_order,ordered=True), index=adata.obs.index, name='system')
