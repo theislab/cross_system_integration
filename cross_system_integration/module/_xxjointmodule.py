@@ -282,7 +282,7 @@ class XXJointModule(BaseModuleClass):
         )
         inference_outputs = self.inference(**inference_inputs, **inference_kwargs)
         # Generative
-        selected_system = self._get_selected_system(tensors['system'])
+        selected_system =  self.random_select_systems(tensors['system'])
         generative_inputs = self._get_generative_input(
             tensors, inference_outputs, selected_system=selected_system, **get_generative_input_kwargs
         )
@@ -481,14 +481,6 @@ class XXJointModule(BaseModuleClass):
         new_tensor.scatter_(1, randomly_selected_indices, 1)    
 
         return new_tensor
-            
-    def _get_selected_system(self, tensors):
-        """
-        Tensor of selected systems 
-        """
-        selected_system = self.random_select_systems(tensors)
-        return selected_system
-   
 
 def _get_dict_if_none(param):
     param = {} if not isinstance(param, dict) else param

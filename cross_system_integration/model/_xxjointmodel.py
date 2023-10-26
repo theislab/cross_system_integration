@@ -196,7 +196,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             # Inference
             idx_next = idx_previous + tensors['covariates'].shape[0]
             inference_inputs = self.module._get_inference_input(tensors)
-            selected_system = self.module._get_selected_system(tensors['system'])
+            selected_system = self.module.random_select_systems(tensors['system'])
             generative_inputs = self.module._get_generative_input(
                 tensors=tensors,
                 inference_outputs=self.module.inference(**inference_inputs),
@@ -287,7 +287,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             # Inference
             inference_inputs = self.module._get_inference_input(tensors)
             inference_outputs = self.module.inference(**inference_inputs)
-            selected_system = self.module._get_selected_system(tensors['system'])
+            selected_system = self.module.random_select_systems(tensors['system'])
             if cycle:
                 generative_inputs = self.module._get_generative_input(tensors, inference_outputs, selected_system=selected_system,)
                 generative_outputs = self.module.generative(**generative_inputs, x_x=False, x_y=True)
