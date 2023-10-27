@@ -14,14 +14,15 @@
 # ---
 
 # %%
-# # %load_ext autoreload
-# # %autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 # %%
 import os
 import sys
 import argparse
 
+import anndata as ad
 import scanpy as sc
 import pickle as pkl
 import pandas as pd
@@ -35,7 +36,7 @@ import gc
 
 from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
-import seaborn as sb
+import seaborn as sns
 
 # %%
 import torch
@@ -81,6 +82,9 @@ INIT_METHOD = args.init_method
 path_data = os.path.expanduser("~/data/cs_integration/combined_orthologuesHVG.h5ad")
 output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}_init_{INIT_METHOD}")
 sc.settings.figdir = output_filename
+
+# %%
+print(f"Output {'already exists' if os.path.exists(output_filename) else 'does not exist'}")
 
 
 # %% [markdown]
@@ -225,6 +229,7 @@ embed = embed.copy()
 
 # %%
 sc.pp.neighbors(embed, use_rep='X')
+sc.tl.pca(embed)
 sc.tl.umap(embed)
 embed.write(os.path.join(output_filename, 'embed.h5ad'))
 
@@ -232,15 +237,71 @@ embed.write(os.path.join(output_filename, 'embed.h5ad'))
 embed = sc.read(os.path.join(output_filename, 'embed.h5ad'))
 
 # %%
-rcParams['figure.figsize']=(8,8)
-sc.pl.umap(embed, color=[CT_KEY, *BATCH_KEYS, 'species'], s=10, wspace=0.5, 
-           save='_umap_cells.png')
+prior_probs = ad.AnnData(
+    model.get_prior_probs(
+        adata=adata_training,
+        indices=None,
+        batch_size=None,
+        as_numpy=True),
+    obs=adata_training.obs
+)
+prior_probs
 
 # %%
-rcParams['figure.figsize']=(5,3)
-_=plt.violinplot(embed.to_df())
-plt.savefig(os.path.join(output_filename, 'latent_violin.png'))
-plt.show()
+embed.obsm['prior_probs'] = prior_probs[embed.obs.index].X
+embed.obs['most_probable_prior_p'] = embed.obsm['prior_probs'].max(axis=1)
+embed.obs['most_probable_prior_id'] = pd.Categorical(embed.obsm['prior_probs'].argmax(axis=1))
+
+# %%
+embed.write(os.path.join(output_filename, 'embed.h5ad'))
+
+# %%
+# rcParams['figure.figsize']=(8,8)
+# sc.pl.umap(embed, color=[CT_KEY, *BATCH_KEYS, 'species', 'most_probable_prior_p', 'most_probable_prior_id'], s=10, wspace=0.5, 
+#            save='_umap_cells.png', ncols=1)
+
+# %%
+# rcParams['figure.figsize']=(5,3)
+# _=plt.violinplot(embed.to_df())
+# plt.savefig(os.path.join(output_filename, 'latent_violin.png'))
+# plt.show()
+
+# %%
+rcParams['figure.figsize']=(8,8)
+sc.pl.pca(embed, color=[CT_KEY, *BATCH_KEYS, 'species','most_probable_prior_p', 'most_probable_prior_id',], 
+          s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
+          save='_pca_all.png'
+         )
+
+# %%
+from sklearn.metrics import normalized_mutual_info_score
+
+for key in [CT_KEY, SYSTEM_KEY]:
+    nmi = normalized_mutual_info_score(embed.obs[key].values, embed.obs['most_probable_prior_id'].values)
+    print("\n\n\n normalized_mutual_info_score", nmi)
+    df = (
+        embed.obs[[key, 'most_probable_prior_id']]
+        .assign(count=1)
+        .groupby([key, 'most_probable_prior_id'])
+        .agg({'count': 'count'})
+        .reset_index()
+        .pivot(index=key, columns='most_probable_prior_id', values='count')
+    )
+    x = np.round((df.div(df.sum(axis=1), axis=0) * 10000)) / 100
+    ax = plt.axes()
+    plot = sns.heatmap(x, annot=True, ax=ax)
+    ax.set_title(f'NMI: {nmi}')
+    plot.get_figure().savefig(os.path.join(output_filename, f'prior_{key}_confusion_.png'))
+    plt.show()
+    print("\n\n", df, "\n", x)
+
+# %%
+
+# %%
+
+# %%
+
+# %%
 
 # %%
 # Encode pseudoinputs
@@ -277,26 +338,35 @@ embed_final = embed_all[embed_all.obs['pseudoinput_time'].isna() | (embed_all.ob
 
 # %%
 rcParams['figure.figsize']=(8,8)
-sc.pl.pca(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species'], s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
-          save='_pca_all.png')
+sc.pl.pca(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species',
+                              'most_probable_prior_p', 'most_probable_prior_id',
+                             ], s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
+          save='_pca_all.png'
+         )
 
 # %%
 rcParams['figure.figsize']=(8,8)
-sc.pl.umap(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species'], s=10, wspace=0.5,
-           save='_umap_all.png')
+sc.pl.umap(embed_final, color=['input_type', CT_KEY, *BATCH_KEYS, 'species',
+                               'most_probable_prior_p', 'most_probable_prior_id',
+                              ], s=10, wspace=0.5,
+           save='_umap_all.png'
+          )
 
 # %%
 rcParams['figure.figsize']=(8,8)
-sc.pl.pca(embed_all, color=['input_type', 'pseudoinput_time', 'pseudoinput_id'], s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
-          save='_pca_pseudoinput_time.png')
+sc.pl.pca(embed_all, color=['input_type', 'pseudoinput_time', 'pseudoinput_id',
+                            'most_probable_prior_p', 'most_probable_prior_id',], s=10, wspace=0.5, components=['1,2', '3,4', '5,6', '7,8'], ncols=4,
+          save='_pca_pseudoinput_time.png'
+         )
 
 # %%
 rcParams['figure.figsize']=(8,8)
-sc.pl.umap(embed_all, color=['input_type', 'pseudoinput_time', 'pseudoinput_id'], s=10, wspace=0.5,
-           save='_umap_pseudoinput_time.png')
+sc.pl.umap(embed_all, color=['input_type', 'pseudoinput_time', 'pseudoinput_id',
+                             'most_probable_prior_p', 'most_probable_prior_id'], s=10, wspace=0.5,
+           save='_umap_pseudoinput_time.png'
+          )
 
-# %%
-
-# %%
+# %% [raw]
+#
 
 # %%
