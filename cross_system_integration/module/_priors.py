@@ -59,7 +59,7 @@ class VampPrior(Prior):
             z = self.encoder(x=self.u, cov=self.u_cov)
         return z['y_m'], z['y_v']  # (K x L), (K x L)
 
-    def log_prob_per_mod(self, z):
+    def log_prob_per_mod(self, z, mixture_weights=True):
         # Mixture of gaussian computed on K x N x L
         z = z.unsqueeze(0)  # 1 x N x L
 
@@ -72,10 +72,13 @@ class VampPrior(Prior):
         w = torch.nn.functional.softmax(self.w, dim=0)  # K x 1 x 1
 
         # sum of log_p across components weighted by w
-        return Normal(m_p, v_p.sqrt()).log_prob(z) + torch.log(w)  # K x N x L
+        log_prob = Normal(m_p, v_p.sqrt()).log_prob(z)  # K x N x L
+        if mixture_weights:
+            log_prob += torch.log(w)
+        return log_prob
 
     def log_prob(self, z):
-        log_prob = self.log_prob_per_mode(z)
+        log_prob = self.log_prob_per_mod(z)
         log_prob = torch.logsumexp(log_prob, dim=0, keepdim=False)  # N x L
 
         return log_prob  # N x L
@@ -106,7 +109,7 @@ class GaussianMixtureModelPrior(Prior):
         # mixing weights
         self.w = torch.nn.Parameter(torch.zeros(self.p_m.shape[0], 1, 1))  # K x 1 x 1
 
-    def log_prob_per_mod(self, z):
+    def log_prob_per_mod(self, z, mixture_weights=True):
         # Mixture of gaussian computed on K x N x L
         z = z.unsqueeze(0)  # 1 x N x L
 
@@ -117,10 +120,13 @@ class GaussianMixtureModelPrior(Prior):
         w = torch.nn.functional.softmax(self.w, dim=0)  # K x 1 x 1
 
         # sum of log_p across components weighted by w
-        return Normal(m_p, v_p.sqrt()).log_prob(z) + torch.log(w)  # K x N x L
+        log_prob = Normal(m_p, v_p.sqrt()).log_prob(z)  # K x N x L
+        if mixture_weights:
+            log_prob += torch.log(w)
+        return log_prob
 
     def log_prob(self, z):
-        log_prob = self.log_prob_per_mode(z)
+        log_prob = self.log_prob_per_mod(z)
         log_prob = torch.logsumexp(log_prob, dim=0, keepdim=False)  # N x L
 
         return log_prob  # N x L
