@@ -52,10 +52,7 @@ To make the final plotting of data-setting subsets quicker, the integration resu
 
 The evaluation of the effect of prior initialization and fixed or learnable priors: Integration runs are specified in the above yaml files used for running integration models. The final plots for the paper were created as described in the below section.
 
-The analysis of the movements of the psudoinputs and finding the most probable prior component for each cell: eval/cleaned/analysis/vamp_prior_analysis.ipynb The final plots for the paper were created as described in the below section.
-
-- Python notebook and script to run the model and store auxiliary information: vamp_prior_analysis.ipynb/.py
-
+The analysis of the movements of the psudoinputs and finding the most probable prior component for each cell: eval/cleaned/analysis/vamp_prior_analysis.py. The final plots for the paper were created as described in the below section.
 
 ## Preparation of final plots/tables for the paper
 
