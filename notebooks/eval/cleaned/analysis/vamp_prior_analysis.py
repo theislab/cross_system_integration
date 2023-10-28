@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.0
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: cs_integration
 #     language: python
@@ -44,7 +44,7 @@ from cross_system_integration.model._xxjointmodel import XXJointModel
 from pytorch_lightning.callbacks.base import Callback
 
 # %% [markdown]
-# ## Config
+# ## Config & utils
 
 # %%
 SYSTEM_KEY = 'system'
@@ -144,15 +144,12 @@ INIT_ALGORITHMS = {
     'most_balanced': most_balanced_algorithm,
 }
 
-# %% [markdown]
-# ## Pancreas
-
 # %%
 adata=sc.read(path_data)
 adata
 
 # %% [markdown]
-# ### cVAE - VampPrior
+# ## Train model (inlc. saving prior components positions)
 
 # %%
 adata_training = adata.copy()
@@ -176,7 +173,7 @@ else:
                          pseudoinputs_data_indices=INIT_ALGORITHMS[INIT_METHOD](adata_training, N_PRIOR_COMPONENTS),
                          trainable_priors=TRAINABLE_PRIORS,
                          encode_pseudoinputs_on_eval_mode=True,)
-    
+    # Inspect prior component movement during training
     prior_inspection_callback = PriorInspectionCallback()
     model.train(max_epochs=MAX_EPOCHS,
                 check_val_every_n_epoch=1,
@@ -210,7 +207,11 @@ for ax_i,l in enumerate(losses):
 plt.savefig(os.path.join(output_filename, 'losses.png'))
 fig.tight_layout()
 
+# %% [markdown]
+# ## Latent data representation
+
 # %%
+# Get latent rep
 embed = model.embed(
         adata=adata_training,
         indices=None,
@@ -237,6 +238,7 @@ embed.write(os.path.join(output_filename, 'embed.h5ad'))
 embed = sc.read(os.path.join(output_filename, 'embed.h5ad'))
 
 # %%
+# Most probable prior
 prior_probs = ad.AnnData(
     model.get_prior_probs(
         adata=adata_training,
@@ -273,11 +275,8 @@ sc.pl.pca(embed, color=[CT_KEY, *BATCH_KEYS, 'species','most_probable_prior_p', 
           save='_pca_all.png'
          )
 
-# %%
-
-# %%
-
-# %%
+# %% [markdown]
+# ## Pseudoinputs embedding
 
 # %%
 # Encode pseudoinputs
@@ -285,7 +284,6 @@ prior_history = model.train_prior_history_
 n_steps = len(prior_history)
 n_points = prior_history[0][0].shape[0]
 
-# %%
 prior_x = np.concatenate([x[0] for x in prior_history])
 prior_cov = np.concatenate([x[1] for x in prior_history])
 

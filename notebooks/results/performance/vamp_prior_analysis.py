@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.0
+#       jupytext_version: 1.14.5
 #   kernelspec:
 #     display_name: cs_integration
 #     language: python
@@ -29,6 +29,7 @@ import numpy as np
 from sklearn.preprocessing import minmax_scale
 from scipy.stats import entropy
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import normalized_mutual_info_score
 
 import gc
 
@@ -54,11 +55,11 @@ path_data = os.path.expanduser("~/data/cs_integration/combined_orthologuesHVG.h5
 path_fig = os.path.expanduser(f"~/io/cs_integration/figures/")
 
 RUNS_TO_LOAD = {
-    '2_prior_system_0': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_system_0/'),
+    #'2_prior_system_0': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_system_0/'),
     '2_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_most_balanced/'),
-    '2_prior_system_1': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_system_1/'),
-    '4_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_4_trainable_prior_True_init_most_balanced/'),
-    '10_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_10_trainable_prior_True_init_most_balanced/'),
+   # '2_prior_system_1': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_system_1/'),
+   # '4_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_4_trainable_prior_True_init_most_balanced/'),
+    #'10_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_10_trainable_prior_True_init_most_balanced/'),
 }
 
 n_prior_n_ct_runs = os.path.expanduser('~/io/cs_integration/vamp_balanced_testing_pancreas_combined_orthologuesHVG_n_prior_{n_prior}_trainable_prior_True_init_system_0_nct_{n_ct}/')
@@ -80,45 +81,10 @@ with open(os.path.expanduser('~/io/cs_integration/colors/obs_col_cmap.pkl'), 'rb
     obs_cmap = pkl.load(f)
 
 # %% [markdown]
-# ## Init population
-
-# %%
-adata_training = adata.copy()
-
-# %%
-size = 3
-fig,axs=plt.subplots(2, 3,figsize=(3*size, 2*size),
-                     sharey='row')
-for i, (run, title) in enumerate(zip(
-    ['2_prior_system_0', '2_prior_balanced', '2_prior_system_1'],
-    ['2 priors from Mouse', 'Mixed (1 + 1)', '2 priors from Human'],
-)):
-    embed = sc.read(os.path.join(RUNS_TO_LOAD[run], 'embed.h5ad'))
-    embed_all = sc.read(os.path.join(RUNS_TO_LOAD[run], 'embed_all.h5ad'))
-    for j, col in enumerate(['system', CT_KEY]):
-        ax = axs[j, i]
-        cmap = obs_cmap['pancreas'][col]
-        if col == 'system':
-            embed.obs['system'] = embed.obs['system'].astype(str).map(SYSTEM_MAP).astype(str)
-            cmap = {SYSTEM_MAP[k]: v for k, v in cmap.items()}
-        sc.pl.umap(embed, color=col, ax=ax, show=False, palette=cmap, frameon=False, title='' if j != 0 else title, legend_loc='none' if i != 2 else 'right margin')
-
-plt.subplots_adjust(left=0.05,
-                    bottom=0.05,
-                    right=0.95,
-                    top=0.95,
-                    wspace=0.01,
-                    hspace=0.01)
-plt.savefig(path_fig+f'init_system_choice.pdf', dpi=300, bbox_inches='tight')
-
-# %%
-
-# %%
-
-# %% [markdown]
 # ## Prior update over time
 
 # %%
+# Load data
 run = '2_prior_balanced'
 adata_training = adata.copy()
 model = XXJointModel.load(RUNS_TO_LOAD[run], adata=adata_training)
@@ -159,6 +125,7 @@ obs_cmap['pancreas']["cell_type_new"] = dict(zip(
 ))
 
 # %%
+# plot prior component movement during training
 size = 5
 fig,axs=plt.subplots(3, 3,figsize=(1.5*size, 1.5*size),
                      sharey='row')
@@ -223,16 +190,8 @@ plt.subplots_adjust(left=0.05,
 plt.savefig(path_fig+f'pi_movement.pdf', dpi=300, bbox_inches='tight')
 plt.savefig(path_fig+f'pi_movement.png', dpi=300, bbox_inches='tight')
 
-# %%
-
-# %%
-
-# %%
-
-# %%
-
 # %% [markdown]
-# ## Most probable prior
+# ## Most probable prior component
 
 # %%
 mapping = {
@@ -259,9 +218,6 @@ obs_cmap['pancreas']["cell_type_new"] = dict(zip(
     obs_cmap['pancreas'][CT_KEY].values()
 ))
 
-# %%
-from sklearn.metrics import normalized_mutual_info_score
-
 
 # %%
 def average_class_entropy(classes, clusters, eps=1e-10):
@@ -287,9 +243,11 @@ cb_cmap = {
 }
 
 # %%
+# Max possible entropy with 5 classes
 -np.log2(1/5)
 
 # %%
+# Plot most probable prior per cell
 size = 3
 n_prior_list = [
     5,
@@ -363,9 +321,7 @@ plt.savefig(path_fig+f'n_prior_init_most_probable_prior.png', dpi=300, bbox_inch
 plt.show()
 
 # %%
-pd.concat(avents)[:3]
-
-# %%
+# Prior cassignmnet entropy per cell group
 plt.figure(figsize=(3,5))
 ax = sb.swarmplot((
         pd.concat(avents)
@@ -382,19 +338,3 @@ fig.tight_layout()
 fig.savefig(path_fig+f'most_probable_prior_entropy_swarm_plot.pdf') 
 fig.savefig(path_fig+f'most_probable_prior_entropy_swarm_plot.png') 
 plt.show()
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
-
-# %%
