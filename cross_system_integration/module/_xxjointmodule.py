@@ -315,8 +315,8 @@ class XXJointModule(BaseModuleClass):
             inference_outputs,
             generative_outputs,
             kl_weight: float = 1.0,
-            reconstruction_weight: float = 1,
-            z_distance_cycle_weight: float = 2,
+            reconstruction_weight: float = 1.0,
+            z_distance_cycle_weight: float = 2.0,
     ):
 
         x_true = tensors[REGISTRY_KEYS.X_KEY]
@@ -384,51 +384,6 @@ class XXJointModule(BaseModuleClass):
         #  z_x and z_x_y have more similar embeddings and z_y and z_y_x as well)
         z_distance_cyc = z_dist(z_x_m=inference_outputs['z_m'], z_y_m=inference_outputs['z_cyc_m'],
                                 z_x_v=inference_outputs['z_v'], z_y_v=inference_outputs['z_cyc_v'])
-
-        # Correlation between both decoded expression reconstructions
-        # TODO This could be also NegLL of one prediction against the other, although unsure how well
-        #  this would fit wrt normalisation used in both species (e.g. gene means may be different due to
-        #  different expression of otehr genes)
-        # TODO Could be decayed towards the end after the matched cell types were primed
-        #  to enable species-specific flexibility as not all orthologues are functionally related
-        #   Alternatively: Could do weighted correlation where sum of all weights is constant but can be learned to be
-        #   distributed differently across genes
-
-        def center_samples(x):
-            return x - x.mean(dim=1, keepdim=True)
-
-        def expr_correlation_loss(x, y):
-            return 1 - torch.nn.CosineSimilarity()(center_samples(x), center_samples(y))
-
-
-        def product_cosine(x, y, eps=1e-8):
-            """
-            Cosine similarity between all pairs of samples in x and y
-            :param x:
-            :param y:
-            :param eps:
-            :return:
-            """
-            # Center to get correlation
-            # if corr:
-            #    x = center_samples(x)
-            #    y = center_samples(y)
-
-            # Cosine between all pairs of samples
-            x_n, y_n = torch.linalg.norm(x, dim=1)[:, None], torch.linalg.norm(y, dim=1)[:, None]
-            x_norm = x / torch.clamp(x_n, min=eps)
-            y_norm = y / torch.clamp(y_n, min=eps)
-            cos = torch.mm(x_norm, y_norm.transpose(0, 1))
-
-            return cos
-
-        # TODO due to class imbalance we may not get positive samples for some classes (very often).
-        #  An alternative would be to construct data batches that contain more positive pairs:
-        #  If batch size=n, sample n/2 points from system 1 and then find from system 2 one sample with matching class
-        #  for every sampled point from system 1. To ensure that we dont introduce class imbalance bias from one system
-        #  iterate between sampling first from system 1 or 2
-        #  This could be done in ann_dataloader.BatchSampler; used in DataLoaderClass constructed
-        #  in DataSplitter in training
 
         # Overall loss
         loss = (reconst_loss * reconstruction_weight +
