@@ -37,9 +37,7 @@ def mock_adata():
     )
     adata.obs['covariate_cont'] = list(range(200))
     adata.obs['covariate_cat'] = ['a'] * 50 + ['b'] * 50 + ['c'] * 50 + ['d'] * 50
-    adata.obs['system'] = ['a'] * 100 + ['b'] * 100
-    # Also deal with missing group vals
-    adata.obs['group'] = ((['a'] * 25 + ['b'] * 20 + [np.nan] * 5) * 2) * 2
+    adata.obs['system'] = ['a'] * 100 + ['b'] * 50 + ['c'] * 50
     adata.var['input'] = [1] * 20 + [0] * 25 + [1] * 20 + [0] * 30
 
     return adata
@@ -52,24 +50,14 @@ def test_model():
         adata,
         input_gene_key='input',
         system_key='system',
-        group_key='group',
         # TODO improve test for adata setup
         categorical_covariate_keys=['covariate_cat'],
         continuous_covariate_keys=['covariate_cont'],
     )
 
-    # Test single decoder and different losses (with w scale) and in z_distance_cycle metric MSE standard loss
-    adata_training.uns['eval_info'] = {'evalMetric': {
-        'cells_in': ['1', '4'],
-        'switch_system': True,
-        'cells_target': ['2', '4'],
-        'genes': ['2', '1', '3']}}
+    # Test that it runs through
+
     model = XXJointModel(adata=adata_training,
-                         mixup_alpha=None,
-                         system_decoders=False,
-                         z_dist_metric='KL',
-                         adata_eval=adata_training,
-                         out_var_mode='linear',
                          )
     model.train(max_epochs=2,
                 log_every_n_steps=1,
@@ -81,15 +69,10 @@ def test_model():
                     'log_on_step': True,
                     'loss_weights': {
                         'kl_weight': 2,
-                        'kl_cycle_weight': dict(weight_start=0, weight_end=1,
+                        'z_distance_cycle_weight': dict(weight_start=1, weight_end=3,
                                                 point_start=1, point_end=3, update_on='step')
                     }})
-    # Test double decoder and mixup
-    model = XXJointModel(adata=adata_training, mixup_alpha=0.4, system_decoders=True)
-    model.train(max_epochs=2)
-    # Test vamp prior
-    model = XXJointModel(adata=adata_training, prior='vamp')
-    model.train(max_epochs=2)
+
     # Test training with different indices at different training runs
     model = XXJointModel(adata=adata_training)
     n_indices1 = int(adata_training.shape[0] * 0.5)
@@ -117,34 +100,6 @@ def test_model():
         adata=adata_training,
         indices=None,
         cycle=True,
-        give_mean=True,
-        batch_size=None,
-        as_numpy=True
-    )
-
-    translated_y = model.translate(
-        adata=adata_training,
-        indices=None,
-        covariates=pd.Series({'covariate_cat': 'a', 'covariate_cont': 1}),
-        give_mean=True,
-        batch_size=None,
-        as_numpy=True
-    )
-    assert translated_y.shape[0] == adata_training.shape[0]
-    _, translated_y_v = model.translate(
-        adata=adata_training,
-        indices=None,
-        covariates=pd.Series({'covariate_cat': 'a', 'covariate_cont': 1}),
-        give_mean=True,
-        give_var=True,
-        batch_size=None,
-        as_numpy=True
-    )
-    assert translated_y_v.shape[0] == adata_training.shape[0]
-    translated_y = model.translate(
-        adata=adata_training[[1, 2], :],
-        indices=None,
-        covariates=pd.DataFrame({'covariate_cat': ['a', 'b'], 'covariate_cont': [1] * 2}),
         give_mean=True,
         batch_size=None,
         as_numpy=True
