@@ -105,7 +105,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             trainable_priors=trainable_priors,
             encode_pseudoinputs_on_eval_mode=encode_pseudoinputs_on_eval_mode,
             pseudoinput_data=pseudoinput_data,
-            data_eval= None,
             **model_kwargs)
 
         self._model_summary_string = "Overwrite this attribute to get an informative representation for your model"
@@ -113,117 +112,6 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
         self.init_params_ = self._get_init_params(locals())
 
         logger.info("The model has been initialized")
-
-    def _prepare_eval_data(self, adata: AnnData):
-        """
-        Prepare evaluation inputs
-        :param adata: adata_eval: set up as training adata and with eval_info in uns
-        :return:
-        """
-        adata = self._validate_anndata(adata)
-        eval_data = {}
-        for metric_name, eval_case_info in adata.uns['eval_info'].items():
-            eval_case_data = {}
-            obs_idx = dict(zip(adata.obs_names, range(adata.shape[0])))
-            indices_in = [obs_idx[o] for o in eval_case_info['cells_in']]
-            n_in = len(indices_in)
-            eval_case_data['inference_tensors'] = next(iter(self._make_data_loader(
-                adata=adata, indices=indices_in, batch_size=n_in, shuffle=False)))
-            eval_case_data['generative_cov'] = torch.zeros(n_in, adata.obsm['covariates'].shape[1])
-            x_x, x_y, pred_key = (False, True, 'y') if eval_case_info['switch_system'] else (True, False, 'x')
-            eval_case_data['generative_kwargs'] = {'x_x': x_x, 'x_y': x_y, 'pred_key': pred_key}
-            # Note: ordering of selected genes will match adata not eval_info gene list
-            eval_genes = set(eval_case_info['genes'])
-            eval_genes_bool = torch.tensor([g in eval_genes for g in adata.var_names])
-            eval_case_data['genes'] = eval_genes_bool
-            eval_case_data['target_x_m'] = torch.tensor(adata[eval_case_info['cells_target'], :].to_df().values
-                                                        )[:, eval_genes_bool].mean(axis=0)
-            eval_case_data['target_x_std'] = torch.tensor(adata[eval_case_info['cells_target'], :].to_df().values
-                                                          )[:, eval_genes_bool].std(axis=0)
-            eval_data[metric_name] = eval_case_data
-        return eval_data
-
-    @torch.no_grad()
-    def translate(
-            self,
-            adata: AnnData,
-            switch_system: bool = True,
-            indices: Optional[Sequence[int]] = None,
-            give_mean: bool = True,
-            give_var: bool = False,
-            covariates: Optional[Union[pd.Series, pd.DataFrame]] = None,
-            batch_size: Optional[int] = None,
-            as_numpy: bool = True
-    ) -> (Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]):
-        # TODo this is mainly the same as evaluation metrics data prep and computation so maybe combine
-        """
-        Translate expression - based on input expression and metadata
-        predict expression of data as if it had given metadata.
-        expression, metadata (from adata) -> latent
-        latent, new metadata -> translated expression
-        :param adata: Input adata based on which latent representation is obtained. Covariates are not used from here,
-        see covariates param.
-        :param switch_system: Should in translation system be switched or not
-        :param indices:
-        :param give_mean: In latent and expression prediction use mean rather than samples
-        :param give_var: Also return var besides mean/sampled
-        :param covariates: Covariates to be used for data generation. Can be None (uses all-0 covariates) or a series
-        with covariate metadata (same for all predicted samples) or dataframe (matching adata).
-        :param batch_size:
-        :param as_numpy:  Move output tensor to cpu and convert to numpy
-        :return: mean/sample and optional var
-        """
-        # Check model and adata
-        self._check_if_trained(warn=False)
-        adata = self._validate_anndata(adata)
-        if indices is None:
-            indices = np.arange(adata.n_obs)
-        # Prediction
-        # Do not shuffle to retain order
-        tensors_fwd = self._make_data_loader(
-            adata=adata, indices=indices, batch_size=batch_size, shuffle=False
-        )
-        predicted = []
-        predicted_var = []
-        x_x, x_y, pred_key = (False, True, 'y') if switch_system else (True, False, 'x')
-        # Specify cov to use, determine cov size below as here not all batches are of equal size since we predict
-        # each sample 1x
-        if isinstance(covariates, pd.DataFrame):
-            covariates = covariates.iloc[indices, :]
-        cov_replace = self._make_covariates(adata=adata, batch_size=indices.shape[0], cov_template=covariates)
-        idx_previous = 0
-        for tensors in tensors_fwd:
-            # Inference
-            idx_next = idx_previous + tensors['covariates'].shape[0]
-            inference_inputs = self.module._get_inference_input(tensors)
-            selected_system = self.module.random_select_systems(tensors['system'])
-            generative_inputs = self.module._get_generative_input(
-                tensors=tensors,
-                inference_outputs=self.module.inference(**inference_inputs),
-                selected_system= selected_system,
-                cov_replace=cov_replace[idx_previous:idx_next, :])
-            generative_outputs = self.module.generative(**generative_inputs, x_x=x_x, x_y=x_y)
-            if give_mean:
-                pred_sub = generative_outputs[pred_key + "_m"]
-            else:
-                pred_sub = generative_outputs[pred_key]
-            predicted += [pred_sub]
-            if give_var:
-                predicted_var += [generative_outputs[pred_key + "_v"]]
-            idx_previous = idx_next
-        predicted = torch.cat(predicted)
-        if give_var:
-            predicted_var = torch.cat(predicted_var)
-
-        if as_numpy:
-            predicted = predicted.cpu().numpy()
-            if give_var:
-                predicted_var = predicted_var.cpu().numpy()
-
-        if give_var:
-            return predicted, predicted_var
-        else:
-            return predicted
 
     def _make_covariates(self, adata, batch_size,
                          cov_template: Optional[Union[pd.Series, pd.DataFrame]] = None) -> torch.Tensor:
