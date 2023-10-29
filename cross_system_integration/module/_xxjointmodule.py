@@ -65,7 +65,6 @@ class XXJointModule(BaseModuleClass):
             n_hidden: int = 256,
             n_layers: int = 2,
             dropout_rate: float = 0.1,
-            data_eval=None,
             out_var_mode: str = 'feature',
             **kwargs
     ):
@@ -77,7 +76,7 @@ class XXJointModule(BaseModuleClass):
         self.register_buffer('gm_input_filter', gene_map.input_filter(), persistent=False)
         self.n_output = n_output
         self.z_dist_metric = z_dist_metric
-        self.data_eval = data_eval
+        self.data_eval = None
 
         n_cov_encoder = n_cov + n_system
 
