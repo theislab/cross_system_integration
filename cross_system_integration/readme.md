@@ -2,12 +2,15 @@ The model is based on the [scvi-tools](https://scvi-tools.org/) framework.
 
 ## Training suggestions
 
-For examples of how to perform an integration, see the benchmarking script https://github.com/theislab/cross_system_integration/blob/main/notebooks/eval/cleaned/run_integration.py 
+For examples of how to perform integration, see the benchmarking script https://github.com/theislab/cross_system_integration/blob/main/notebooks/eval/cleaned/run_integration.py 
 
-The model expects as input normalized and log+1 transformed expression. 
-We recommend using as _system_ the covariate corresponding to substantial batch effects (currently implemented only for exactly 2 systems) and as _covariate keys_ any other covariates to be corrected for, such as batches (samples or datasets) within systems.
+The model expects as the input normalized and log+1 transformed expression. 
+We recommend using as _system_ the covariate corresponding to the substantial batch effects (e.g., species, organoid-tissue, etc.; currently implemented only for exactly two systems) and as _covariate keys_ any other covariates to be corrected for, such as batches within systems (samples or datasets).
 
-The model hyperparameters are for reproducibility set to defaults used for development. However, in practice the following parameters should be used instead of defaults:
+The model hyperparameters are for reproducibility set to defaults used for development. However, in practice, the following parameters should be used instead of the defaults while keeping all other parameters at their default values:
+
+For adata setup:
+- group_key and input_gene_key should be kept at None
 
 For model and module (passed via model):
 - use_group=False
