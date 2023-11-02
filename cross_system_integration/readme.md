@@ -2,7 +2,7 @@ The model is based on the [scvi-tools](https://scvi-tools.org/) framework.
 
 ## Training suggestions
 
-For examples of how to perform integration, see the tutorial: https://github.com/theislab/cross_system_integration/main/tutorials/integration_VAMP%2BCYC.ipynb
+For examples of how to perform integration, see the tutorial: https://github.com/theislab/cross_system_integration/blob/main/tutorials/integration_VAMP%2BCYC.ipynb
 
 The model expects as the input normalized and log+1 transformed expression. 
 We recommend using as _system_ the covariate corresponding to the substantial batch effects (e.g., species, organoid-tissue, etc.; currently implemented only for exactly two systems) and as _covariate keys_ any other covariates to be corrected for, such as batches within systems (samples or datasets).
