@@ -11,6 +11,8 @@ Data for integration is prepared and analyzed within _data_ directory:
 - organoid-tissue: retina_adult_organoid.ipynb
 - cell-nuclei: adipose_sc_sn_updated.ipynb
 
+The data subsets for the tutorials were prepared within data/tutorials/subsets.ipynb
+
 ## Integration evaluation
 
 ### Integration and evaluation
