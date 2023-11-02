@@ -7,18 +7,21 @@ For examples of how to perform integration, see the benchmarking script https://
 The model expects as the input normalized and log+1 transformed expression. 
 We recommend using as _system_ the covariate corresponding to the substantial batch effects (e.g., species, organoid-tissue, etc.; currently implemented only for exactly two systems) and as _covariate keys_ any other covariates to be corrected for, such as batches within systems (samples or datasets).
 
-The model hyperparameters are for reproducibility set to defaults used for development. However, in practice, the following parameters should be used instead of the defaults while keeping all other parameters at their default values:
+The model hyperparameters are for reproducibility set to defaults used for development. However, in practice, the following parameters should be used instead of the defaults while keeping all other parameters at their default values. The below list also lists parameters that should not be changed from the below-specified values.
 
 For adata setup:
 - group_key and input_gene_key should be kept at None
 
 For model and module (passed via model):
-- use_group=False
 - mixup_alpha=None
+- system_decoders=False
+- trainable_priors=True
+- pseudoinputs_data_init=True
 - encode_pseudoinputs_on_eval_mode=True
 - n_prior_components=5
 - z_dist_metric="MSE_standard"
 - prior="vamp" - this will lead to using VampPrior, which is a recommended setting
+- adata_eval=None
 
 For loss (passed via train function):
 - kl_cycle_weight=0.0
