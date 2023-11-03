@@ -320,15 +320,18 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
             as_numpy: bool = True
     ) -> (Union[np.ndarray, torch.Tensor], Union[np.ndarray, torch.Tensor]):
         """
-        Translate expression - based on input expression and metadata
-        predict expression of data as if it had given metadata.
-        expression, metadata (from adata) -> latent
-        latent, new metadata -> translated expression
-        :param adata: Input adata based on which latent representation is obtained.
-        :param indices:
-        :param batch_size:
-        :param as_numpy:  Move output tensor to cpu and convert to numpy
-        :return:
+        Compute the prior probabilities for a given set of cells in an AnnData object.
+        Calculates the prior probabilities for each observation based on the model's prior distribution.
+    
+        Args:
+            adata: AnnData containing the expression of the cells to compute prior probabilities for.
+            indices: Indices of observations to consider (default is all observations).
+            batch_size: The batch size for processing data (default is None).
+            as_numpy: If True, return the result as a NumPy array; otherwise, return a PyTorch tensor (default is True).
+    
+        Returns:
+            Union[np.ndarray, torch.Tensor]: Array of size n_obs x n_prior containing a distribution over priors for each observation.
+            If `as_numpy` is True, the result is a NumPy array; otherwise, it's a PyTorch tensor.
         """
         # Check model and adata
         assert isinstance(self.module.prior, VampPrior) or isinstance(self.module.prior, GaussianMixtureModelPrior)
