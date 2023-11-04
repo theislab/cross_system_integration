@@ -323,6 +323,7 @@ class XXJointModel(VAEMixin, TrainingMixin, BaseModelClass):
     
         Returns:
             Union[np.ndarray, torch.Tensor]: Array of size n_obs x n_prior containing a distribution over priors for each observation.
+            Note that prior probabilities also depend on the learned weight of each prior.
             If `as_numpy` is True, the result is a NumPy array; otherwise, it's a PyTorch tensor.
         """
         # Check model and adata
