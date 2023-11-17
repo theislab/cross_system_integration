@@ -1,6 +1,6 @@
 # Integrating single-cell RNA-seq datasets with substantial batch effects
 
-This repository contains newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects and reproducibility code for Hrovatin et al. (2023). TODO CITATION
+This repository contains newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects and reproducibility code for [Hrovatin et al. (2023)](https://www.biorxiv.org/content/10.1101/2023.11.03.565463v1). 
 
 ## Abstract
 
