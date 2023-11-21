@@ -411,7 +411,6 @@ class XXJointModule(BaseModuleClass):
                               target_x_std):
         raise NotImplementedError
 
-    
     def random_select_systems(self, tensors):
         """
         For every cell randomly selects a new system that is different from the original system
@@ -429,7 +428,8 @@ class XXJointModule(BaseModuleClass):
         #Gather cols for a single row
         col_pairs = col_indices.view(-1, tensors.shape[1]-1)
         #Select system for every cell from available systems
-        randomly_selected_indices = col_pairs.gather(1, torch.randint(0, tensors.shape[1]-1, size=(col_pairs.size(0), 1), dtype=torch.int64))
+        randomly_selected_indices = col_pairs.gather(1, torch.randint(0, tensors.shape[1]-1, size=(col_pairs.size(0), 1), 
+                                                                      device=col_pairs.device, dtype=col_pairs.dtype))
         new_tensor = torch.zeros_like(available_systems)
         #generate system covariate tensor
         new_tensor.scatter_(1, randomly_selected_indices, 1)    
