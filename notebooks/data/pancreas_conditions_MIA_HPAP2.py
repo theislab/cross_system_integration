@@ -39,7 +39,7 @@ sys.path.append('/'.join(os.getcwd().split('/')[:-1]+['eval','cleaned','']))
 from metrics import ilisi,asw_batch
 
 # %%
-path_data='/net/bmc-lab6/data/lab/kellis/users/khrovati/data/'
+path_data='/net/bmc-lab4/data/kellis/users/khrovati/data/'
 path_mm=path_data+'datasets/d10_1101_2022_12_22_521557/'
 path_genes=path_data+'gene_info/'
 path_hs=path_data+'datasets/d10_1101_2023_02_03_526994/'

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.15.0
 #   kernelspec:
 #     display_name: cs_integration
 #     language: python
@@ -31,8 +31,6 @@ from scipy.stats import entropy
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import normalized_mutual_info_score
 
-import gc
-
 from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -55,14 +53,9 @@ path_data = os.path.expanduser("~/data/cs_integration/combined_orthologuesHVG.h5
 path_fig = os.path.expanduser(f"~/io/cs_integration/figures/")
 
 RUNS_TO_LOAD = {
-    #'2_prior_system_0': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_system_0/'),
     '2_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_most_balanced/'),
-   # '2_prior_system_1': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_2_trainable_prior_True_init_system_1/'),
-   # '4_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_4_trainable_prior_True_init_most_balanced/'),
-    #'10_prior_balanced': os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_10_trainable_prior_True_init_most_balanced/'),
 }
 
-n_prior_n_ct_runs = os.path.expanduser('~/io/cs_integration/vamp_balanced_testing_pancreas_combined_orthologuesHVG_n_prior_{n_prior}_trainable_prior_True_init_system_0_nct_{n_ct}/')
 n_prior_init_method_runs = os.path.expanduser('~/io/cs_integration/vamp_testing_pancreas_combined_orthologuesHVG_n_prior_{n_prior}_trainable_prior_True_init_{init_method}/')
 sc.settings.figdir = os.path.expanduser(f"~/io/cs_integration/figures/")
 
@@ -165,10 +158,7 @@ for i, (components, title) in enumerate(zip(
             cmap=cmaps[-1]
             if j == 0:
                 cmap.set_title('Training\nepoch',fontsize=10)
-        # if i == 2:
-        #     if j == 0:
-        #         ax.annotate("Training epoch", zorder=100,
-        #                     xy=(1.5,0.2), xytext=(1.5, 0.0), textcoords='axes fraction', va='center', ha='center')
+
         if i == 0:
             pos = (0, 0.5)
             if j == 0:
@@ -255,11 +245,6 @@ n_prior_list = [
 ]
 fig,axs=plt.subplots(3 * len(n_prior_list), 3,figsize=(3 * size, 3 * len(n_prior_list)*size),
                      sharey='row')
-# for j, n_prior in enumerate([1,2, 4,10]):
-#     for offset, plot_type in enumerate(['Most probable prior ID', 'cell-type', 'system']):
-#         ax = axs[3*j + offset, 0]
-#         ax.text(0,0, f"{plot_type}\nn prior: {n_prior}")
-#         ax.axis('off')
 
 avents = []
     
@@ -281,12 +266,7 @@ for i, (init_method, init_method_text) in enumerate(zip([
         
         ax = axs[3*j+1, i]
         cmap = obs_cmap['pancreas']["cell_type_new"]
-        # nmi = normalized_mutual_info_score(embed.obs["cell_type_new"].values, embed.obs['most_probable_prior_id'].values)
-        # nmi = ((nmi * 100) // 1) / 100
-        # ax.annotate(f"nmi: {nmi}", xy=(1, 0), xycoords='axes fraction', fontsize=16, horizontalalignment='right', verticalalignment='bottom')
         avent, avent_df = average_class_entropy(embed.obs["cell_type_new"].values, embed.obs['most_probable_prior_id'].values)
-        # avent = ((avent * 1000) // 1) / 1000
-        # ax.annotate(f"E[H(prior_id)]:\n{avent}", xy=(0.0, 0.1), xycoords='axes fraction', fontsize=10, horizontalalignment='left', verticalalignment='bottom')
         avents.append(avent_df.reset_index().assign(c="cell_type", init=init_method_text, n_prior=n_prior))
         sc.pl.umap(embed, color="cell_type_new", ax=ax, show=False, palette=cmap, frameon=False, title='', legend_loc='none' if i != 2 else 'right margin')
         if i == 0:
@@ -297,12 +277,7 @@ for i, (init_method, init_method_text) in enumerate(zip([
         cmap = obs_cmap['pancreas']['system']
         embed.obs['system'] = embed.obs['system'].astype(str).map(SYSTEM_MAP).astype(str)
         cmap = {SYSTEM_MAP[k]: v for k, v in cmap.items()}
-        # nmi = normalized_mutual_info_score(embed.obs['system'].values, embed.obs['most_probable_prior_id'].values)
-        # nmi = ((nmi * 100) // 1) / 100
-        # ax.annotate(f"nmi: {nmi}", xy=(1, 0), xycoords='axes fraction', fontsize=16, horizontalalignment='right', verticalalignment='bottom')
         avent, avent_df = average_class_entropy(embed.obs['system'].values, embed.obs['most_probable_prior_id'].values)
-        # avent = ((avent * 1000) // 1) / 1000
-        # ax.annotate(f"E[H(prior_id)]:\n{avent}", xy=(0.0, 0.1), xycoords='axes fraction', fontsize=10, horizontalalignment='left', verticalalignment='bottom')
         avents.append(avent_df.reset_index().assign(c="system", init=init_method_text, n_prior=n_prior))
         sc.pl.umap(embed, color='system', ax=ax, show=False, palette=cmap, frameon=False, title='', legend_loc='none' if i != 2 else 'right margin')
         if i == 0:

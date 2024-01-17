@@ -35,7 +35,7 @@ sys.path.append('/'.join(os.getcwd().split('/')[:-1]+['eval','cleaned','']))
 from metrics import ilisi,asw_batch
 
 # %%
-path='/net/bmc-lab6/data/lab/kellis/users/khrovati/data/'
+path='/net/bmc-lab4/data/kellis/users/khrovati/data/'
 path_data=path+'datasets/d10_1016_j_cell_2020_08_013/'
 path_train=path+'cross_system_integration/retina_adult_organoid/'
 

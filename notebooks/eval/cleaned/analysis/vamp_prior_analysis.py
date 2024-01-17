@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.15.0
 #   kernelspec:
 #     display_name: cs_integration
 #     language: python
@@ -92,11 +92,33 @@ print(f"Output {'already exists' if os.path.exists(output_filename) else 'does n
 
 # %%
 class PriorInspectionCallback(Callback):
+    """
+    A PyTorch Lightning Callback for logging the pseudoinput information during training.
+
+    This callback records the pseudoinput information (data and covariates) from a PyTorch Lightning module
+
+    Attributes:
+        prior_history (list): A list to store pseudoinput information at different training stages.
+
+    Methods:
+        on_train_start(trainer, pl_module):
+            Called at the beginning of training to log the initial pseudoinput information.
+        
+        on_train_epoch_end(trainer, pl_module):
+            Called at the end of each training epoch to log the current pseudoinput information.
+    """
     def __init__(self):
         super().__init__()
         self.prior_history = []
 
     def _log_priors(self, trainer, pl_module):
+        """
+        Logs the pseudoinputs and covariates of them from the given PyTorch Lightning module.
+
+        Args:
+            trainer: The PyTorch Lightning trainer.
+            pl_module: The PyTorch Lightning module containing the pseudoinput information.
+        """
         self.prior_history.append(tuple([
             pl_module.module.prior.u.detach().cpu().numpy(),
             pl_module.module.prior.u_cov.detach().cpu().numpy()
@@ -111,16 +133,48 @@ class PriorInspectionCallback(Callback):
 
 # %%
 def random_init_algorithm(adata, n_priors):
+    """
+    Randomly select `n_priors` observations from the given AnnData object as prior init values.
+
+    Args:
+        adata: An AnnData object containing observations.
+        n_priors (int): The number of priors to select.
+
+    Returns:
+        np.ndarray: An array of selected observation indices.
+    """
     return np.random.choice(np.arange(adata.n_obs), size=n_priors, replace=False)
 
 
 def random_from_system_i(adata, n_priors, i=0):
+    """
+    Randomly select `n_priors` observations from a specific system (i) within the given AnnData object as prior init vlaues.
+
+    Args:
+        adata: An AnnData object containing observations.
+        n_priors (int): The number of priors to select.
+        i (int): The system index to select observations from (default is 0).
+
+    Returns:
+        np.ndarray: An array of selected observation indices from the specified system.
+    """
     obs = adata.obs.copy()
     obs['uid'] = np.arange(obs.shape[0])
     return obs[obs[SYSTEM_KEY] == i]['uid'].sample(N_PRIOR_COMPONENTS, replace=False).to_numpy()
 
 
 def most_balanced_algorithm(adata, n_priors):
+    """
+    Select `n_priors` observations with a balanced distribution between two systems in the AnnData object.
+    Please note that this function only accepts two systems.
+
+    Args:
+        adata: An AnnData object containing observations with a 'SYSTEM_KEY' column.
+        n_priors (int): The number of priors to select.
+
+    Returns:
+        np.ndarray: An array of selected observation indices with a balanced distribution between two systems.
+    """
     system_keys = adata.obs[SYSTEM_KEY].unique()
     assert len(system_keys) == 2
     assert 0 in system_keys
