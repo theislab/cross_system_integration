@@ -57,6 +57,7 @@ parser.add_argument('-n', '--n-priors', type=int, default=100)
 parser.add_argument('-m', '--n-cell_plot', type=int, default=None)
 parser.add_argument('-f', '--fixed-priors', action='store_true')
 parser.add_argument('-i', '--init-method', default='default', choices=['default', 'random', 'system_0', 'system_1', 'most_balanced'])
+parser.add_argument('-k', '--n-celltypes', type=int, default=3)
 
 if hasattr(sys, 'ps1'):
     args = parser.parse_args([
@@ -76,10 +77,11 @@ TRAINABLE_PRIORS = not args.fixed_priors
 N_PRIOR_COMPONENTS = args.n_priors
 N_SAMPLES_TO_PLOT = args.n_cell_plot
 INIT_METHOD = args.init_method
+N_CT = args.n_celltypes
 
 # %%
 path_data = os.path.expanduser("~/data/cs_integration/combined_orthologuesHVG.h5ad")
-output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_balanced_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}_init_{INIT_METHOD}")
+output_filename = os.path.expanduser(f"~/io/cs_integration/vamp_balanced_testing_pancreas_combined_orthologuesHVG_n_prior_{N_PRIOR_COMPONENTS}_trainable_prior_{TRAINABLE_PRIORS}_init_{INIT_METHOD}_nct_{N_CT}")
 sc.settings.figdir = output_filename
 
 
@@ -154,7 +156,7 @@ adata
 adata_training = adata.copy()
 
 # %%
-limited_obs = adata_training.obs[adata_training.obs[CT_KEY].isin(['alpha', 'beta', 'ductal'])].copy()
+limited_obs = adata_training.obs[adata_training.obs[CT_KEY].isin(['alpha', 'beta', 'ductal', 'gamma'][:N_CT])].copy()
 limited_obs['cell_id'] = limited_obs.index
 limited_obs[CT_KEY] = limited_obs[CT_KEY].cat.remove_unused_categories()
 print(limited_obs.assign(count=1).groupby([SYSTEM_KEY, CT_KEY]).count()['count'])
