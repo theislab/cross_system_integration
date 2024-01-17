@@ -44,7 +44,7 @@ from metrics import ilisi, asw_batch
 
 # %%
 #path_data='/lustre/groups/ml01/workspace/karin.hrovatin/data/'
-path_data='/net/bmc-lab6/data/lab/kellis/users/khrovati/data/'
+path_data='/net/bmc-lab4/data/kellis/users/khrovati/data/'
 path_sub=path_data+'datasets/d10_1038_s41586-022-04518-2/SCP1376/'
 path_save=path_data+'cross_system_integration/adipose_sc_sn_updated/'
 
