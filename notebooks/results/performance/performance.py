@@ -22,6 +22,9 @@ import math
 import glob
 import os
 
+from scipy.stats import ttest_ind
+from statsmodels.stats.multitest import multipletests
+
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -35,6 +38,7 @@ from params_opt_maps import *
 path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
+path_tab=path_data+'tables/'
 
 # %%
 # Names
@@ -287,9 +291,10 @@ if load_embed:
 
 
 # %%
-for i,j in embeds.items():
-    print('*** '+i)
-    print(j.keys())
+if load_embed:
+    for i,j in embeds.items():
+        print('*** '+i)
+        print(j.keys())
 
 # %% [markdown]
 # ### Metric scores
@@ -358,6 +363,36 @@ plt.savefig(path_fig+'performance-score_topsettings-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'performance-score_topsettings-swarm.png',
             dpi=300,bbox_inches='tight')
+
+# %% [markdown]
+# Significance of difference between pairs of models per metric and datatset. Pvalue adjustment is performed per metric and dataset across model pairs.
+
+# %%
+# Significance of model differences
+pvals=[]
+for dataset_name,metrics_sub in metrics.items():
+    models = metrics_sub['model'].cat.categories
+    n_models = len(models)
+    for metric in metric_map.values():
+        pvals_sub=[]
+        for m1 in range(n_models-1):
+            for m2 in range(m1+1,n_models):
+                model1=models[m1]
+                model2=models[m2]
+                t,p=ttest_ind(
+                    metrics_sub.loc[model1,metric], metrics_sub.loc[model2,metric], 
+                    equal_var=False, alternative='two-sided')
+                pvals_sub.append(dict(
+                    dataset=dataset_name,metric=metric,p=p,t=t, 
+                    model_cond=model1,model_ctrl=model2,
+                    # This does not account if t is exactly 0, but this would be very unlikely
+                    higher=model1 if t>0 else model2))
+        pvals_sub=pd.DataFrame(pvals_sub)
+        padj_method='fdr_tsbh'
+        pvals_sub['padj_'+padj_method]=multipletests(pvals_sub['p'].values, method=padj_method)[1]
+        pvals.append(pvals_sub)
+pvals=pd.concat(pvals)
+pvals.to_csv(path_tab+'performance-score_topsettings-pairwise_significance.tsv',sep='\t',index=None)
 
 # %% [markdown]
 # ### UMAPs

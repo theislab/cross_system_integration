@@ -22,6 +22,9 @@ import math
 import glob
 import os
 
+from scipy.stats import ttest_ind
+from statsmodels.stats.multitest import multipletests
+
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -37,6 +40,7 @@ from params_opt_maps import *
 path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
+path_tab=path_data+'tables/'
 
 # %%
 # Names
@@ -228,6 +232,34 @@ plt.savefig(path_fig+'performance_vamp-score_all-swarm.pdf',
 plt.savefig(path_fig+'performance_vamp-score_all-swarm.png',
             dpi=300,bbox_inches='tight')
 
+
+# %% [markdown]
+# Statistical significance of metric differences when increasing number of priors. Comparisons are done between successive number of tested prior components per dataset and model. Pvalue is adjusted per model and datasets.
+
+# %%
+# Compute significance
+pvals=[]
+for (dataset_name,model_name), res_sub in ress.groupby(['dataset_parsed','model_parsed']):
+    priors=[c for c in res_sub['param_opt_val_str'].cat.categories if c!='none']
+    for metric,metric_name in metric_map.items():
+        pvals_sub=[]
+        for n in range(len(priors)-1):
+            p1=priors[n]
+            p2=priors[n+1]
+            t,p=ttest_ind(
+                res_sub.query('param_opt_val_str==@p2')[metric].astype(float), 
+                res_sub.query('param_opt_val_str==@p1')[metric].astype(float), 
+                equal_var=False, alternative='two-sided')
+            pvals_sub.append(dict(
+                dataset=dataset_name,metric=metric_name,model=model_name,
+                p=p,t=t,
+                n_priors_base=p1,n_priors_higher=p2))
+        pvals_sub=pd.DataFrame(pvals_sub)
+        padj_method='bonferroni'
+        pvals_sub['padj_'+padj_method]=multipletests(pvals_sub['p'].values, method=padj_method)[1]
+        pvals.append(pvals_sub)
+pvals=pd.concat(pvals)
+pvals.to_csv(path_tab+'performance_vamp-score_all-successive_significance.tsv',sep='\t',index=None)
 
 # %% [markdown]
 # ### Metric scores for subset of models on pancreas
