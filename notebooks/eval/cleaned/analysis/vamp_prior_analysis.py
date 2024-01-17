@@ -44,7 +44,7 @@ from cross_system_integration.model._xxjointmodel import XXJointModel
 from pytorch_lightning.callbacks.base import Callback
 
 # %% [markdown]
-# ## Config
+# ## Config & utils
 
 # %%
 SYSTEM_KEY = 'system'
@@ -92,11 +92,33 @@ print(f"Output {'already exists' if os.path.exists(output_filename) else 'does n
 
 # %%
 class PriorInspectionCallback(Callback):
+    """
+    A PyTorch Lightning Callback for logging the pseudoinput information during training.
+
+    This callback records the pseudoinput information (data and covariates) from a PyTorch Lightning module
+
+    Attributes:
+        prior_history (list): A list to store pseudoinput information at different training stages.
+
+    Methods:
+        on_train_start(trainer, pl_module):
+            Called at the beginning of training to log the initial pseudoinput information.
+        
+        on_train_epoch_end(trainer, pl_module):
+            Called at the end of each training epoch to log the current pseudoinput information.
+    """
     def __init__(self):
         super().__init__()
         self.prior_history = []
 
     def _log_priors(self, trainer, pl_module):
+        """
+        Logs the pseudoinputs and covariates of them from the given PyTorch Lightning module.
+
+        Args:
+            trainer: The PyTorch Lightning trainer.
+            pl_module: The PyTorch Lightning module containing the pseudoinput information.
+        """
         self.prior_history.append(tuple([
             pl_module.module.prior.u.detach().cpu().numpy(),
             pl_module.module.prior.u_cov.detach().cpu().numpy()
@@ -111,16 +133,48 @@ class PriorInspectionCallback(Callback):
 
 # %%
 def random_init_algorithm(adata, n_priors):
+    """
+    Randomly select `n_priors` observations from the given AnnData object as prior init values.
+
+    Args:
+        adata: An AnnData object containing observations.
+        n_priors (int): The number of priors to select.
+
+    Returns:
+        np.ndarray: An array of selected observation indices.
+    """
     return np.random.choice(np.arange(adata.n_obs), size=n_priors, replace=False)
 
 
 def random_from_system_i(adata, n_priors, i=0):
+    """
+    Randomly select `n_priors` observations from a specific system (i) within the given AnnData object as prior init vlaues.
+
+    Args:
+        adata: An AnnData object containing observations.
+        n_priors (int): The number of priors to select.
+        i (int): The system index to select observations from (default is 0).
+
+    Returns:
+        np.ndarray: An array of selected observation indices from the specified system.
+    """
     obs = adata.obs.copy()
     obs['uid'] = np.arange(obs.shape[0])
     return obs[obs[SYSTEM_KEY] == i]['uid'].sample(N_PRIOR_COMPONENTS, replace=False).to_numpy()
 
 
 def most_balanced_algorithm(adata, n_priors):
+    """
+    Select `n_priors` observations with a balanced distribution between two systems in the AnnData object.
+    Please note that this function only accepts two systems.
+
+    Args:
+        adata: An AnnData object containing observations with a 'SYSTEM_KEY' column.
+        n_priors (int): The number of priors to select.
+
+    Returns:
+        np.ndarray: An array of selected observation indices with a balanced distribution between two systems.
+    """
     system_keys = adata.obs[SYSTEM_KEY].unique()
     assert len(system_keys) == 2
     assert 0 in system_keys
@@ -144,15 +198,12 @@ INIT_ALGORITHMS = {
     'most_balanced': most_balanced_algorithm,
 }
 
-# %% [markdown]
-# ## Pancreas
-
 # %%
 adata=sc.read(path_data)
 adata
 
 # %% [markdown]
-# ### cVAE - VampPrior
+# ## Train model (inlc. saving prior components positions)
 
 # %%
 adata_training = adata.copy()
@@ -176,7 +227,7 @@ else:
                          pseudoinputs_data_indices=INIT_ALGORITHMS[INIT_METHOD](adata_training, N_PRIOR_COMPONENTS),
                          trainable_priors=TRAINABLE_PRIORS,
                          encode_pseudoinputs_on_eval_mode=True,)
-    
+    # Inspect prior component movement during training
     prior_inspection_callback = PriorInspectionCallback()
     model.train(max_epochs=MAX_EPOCHS,
                 check_val_every_n_epoch=1,
@@ -210,7 +261,11 @@ for ax_i,l in enumerate(losses):
 plt.savefig(os.path.join(output_filename, 'losses.png'))
 fig.tight_layout()
 
+# %% [markdown]
+# ## Latent data representation
+
 # %%
+# Get latent rep
 embed = model.embed(
         adata=adata_training,
         indices=None,
@@ -237,6 +292,7 @@ embed.write(os.path.join(output_filename, 'embed.h5ad'))
 embed = sc.read(os.path.join(output_filename, 'embed.h5ad'))
 
 # %%
+# Most probable prior
 prior_probs = ad.AnnData(
     model.get_prior_probs(
         adata=adata_training,
@@ -273,11 +329,8 @@ sc.pl.pca(embed, color=[CT_KEY, *BATCH_KEYS, 'species','most_probable_prior_p', 
           save='_pca_all.png'
          )
 
-# %%
-
-# %%
-
-# %%
+# %% [markdown]
+# ## Pseudoinputs embedding
 
 # %%
 # Encode pseudoinputs
@@ -285,7 +338,6 @@ prior_history = model.train_prior_history_
 n_steps = len(prior_history)
 n_points = prior_history[0][0].shape[0]
 
-# %%
 prior_x = np.concatenate([x[0] for x in prior_history])
 prior_cov = np.concatenate([x[1] for x in prior_history])
 

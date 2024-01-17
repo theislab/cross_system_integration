@@ -11,6 +11,8 @@ Data for integration is prepared and analyzed within _data_ directory:
 - organoid-tissue: retina_adult_organoid.ipynb
 - cell-nuclei: adipose_sc_sn_updated.ipynb
 
+The data subsets for the tutorials were prepared within data/tutorials/subsets.ipynb
+
 ## Integration evaluation
 
 ### Integration and evaluation
@@ -52,11 +54,7 @@ To make the final plotting of data-setting subsets quicker, the integration resu
 
 The evaluation of the effect of prior initialization and fixed or learnable priors: Integration runs are specified in the above yaml files used for running integration models. The final plots for the paper were created as described in the below section.
 
-The analysis of the movements of the psudoinputs, effect of initialization system on integration, and finding the most probable prior for each cell-types are available in the following in eval/cleaned/analysis:
-
-- Python notebook and script to run the model and store auxiliary information: vamp_prior_analysis.ipynb/.py
-- Notebook to generate plots: vamp_prior_analysis_plots.ipynb
-
+The analysis of the movements of the psudoinputs and finding the most probable prior component for each cell: eval/cleaned/analysis/vamp_prior_analysis.py called with different parameters from eval/cleaned/analysis/runs_for_vamp_prior_analysis.sh. The final plots for the paper were created as described in the below section.
 
 ## Preparation of final plots/tables for the paper
 
@@ -82,3 +80,4 @@ Integration results (within performance/ subdirectory):
 
 VampPrior analysis:
 - Different initializations and fixed/trainable prior: performance_vamp.ipynb
+- Movements of the psudoinputs and finding the most probable prior component for each cell: vamp_prior_analysis.ipynb
