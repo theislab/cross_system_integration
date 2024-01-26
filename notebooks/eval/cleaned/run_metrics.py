@@ -23,7 +23,7 @@ import os
 from collections import defaultdict
 
 from metrics import ilisi, clisi, asw_label, cluster_classification,\
-cluster_classification_optimized
+cluster_classification_optimized, knn_purity
 import scib_metrics as sm
 
 # %%
@@ -141,6 +141,11 @@ if not(('nmi_opt' not in metrics or 'ari_opt' not in metrics) and args.cluster_o
     CLUSTER_OPTIMIZED=False
 else:
     CLUSTER_OPTIMIZED=True
+    
+if 'knn_purity_macro' in metrics and 'knn_purity' in metrics_data:
+    KNN_PURITY=False
+else:
+    KNN_PURITY=True  
 
 if 'moransi' in metrics and 'moransi_label' in metrics_data and 'moransi_data' in metrics_data:
     MORANSI=False
@@ -189,6 +194,13 @@ if CLUSTER_OPTIMIZED or TESTING:
     metrics['nmi_opt'], metrics['ari_opt'] =\
     cluster_classification_optimized(
         X=embed_group.obsp[neigh_prefix+'connectivities'], 
+        labels=embed_group.obs[args.group_key])
+
+if KNN_PURITY or TESTING:
+    print('knn_purity')
+    metrics['knn_purity_macro'],metrics_data['knn_purity']=\
+    knn_purity(
+        distances=embed_group.obsp[neigh_prefix+'distances'],
         labels=embed_group.obs[args.group_key])
 
 # %%

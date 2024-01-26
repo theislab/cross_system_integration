@@ -6,8 +6,56 @@ from sklearn.metrics import jaccard_score
 
 import scib_metrics as sm
 
+
 # labels - cell types
 # batches - batch info
+
+
+def knn_purity(distances,labels, k=30):
+    """
+    How many of K nearest nieghbors are of the same label as the cell
+    :parm distances: Anndata KNN distances, 
+    assuming self is no longer included among elements with non-zero distance
+    :param labels: Cell labels
+    :param k: K nearest neighbours to use
+    :retun: tuple of: macro-mean knn purity across labels, knn purity as series of label:purity
+    """
+    
+    # Get k nearest neighbours of each cell
+    
+    def csr_row_argwhich_nonzero_min(matrix,n):
+        """
+        For csr matrix get from every row column indices on n smallest nonzero elements
+        """
+        top_n_idx=[]
+        for le, ri in zip(matrix.indptr[:-1], matrix.indptr[1:]):
+            non_zero=matrix.data[le:ri]
+            n_non_zero=non_zero.shape[0]
+            if n==n_non_zero:
+                idxs=np.arange(n)
+            elif n<n_non_zero:
+                idxs=np.argpartition(non_zero, n)[:n]
+            else:
+                raise ValueError('Not enough elements in row')
+            tops=matrix.indices[le + idxs]
+            top_n_idx.append(tops)
+        return np.array(top_n_idx)
+
+    knn_arg=csr_row_argwhich_nonzero_min(matrix=distances,n=k)
+    
+    # Determine how many of the KNNs are own label
+    label_map=dict(zip(range(labels.shape[0]),labels.values))
+    knn_label=np.vectorize(label_map.get)(knn_arg)
+    labels_temp=labels.copy()
+    labels_temp.index=labels_temp.values
+    knn_purity={}
+    for group, indices in labels_temp.groupby(level=0).indices.items():
+        knn_group=knn_label[indices,:].ravel()
+        knn_purity[group]=(knn_group==group).sum()/knn_group.shape[0]
+    knn_purity=pd.Series(knn_purity)
+    
+    return knn_purity.mean(),knn_purity
+
 
 def asw_label(X,labels):
     """
