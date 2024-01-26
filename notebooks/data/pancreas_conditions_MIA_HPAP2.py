@@ -211,6 +211,9 @@ del adata_hs_sub
 gc.collect()
 
 # %%
+pd.crosstab(adata.obs.cell_type_eval,adata.obs.system)
+
+# %%
 gs_df=shared_orthologues.copy()
 gs_df.index=shared_orthologues['eid_mm']
 adata.var[['gs_mm','gs_hs']]=gs_df[['gs_mm','gs_hs']]
