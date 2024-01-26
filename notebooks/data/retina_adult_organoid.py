@@ -124,6 +124,9 @@ adata_sub.obs=adata_sub.obs[[
 # %%
 adata_sub.layers['counts']=adata[adata_sub.obs_names,adata_sub.var_names].X.copy()
 
+# %%
+pd.crosstab(adata_sub.obs.cell_type,adata_sub.obs.system)
+
 # %% [markdown]
 # Add PCA for scGLUE
 

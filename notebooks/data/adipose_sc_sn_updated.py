@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: analysis
+#     display_name: csi
 #     language: python
-#     name: analysis
+#     name: csi
 # ---
 
 # %%
@@ -216,6 +216,9 @@ adata=sc.concat([adata_sc[:,shared_hvgs], adata_sn[:,shared_hvgs]],
                 join='outer',
                 index_unique='_', keys=['sc','sn'])
 adata
+
+# %%
+pd.crosstab(adata.obs.cluster,adata.obs.system)
 
 # %% [markdown]
 # Add PCA for scGLUE 
