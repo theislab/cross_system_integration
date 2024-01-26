@@ -23,6 +23,8 @@ import glob
 import os
 from collections import defaultdict
 
+from sklearn.preprocessing import minmax_scale
+
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -432,6 +434,68 @@ ax1.spines['top'].set_visible(False)
 ax2.spines['top'].set_visible(False)
 
 ax1.legend(bbox_to_anchor=(1.5,0.75),frameon=False)
+
+# plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.pdf',
+#             dpi=300,bbox_inches='tight')
+# plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.png',
+#             dpi=300,bbox_inches='tight')
+
+# %% [markdown]
+# ### Lineplot scaled
+
+# %%
+# Make plotting df with scaled/unscaled embed metrics
+res_plot=ress.query(f'dataset_parsed=="{dataset_map["pancreas_conditions_MIA_HPAP2"]}" & model_parsed=="{model_map["cVAE"]}"').copy()
+res_sub=res_plot[['nmi','ilisi_system','param_opt_val','model_parsed']].copy()
+scaling_col='Scaled'
+res_sub[scaling_col]='no'
+res_sub_scaled=res_plot[['nmi_scaled','ilisi_system_scaled','param_opt_val','model_parsed']].rename(
+    {'nmi_scaled':'nmi','ilisi_system_scaled':'ilisi_system'},axis=1)
+res_sub_scaled[scaling_col]='yes'
+res_plot=pd.concat([res_sub,res_sub_scaled])
+param_opt_val_col=param_map['kl_weight']
+# Make categorical for coloring
+res_plot['model_parsed']=res_plot['model_parsed'].cat.remove_unused_categories()
+res_plot[param_opt_val_col]=pd.Categorical(
+    res_plot['param_opt_val'].astype(str),
+    [str(i) for i in sorted(res_plot['param_opt_val'].unique())], True)
+res_plot['ilisi_system']=minmax_scale(res_plot['ilisi_system'])
+res_plot['nmi']=minmax_scale(res_plot['nmi'])
+# Compute mean scores
+res_plot_me=res_plot.groupby(['model_parsed',scaling_col,param_opt_val_col]
+                            )[['nmi','ilisi_system']].mean().reset_index()
+# Shuffle points as else some param_opt_vals are on top
+res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),:]
+res_plot[scaling_col]=res_plot[scaling_col].replace({'yes':'Scaled - run','no':'Unscaled - run'})
+res_plot_me[scaling_col]=res_plot_me[scaling_col].replace({'yes':'Scaled - avg.','no':'Unscaled - avg.'})
+# Plot
+fig,ax=plt.subplots(figsize=(2,2))
+palette_metric={'ilisi_system':'#74028E','nmi':'#B78E00'}
+s_run=20
+sb.lineplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot_me,ax=ax,
+           c=palette_metric['ilisi_system'],alpha=0.5)
+sb.scatterplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot,ax=ax,
+           c=palette_metric['ilisi_system'],s=s_run,alpha=0.8)
+# Get legend elements before they are repeated due to the other metric
+handles,labels=ax.get_legend_handles_labels()
+sb.lineplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot_me,ax=ax,
+           c=palette_metric['nmi'],alpha=0.5)
+sb.scatterplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot,ax=ax,
+           c=palette_metric['nmi'],s=s_run,alpha=0.8)
+ax.set_ylabel('Relative metric score')
+ax.set(facecolor = (0,0,0,0))
+fig.set_facecolor((0,0,0,0))
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+
+# Add to legen metric colors
+handles=[Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0)]+handles+\
+        [Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0),
+         Line2D([0], [0], color=palette_metric['ilisi_system']),
+         Line2D([0], [0], color=palette_metric['nmi'])]
+labels=['Scaling']+labels+['\nMetric',metric_map['ilisi_system'],metric_map['nmi']]
+
+ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.2,1.07),frameon=False)
 
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.pdf',
             dpi=300,bbox_inches='tight')
