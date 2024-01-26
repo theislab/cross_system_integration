@@ -2,8 +2,8 @@
 from glob import glob
 import pickle as pkl
 
-task='retina_adult_organoid'
-#task='pancreas_conditions_MIA_HPAP2'
+#task='retina_adult_organoid'
+task='pancreas_conditions_MIA_HPAP2'
 #task='adipose_sc_sn_updated'
 
 dir_parent=f'/om2/user/khrovati/data/cross_system_integration/eval/{task}/integration/'
