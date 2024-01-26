@@ -49,6 +49,9 @@ from params_opt_maps import *
 # library(circlize)
 
 # %%
+path_fig
+
+# %%
 path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
@@ -87,7 +90,8 @@ for dataset,dataset_name in dataset_map.items():
             os.path.exists(run+'scib_metrics_data.pkl'):
             args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
             if args.params_opt in [
-                'scglue_rel_gene_weight','scglue_lam_align','z_distance_cycle_weight_std']:
+                #'scglue_rel_gene_weight',
+                'scglue_lam_align','z_distance_cycle_weight_std']:
                 metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
                 data=pd.concat([args,metrics])
                 name=run.split('/')[-2]
@@ -197,8 +201,8 @@ for dataset,file,group_key in [
     
     gc.collect()
 
-# %%
-dat.columns
+# %% [markdown]
+# Jaccard index heatmaps
 
 # %%
 # heatmap per dataset
@@ -329,7 +333,7 @@ for dataset,dataset_name in dataset_map.items():
         height = 2*unit(5, "mm"),width=ncol(x)*unit(5,"mm")
     )
 
-    h<-Heatmap(x,col=viridis(256),
+    h<-Heatmap(x,col=viridis(256, direction = -1),
            row_labels = rownames,
            cluster_columns = FALSE, cluster_rows = FALSE,
            show_column_names = TRUE, show_row_names = TRUE,
@@ -369,5 +373,179 @@ for dataset,dataset_name in dataset_map.items():
 # %% magic_args=" -w 600 -h 800" language="R"
 # # Draw out one example
 # draw(h)
+
+# %% [markdown]
+# KNN purity heatmaps
+
+# %%
+# heatmap per dataset
+for dataset,dataset_name in dataset_map.items():
+    metric='knn_purity'
+    # Dataset data subset
+    res=ress.query('dataset_parsed==@dataset_name')
+    metrics_data=[metrics_datas[run] for run in res.index]
+
+    # metric data
+    dat={}
+    for metrics_res in metrics_data:
+        dat[metrics_res['name']]=metrics_res[metric]
+    dat=pd.DataFrame(dat).T
+    # Run order applied to cell metric data and batch score
+    run_order=res.sort_values(['model_parsed','param_parsed','param_opt_val','ilisi_system']).index
+    dat=dat.loc[run_order,:]
+    batch_score=res.loc[run_order,'ilisi_system']
+    params_opt=res.loc[run_order,'params_opt']
+    params_opt_parsed=dat.index.map(
+        lambda x:  f"{res.at[x,'model_parsed']}: {res.at[x,'param_parsed']}")
+    params_opt_colors=[model_cmap[i.split(':')[0]] for i in list(dict.fromkeys(params_opt_parsed))]
+    run_names=dat.index.map(lambda x: res.at[x,'param_opt_val_str'])
+    # Max scale metric data by ct
+    dat=dat/np.clip(dat.max(axis=0),a_min=1e-3, a_max=None)
+
+    # Cell type prportions and max N cells per system
+    ct_prop=ct_counts[dataset_map_rev[dataset_name]].groupby('group')['n_cells'].apply(
+                lambda x: x.min()/x.max())
+    ct_max=np.log10(ct_counts[dataset_map_rev[dataset_name]].groupby('group')['n_cells'].max())
+    # Sort cell types by cell proportion and then max
+    ct_order=pd.concat([ct_prop.rename('prop'),ct_max.rename('max')],axis=1
+                      ).sort_values(['prop','max']).index
+    ct_prop=ct_prop.loc[ct_order]
+    ct_max=ct_max.loc[ct_order]
+    dat=dat.loc[:,ct_prop.index]
+    # Now replace cell types after matching has ben done on non-parsed cell type names
+    dat.rename(cell_type_map[dataset],axis=1,inplace=True)
+
+
+    # Add data to R
+    ro.globalenv['x']=dat
+    ro.globalenv['rownames']=list(run_names)
+    ro.globalenv['row_blocks']=list(params_opt)
+    ro.globalenv['row_blocks_order']=list(dict.fromkeys(params_opt))
+    ro.globalenv['row_blocks_parsed_order']=list(dict.fromkeys(params_opt_parsed))
+    ro.globalenv['row_blocks_colors']=params_opt_colors
+    ro.globalenv['batch_score']=list(batch_score)
+    ro.globalenv['ct_prop']=list(ct_prop)
+    ro.globalenv['ct_max']=list(ct_max)
+    batch_score_name=metric_map['ilisi_system']
+    ro.globalenv['batch_score_name']=batch_score_name
+    ct_prop_name='Cells\nsystem\nmin/max'
+    ro.globalenv['ct_prop_name']=ct_prop_name
+    ct_max_name='log10\nN cells\nsystem\nmax'
+    ro.globalenv['ct_max_name']=ct_max_name
+    ro.globalenv['fig_fn']=path_fig+f'adversarial_ctmix-knn_purity_{dataset}-heatmap.pdf'
+
+
+    r_command=f"""
+    # Process data for R
+    rownames<-unlist(rownames)
+    row_blocks<-unlist(row_blocks)
+    row_blocks_order<-unlist(row_blocks_order)
+    row_blocks_parsed_order<-unlist(row_blocks_parsed_order)
+    row_blocks_colors<-unlist(row_blocks_colors)
+    batch_score<-unlist(batch_score)
+    ct_prop<-as.vector(unlist(ct_prop))
+    ct_max<-as.vector(unlist(ct_max))
+    batch_score_name<-unlist(batch_score_name)[1]
+
+    # Param opt rowsplit and batch score anno
+    row_anno = rowAnnotation(
+        params_opt = anno_block(
+            gp = gpar(fill = row_blocks_colors, col='white'),
+            labels = row_blocks_parsed_order, 
+            labels_gp = gpar(col = "black", fontsize=12)
+        ),
+        {batch_score_name}=batch_score,
+        annotation_legend_param =list(
+            {batch_score_name}=list(
+                title=paste0(batch_score_name,'\n'),
+                title_gp=gpar(fontsize=12),
+                labels_gp=gpar(fontsize=12)
+            )
+        ),
+        col = list(
+            {batch_score_name} = colorRamp2(
+                seq(min(batch_score), max(batch_score), 
+                by = (max(batch_score)-min(batch_score))/4), 
+                cividis(5))
+        ),
+        annotation_name_gp = gpar(fontsize=12),
+        annotation_height = list(
+            {batch_score_name}=unit(5, "mm")
+        )
+    )
+    row_splits<-factor(row_blocks,levels =row_blocks_order)
+    
+    # Cell type anno
+    col_anno=columnAnnotation(
+        ct_prop=ct_prop,
+        ct_max=ct_max,
+        col = list(
+            ct_max = colorRamp2(
+                seq(min(ct_max), max(ct_max), 
+                by = (max(ct_max)-min(ct_max))/4), 
+                mako(5)),
+            ct_prop = colorRamp2(
+                seq(min(ct_prop), max(ct_prop), 
+                by = (max(ct_prop)-min(ct_prop))/4), 
+                magma(5))
+        ),
+        annotation_legend_param =list(
+            ct_prop=list(
+                title=paste0(ct_prop_name,'\n'),
+                title_gp=gpar(fontsize=12),
+                labels_gp=gpar(fontsize=12)
+            ),
+            ct_max=list(
+                title=paste0(ct_max_name,'\n'),
+                title_gp=gpar(fontsize=12),
+                labels_gp=gpar(fontsize=12)
+            )
+        ),
+        annotation_label=c( "System cell ratio", "N cells"),
+        annotation_name_gp = gpar(fontsize=12),
+        height = 2*unit(5, "mm"),width=ncol(x)*unit(5,"mm")
+    )
+
+    h<-Heatmap(x,col=viridis(256, direction = -1),
+           row_labels = rownames,
+           cluster_columns = FALSE, cluster_rows = FALSE,
+           show_column_names = TRUE, show_row_names = TRUE,
+           row_title ="Parameter value",
+           bottom_annotation=col_anno,
+           left_annotation=row_anno,
+           row_split =row_splits,
+           column_title = 'Cell type',
+           row_names_side = "left",
+           column_names_side = "bottom",
+           column_title_side="bottom",
+           heatmap_legend_param = list( title = "Relative\nKNN\npurity\n", 
+                                       title_gp=gpar( fontsize = 12),
+                                       labels_gp = gpar( fontsize = 12)
+                                       ),
+           row_names_gp=gpar(fontsize = 12),  
+           column_names_gp=gpar( fontsize = 12), 
+           row_title_gp=gpar(fontsize = 12),
+           column_title_gp=gpar(fontsize = 12),
+           row_gap = unit(1, "mm"),
+           width = ncol(x)*unit(5, "mm"),height = nrow(x)*unit(5, "mm"),
+           show_row_dend = FALSE, 
+           )
+    
+    # Save
+    pdf(file=fig_fn, width=10, height=15)
+    draw(h)
+    dev.off()
+
+    NULL
+    """
+
+    _=ro.r(r_command)
+
+# %% magic_args=" -w 600 -h 800" language="R"
+# # Draw out one example
+# draw(h)
+
+# %% [markdown]
+# C: KNN purity better represents local stucture, while Jaccard index is more global. Jaccard distinguished less between integrations of cell types that are generally hard to distinguish (minimal score in either case). Thus more focus is given to populations that have a clear cluster in one case but not the other. Also, small cell populations in generally have less own KNNs and vice versa, which is not accounted by KNN purity. In contrast, Jaccard index is interested in whether a cell type (even a small one) has its own cluster, even if a few escaping cells from other larger cell types are located nearby. Thus Jaccard may be better despite not being local and maybe globality is even better as it is less noisy.
 
 # %%
