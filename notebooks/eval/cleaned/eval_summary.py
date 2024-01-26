@@ -241,6 +241,11 @@ g=sb.catplot( x='param_opt_val', y="jaccard_macro",  col='params_opt',
           height=2.5,aspect=1.3,color='k')
 
 # %%
+g=sb.catplot( x='param_opt_val', y="knn_purity_macro",  col='params_opt',
+           kind="swarm", data=res,sharex=False,
+          height=2.5,aspect=1.3,color='k')
+
+# %%
 res_sub=res.query('seed==1')
 metrics_data_heatmap(
     metrics_data=[run for run in metrics_data if run['name'] in res_sub.index],
@@ -248,6 +253,12 @@ metrics_data_heatmap(
 
 # %% [markdown]
 # C: For example scglue_cXxtBJm8 has mixing of acinar and immune.
+
+# %%
+res_sub=res.query('seed==1')
+metrics_data_heatmap(
+    metrics_data=[run for run in metrics_data if run['name'] in res_sub.index],
+    res=res_sub,metric='knn_purity')
 
 # %%
 g=sb.catplot( x='param_opt_val', y="clisi",  col='params_opt',
