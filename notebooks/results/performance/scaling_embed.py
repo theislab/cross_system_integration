@@ -23,6 +23,8 @@ import glob
 import os
 from collections import defaultdict
 
+from sklearn.preprocessing import minmax_scale
+
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
@@ -249,8 +251,6 @@ plt.savefig(path_fig+'scaling_embed-score_all-swarm.png',
 
 # %%
 # Make plotting df with scaled/unscaled embed metrics
-
-# prepare DF for plotting
 res_plot=ress.query(f'dataset_parsed=="{dataset_map["pancreas_conditions_MIA_HPAP2"]}" & model_parsed=="{model_map["cVAE"]}"').copy()
 res_sub=res_plot[['nmi','ilisi_system','param_opt_val','model_parsed']].copy()
 scaling_col='Scaled'
@@ -265,6 +265,9 @@ res_plot['model_parsed']=res_plot['model_parsed'].cat.remove_unused_categories()
 res_plot[param_opt_val_col]=pd.Categorical(
     res_plot['param_opt_val'].astype(str),
     [str(i) for i in sorted(res_plot['param_opt_val'].unique())], True)
+# Scale values of both metircs to [0,1]
+res_plot['ilisi_system']=minmax_scale(res_plot['ilisi_system'])
+res_plot['nmi']=minmax_scale(res_plot['nmi'])
 # Compute mean scores
 res_plot_me=res_plot.groupby(['model_parsed',scaling_col,param_opt_val_col]
                             )[['nmi','ilisi_system']].mean().reset_index()
@@ -272,32 +275,34 @@ res_plot_me=res_plot.groupby(['model_parsed',scaling_col,param_opt_val_col]
 res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),:]
 res_plot[scaling_col]=res_plot[scaling_col].replace({'yes':'Scaled - run','no':'Unscaled - run'})
 res_plot_me[scaling_col]=res_plot_me[scaling_col].replace({'yes':'Scaled - avg.','no':'Unscaled - avg.'})
-
 # Plot
-fig,ax1=plt.subplots(figsize=(2,2))
-ax2=ax1.twinx()
+fig,ax=plt.subplots(figsize=(2,2))
 palette_metric={'ilisi_system':'#74028E','nmi':'#B78E00'}
 s_run=20
-sb.lineplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot_me,ax=ax1,
+sb.lineplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot_me,ax=ax,
            c=palette_metric['ilisi_system'],alpha=0.5)
-sb.scatterplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot,ax=ax1,
+sb.scatterplot(x=param_opt_val_col,y='ilisi_system',style=scaling_col,data=res_plot,ax=ax,
            c=palette_metric['ilisi_system'],s=s_run,alpha=0.8)
-sb.lineplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot_me,ax=ax2,
+# Get legend elements before they are repeated due to the other metric
+handles,labels=ax.get_legend_handles_labels()
+sb.lineplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot_me,ax=ax,
            c=palette_metric['nmi'],alpha=0.5)
-sb.scatterplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot,ax=ax2,
+sb.scatterplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot,ax=ax,
            c=palette_metric['nmi'],s=s_run,alpha=0.8)
-
-# make pretty
-ax2.get_legend().remove()
-ax1.set_ylabel(metric_map['ilisi_system'],c=palette_metric['ilisi_system'])
-ax2.set_ylabel(metric_map['nmi'],c=palette_metric['nmi'])
-ax1.set(facecolor = (0,0,0,0))
-ax2.set(facecolor = (0,0,0,0))
+ax.set_ylabel('Relative metric score')
+ax.set(facecolor = (0,0,0,0))
 fig.set_facecolor((0,0,0,0))
-ax1.spines['top'].set_visible(False)
-ax2.spines['top'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
 
-ax1.legend(bbox_to_anchor=(1.5,0.75),frameon=False)
+# Add to legen metric colors
+handles=[Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0)]+handles+\
+        [Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0),
+         Line2D([0], [0], color=palette_metric['ilisi_system']),
+         Line2D([0], [0], color=palette_metric['nmi'])]
+labels=['Scaling']+labels+['\nMetric',metric_map['ilisi_system'],metric_map['nmi']]
+
+ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.2,1.07),frameon=False)
 
 # Save
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.pdf',

@@ -292,6 +292,7 @@ res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),
 # Plot
 s_run=10
 s_avg=70
+marker_avg='X'
 colors=['darkgray', '#4b87cc', '#55a380', 'yellowgreen', 'tab:olive', 'khaki']
 ncol=res_plot.model_parsed.nunique()
 fig,axs=plt.subplots(1,ncol,figsize=(2*ncol,2),sharey=True,sharex=True)
@@ -301,7 +302,8 @@ assert res_plot.groupby('model_parsed')['param_opt_val'].apply(
 # Plot per model
 for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
     ax=axs[idx]
-    sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,s=s_avg,palette=colors,
+    sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,
+                   s=s_avg,palette=colors,marker=marker_avg,
                    data=res_plot_me.query('model_parsed==@model_name'),ax=ax,
                    alpha=0.5, lw=0,legend=False)
     sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,
@@ -325,7 +327,7 @@ for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
                 [Line2D([0], [0],  markersize=0, lw=0, markeredgewidth=0),
                  Line2D([0], [0], marker='o', color='k', markersize=s_run**0.5, 
                                lw=0,markeredgewidth=0),
-                 Line2D([0], [0], marker='o', color='k', markersize=s_avg**0.5, 
+                 Line2D([0], [0], marker=marker_avg, color='k', markersize=s_avg**0.5, 
                                lw=0,markeredgewidth=0)]
         labels=[param_opt_val_col]+labels+['Average','No - run','Yes']
         ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.05,1.2),frameon=False)
