@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: analysis
+#     display_name: csi
 #     language: python
-#     name: analysis
+#     name: csi
 # ---
 
 # %%
@@ -127,6 +127,11 @@ adata_sub.layers['counts']=adata[adata_sub.obs_names,adata_sub.var_names].X.copy
 # %%
 pd.crosstab(adata_sub.obs.cell_type,adata_sub.obs.system)
 
+# %%
+# N samples and cells per system
+display(adata_sub.obs.groupby('system')['sample_id'].nunique())
+display(adata_sub.obs.groupby('system').size())
+
 # %% [markdown]
 # Add PCA for scGLUE
 
@@ -153,6 +158,7 @@ adata_sub
 adata_sub.write(path_train+'combined_HVG.h5ad')
 
 # %%
+#path_train='/om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/'
 #adata_sub=sc.read(path_train+'combined_HVG.h5ad')
 
 # %% [markdown]

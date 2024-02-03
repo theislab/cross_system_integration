@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.5
 #   kernelspec:
-#     display_name: analysis
+#     display_name: csi
 #     language: python
-#     name: analysis
+#     name: csi
 # ---
 
 # %%
@@ -220,6 +220,12 @@ gc.collect()
 pd.crosstab(adata.obs.cell_type_eval,adata.obs.system)
 
 # %%
+# N samples and cells per system
+display(adata.obs.groupby('system')['batch'].nunique())
+display(adata.obs.groupby('system')['mm_study'].nunique())
+display(adata.obs.groupby('system').size())
+
+# %%
 gs_df=shared_orthologues.copy()
 gs_df.index=shared_orthologues['eid_mm']
 adata.var[['gs_mm','gs_hs']]=gs_df[['gs_mm','gs_hs']]
@@ -259,6 +265,7 @@ adata.write(path_save+'combined_orthologuesHVG.h5ad')
 # #### Save in format for scGLUE/Saturn
 
 # %%
+#path_save='/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/'
 #adata=sc.read(path_save+'combined_orthologuesHVG.h5ad')
 
 # %%
