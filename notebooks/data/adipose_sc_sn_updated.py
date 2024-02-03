@@ -214,6 +214,11 @@ adata
 # %%
 pd.crosstab(adata.obs.cluster,adata.obs.system)
 
+# %%
+# N samples and cells per system
+display(adata.obs.groupby('system')['donor_id'].nunique())
+display(adata.obs.groupby('system').size())
+
 # %% [markdown]
 # Add PCA for scGLUE 
 
@@ -240,6 +245,7 @@ adata
 adata.write(path_save+'adiposeHsSAT_sc_sn.h5ad')
 
 # %%
+#path_save='/om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/'
 #adata=sc.read(path_save+'adiposeHsSAT_sc_sn.h5ad')
 
 # %% [markdown]
