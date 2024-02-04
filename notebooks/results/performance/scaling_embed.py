@@ -63,7 +63,7 @@ metric_background_cmap=pkl.load(open(path_names+'metric_background_cmap.pkl','rb
 metric_background_cmap['nmi']=metric_background_cmap['nmi_opt']
 
 # %% [markdown]
-# ## Integration metrics
+# ## Performance
 
 # %%
 # Load data and keep relevant runs
@@ -164,11 +164,9 @@ ress['param_opt_val_str']=pd.Categorical(
     ordered=True)
 
 # %%
-# Inspect loaded results
 ress.groupby(['dataset_parsed','model_parsed','param_parsed','genes_parsed'],observed=True).size()
 
 # %%
-# Plot full scaling analysis results: model+ scaling * dataset+metric
 params=ress.groupby(['model_parsed','param_parsed','genes_parsed'],observed=True,sort=True
             ).size().index.to_frame().reset_index(drop=True)
 nrow=params.shape[0]*2
@@ -186,7 +184,6 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
      param_parsed in params_parsed_ds and
      genes_parsed in genes_parsed_ds])*2+1
     
-    # Plot 
     for icol_metric,(metric,metric_name) in enumerate(metric_map.items()):
         icol=icol_ds*n_metrics+icol_metric
         for irow_param,(_,param_data) in enumerate(params.iterrows()):
@@ -204,8 +201,6 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
                     sb.swarmplot(x=metric if not scaling else metric+'_scaled',
                                  y='param_opt_val_str',data=res_sub,ax=ax, 
                                 hue='param_opt_val_str',palette='cividis')
-                    
-                    # Make pretty
                     ax.set(facecolor = metric_background_cmap[metric])
                     ax.spines['top'].set_visible(False)
                     ax.spines['right'].set_visible(False)
@@ -218,6 +213,7 @@ for icol_ds, (dataset_name,res_ds) in enumerate(ress.groupby('dataset_parsed')):
                         # Must turn label to visible as sb will set it off if sharex
                         # Must reset ticks as will be of due to sharex
                         ax.set_xlabel(metric_name,visible=True)
+                        #ax.xaxis.set_label_position('bottom') 
                         ax.xaxis.set_ticks_position('bottom')
                     if irow==0:
                         title=''
@@ -239,7 +235,6 @@ fig.set(facecolor = (0,0,0,0))
 # Turn off tight layout as it messes up spacing if adding xlabels on intermediate plots
 #fig.tight_layout()
 
-# Save
 plt.savefig(path_fig+'scaling_embed-score_all-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-score_all-swarm.png',
@@ -265,7 +260,6 @@ res_plot['model_parsed']=res_plot['model_parsed'].cat.remove_unused_categories()
 res_plot[param_opt_val_col]=pd.Categorical(
     res_plot['param_opt_val'].astype(str),
     [str(i) for i in sorted(res_plot['param_opt_val'].unique())], True)
-# Scale values of both metircs to [0,1]
 res_plot['ilisi_system']=minmax_scale(res_plot['ilisi_system'])
 res_plot['nmi']=minmax_scale(res_plot['nmi'])
 # Compute mean scores
@@ -305,7 +299,6 @@ labels=['Scaling']+labels+['\nMetric',metric_map['ilisi_system'],metric_map['nmi
 
 ax.legend(handles=handles, labels=labels, bbox_to_anchor=(1.2,1.07),frameon=False)
 
-# Save
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.png',
@@ -315,7 +308,7 @@ plt.savefig(path_fig+'scaling_embed-score_pancreas_cVAE_2d-line.png',
 # ## Embedding
 
 # %%
-# Runs with seed=1
+# seed=1
 ress_sub=ress.query('seed==1')
 
 # %%
@@ -326,10 +319,10 @@ for run,run_data in ress_sub.iterrows():
     embeds[run]=sc.read(path_run+'embed.h5ad')
 
 # %% [markdown]
-# ### Dimension range (std)
+# ### Dimension span
 
 # %%
-# Dimension std swarmplot
+# Dimension std swarm
 params=ress_sub.groupby(['model_parsed','param_parsed','genes_parsed'],observed=True,sort=True
             ).size().index.to_frame().reset_index(drop=True)
 nrow=params.shape[0]
@@ -387,7 +380,6 @@ for icol, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed'))
 fig.set(facecolor = (0,0,0,0))
 fig.tight_layout()
 
-# Save
 plt.savefig(path_fig+'scaling_embed-dimension_stds-swarm.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'scaling_embed-dimension_stds-swarm.png',
@@ -396,7 +388,7 @@ plt.savefig(path_fig+'scaling_embed-dimension_stds-swarm.png',
 
 # %% [markdown]
 # ### UMAP
-# UMAPs for min and max param shown for scaled and unscaled
+# UMAPs for min and max param with seed=0 shown for scaled and unscaled
 
 # %%
 # UMAPs of scaled and unscaled
@@ -412,11 +404,10 @@ params=ress_sub.groupby(['dataset_parsed','model_parsed','param_parsed'],observe
         })).reset_index()
 ct_col_name='Cell type'
 sys_col_name='System'
-# Plot per dataset
 for dataset_name,params_sub in params.groupby('dataset_parsed'):
     dataset=dataset_map_rev[dataset_name]
     nrow=params_sub.shape[0]
-    ncol=4 # scaled & unscaled and cell type & system
+    ncol=4
     fig,axs=plt.subplots(nrow,ncol,figsize=(2*ncol,2*nrow))       
     for irow,(_,res_sub) in enumerate(params_sub.iterrows()):
         for icol_scl,scaling in enumerate([False,True]):
@@ -433,6 +424,7 @@ for dataset_name,params_sub in params.groupby('dataset_parsed'):
                     embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(system_map[dataset])
                     cmap={system_map[dataset][k]:v for k,v in cmap.items()}
                 elif col_name==ct_col_name:
+                    # Map system to str as done in integrated embeds but not in non-int
                     embed.obs[col+'_parsed']=embed.obs[col].astype(str).map(cell_type_map[dataset])
                     cmap={cell_type_map[dataset][k]:v for k,v in cmap.items()}
 
@@ -470,8 +462,6 @@ for dataset_name,params_sub in params.groupby('dataset_parsed'):
                               ncol=math.ceil(embed.obs[col].nunique()/10))
 
     fig.set(facecolor = (0,0,0,0))
-    
-    # Save
     plt.savefig(path_fig+f'scaling_embed-embed_{dataset}_scl_minmax-umap.pdf',
                 dpi=300,bbox_inches='tight')
     plt.savefig(path_fig+f'scaling_embed-embed_{dataset}_scl_minmax-umap.png',
