@@ -49,9 +49,6 @@ from params_opt_maps import *
 # library(circlize)
 
 # %%
-path_fig
-
-# %%
 path_data='/om2/user/khrovati/data/cross_system_integration/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
@@ -248,7 +245,8 @@ for dataset,dataset_name in dataset_map.items():
     ro.globalenv['rownames']=list(run_names)
     ro.globalenv['row_blocks']=list(params_opt)
     ro.globalenv['row_blocks_order']=list(dict.fromkeys(params_opt))
-    ro.globalenv['row_blocks_parsed_order']=list(dict.fromkeys(params_opt_parsed))
+    ro.globalenv['row_blocks_parsed_order']=[i.replace('LW','loss weight') 
+                                             for i in list(dict.fromkeys(params_opt_parsed))]
     ro.globalenv['row_blocks_colors']=params_opt_colors
     ro.globalenv['batch_score']=list(batch_score)
     ro.globalenv['ct_prop']=list(ct_prop)
@@ -263,6 +261,7 @@ for dataset,dataset_name in dataset_map.items():
 
 
     r_command=f"""
+    font_size=11.5
     # Process data for R
     rownames<-unlist(rownames)
     row_blocks<-unlist(row_blocks)
@@ -279,23 +278,23 @@ for dataset,dataset_name in dataset_map.items():
         params_opt = anno_block(
             gp = gpar(fill = row_blocks_colors, col='white'),
             labels = row_blocks_parsed_order, 
-            labels_gp = gpar(col = "black", fontsize=12)
+            labels_gp = gpar(col = "black", fontsize=font_size)
         ),
         {batch_score_name}=batch_score,
         annotation_legend_param =list(
             {batch_score_name}=list(
                 title=paste0(batch_score_name,'\n'),
-                title_gp=gpar(fontsize=12),
-                labels_gp=gpar(fontsize=12)
+                title_gp=gpar(fontsize=font_size),
+                labels_gp=gpar(fontsize=font_size)
             )
         ),
         col = list(
             {batch_score_name} = colorRamp2(
                 seq(min(batch_score), max(batch_score), 
                 by = (max(batch_score)-min(batch_score))/4), 
-                cividis(5))
+                mako(5,direction=-1))
         ),
-        annotation_name_gp = gpar(fontsize=12),
+        annotation_name_gp = gpar(fontsize=font_size),
         annotation_height = list(
             {batch_score_name}=unit(5, "mm")
         )
@@ -310,26 +309,26 @@ for dataset,dataset_name in dataset_map.items():
             ct_max = colorRamp2(
                 seq(min(ct_max), max(ct_max), 
                 by = (max(ct_max)-min(ct_max))/4), 
-                mako(5)),
+                rocket(5,direction=-1)),
             ct_prop = colorRamp2(
                 seq(min(ct_prop), max(ct_prop), 
                 by = (max(ct_prop)-min(ct_prop))/4), 
-                magma(5))
+                inferno(5,direction=-1))
         ),
         annotation_legend_param =list(
             ct_prop=list(
                 title=paste0(ct_prop_name,'\n'),
-                title_gp=gpar(fontsize=12),
-                labels_gp=gpar(fontsize=12)
+                title_gp=gpar(fontsize=font_size),
+                labels_gp=gpar(fontsize=font_size)
             ),
             ct_max=list(
                 title=paste0(ct_max_name,'\n'),
-                title_gp=gpar(fontsize=12),
-                labels_gp=gpar(fontsize=12)
+                title_gp=gpar(fontsize=font_size),
+                labels_gp=gpar(fontsize=font_size)
             )
         ),
         annotation_label=c( "System cell ratio", "N cells"),
-        annotation_name_gp = gpar(fontsize=12),
+        annotation_name_gp = gpar(fontsize=font_size),
         height = 2*unit(5, "mm"),width=ncol(x)*unit(5,"mm")
     )
 
@@ -346,13 +345,13 @@ for dataset,dataset_name in dataset_map.items():
            column_names_side = "bottom",
            column_title_side="bottom",
            heatmap_legend_param = list( title = "Relative\nJaccard\nindex\n", 
-                                       title_gp=gpar( fontsize = 12),
-                                       labels_gp = gpar( fontsize = 12)
+                                       title_gp=gpar( fontsize = font_size),
+                                       labels_gp = gpar( fontsize = font_size)
                                        ),
-           row_names_gp=gpar(fontsize = 12),  
-           column_names_gp=gpar( fontsize = 12), 
-           row_title_gp=gpar(fontsize = 12),
-           column_title_gp=gpar(fontsize = 12),
+           row_names_gp=gpar(fontsize = font_size),  
+           column_names_gp=gpar( fontsize = font_size), 
+           row_title_gp=gpar(fontsize = font_size),
+           column_title_gp=gpar(fontsize = font_size),
            row_gap = unit(1, "mm"),
            width = ncol(x)*unit(5, "mm"),height = nrow(x)*unit(5, "mm"),
            show_row_dend = FALSE, 
@@ -458,17 +457,17 @@ for dataset,dataset_name in dataset_map.items():
         annotation_legend_param =list(
             {batch_score_name}=list(
                 title=paste0(batch_score_name,'\n'),
-                title_gp=gpar(fontsize=12),
-                labels_gp=gpar(fontsize=12)
+                title_gp=gpar(fontsize=11),
+                labels_gp=gpar(fontsize=11)
             )
         ),
         col = list(
             {batch_score_name} = colorRamp2(
                 seq(min(batch_score), max(batch_score), 
                 by = (max(batch_score)-min(batch_score))/4), 
-                cividis(5))
+                cividis(5, direction=-1))
         ),
-        annotation_name_gp = gpar(fontsize=12),
+        annotation_name_gp = gpar(fontsize=11),
         annotation_height = list(
             {batch_score_name}=unit(5, "mm")
         )
@@ -492,17 +491,17 @@ for dataset,dataset_name in dataset_map.items():
         annotation_legend_param =list(
             ct_prop=list(
                 title=paste0(ct_prop_name,'\n'),
-                title_gp=gpar(fontsize=12),
-                labels_gp=gpar(fontsize=12)
+                title_gp=gpar(fontsize=11),
+                labels_gp=gpar(fontsize=11)
             ),
             ct_max=list(
                 title=paste0(ct_max_name,'\n'),
-                title_gp=gpar(fontsize=12),
-                labels_gp=gpar(fontsize=12)
+                title_gp=gpar(fontsize=11),
+                labels_gp=gpar(fontsize=11)
             )
         ),
         annotation_label=c( "System cell ratio", "N cells"),
-        annotation_name_gp = gpar(fontsize=12),
+        annotation_name_gp = gpar(fontsize=11),
         height = 2*unit(5, "mm"),width=ncol(x)*unit(5,"mm")
     )
 
@@ -519,8 +518,8 @@ for dataset,dataset_name in dataset_map.items():
            column_names_side = "bottom",
            column_title_side="bottom",
            heatmap_legend_param = list( title = "Relative\nKNN\npurity\n", 
-                                       title_gp=gpar( fontsize = 12),
-                                       labels_gp = gpar( fontsize = 12)
+                                       title_gp=gpar( fontsize = 11),
+                                       labels_gp = gpar( fontsize = 11)
                                        ),
            row_names_gp=gpar(fontsize = 12),  
            column_names_gp=gpar( fontsize = 12), 

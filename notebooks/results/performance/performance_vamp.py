@@ -31,6 +31,8 @@ import seaborn as sb
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from matplotlib.text import Text
+from adjustText import adjust_text
+from matplotlib.patches import Ellipse
 
 import sys
 sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
@@ -377,11 +379,27 @@ for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
                    s=s_run,palette=colors,lw=0,
                    data=res_plot.query('model_parsed==@model_name'),ax=ax)
     
-    ax.set_title(model_name,fontsize=10)
+    # Mark obe prior case
+    #ax.axhline(0.025,linestyle='--',lw=1,color='#730202',dashes=(5, 5)) 
+    circle = Ellipse(res_plot_me.query(
+            'model_parsed==@model_name & `N priors`==1')[['nmi_opt','ilisi_system']].values.ravel(),
+        # The width/height ratio should be computed after setting axes range, but this should do for now
+        0.01,0.01*(res_plot_me['ilisi_system'].max()-res_plot_me['ilisi_system'].min())/(
+            res_plot_me['nmi_opt'].max()-res_plot_me['nmi_opt'].min()),
+        linewidth=1, fill=False,color='#8b0000')
+    ax.add_patch(circle)
+    
+    # Annotate means with N priors
+    texts=[ax.text(data['nmi_opt'], data['ilisi_system'], data[param_opt_val_col], 
+                   color='k', fontsize=8) 
+           for row,data in res_plot_me.query('model_parsed==@model_name').iterrows()]
+    adjust_text(texts,min_arrow_len=1e6,
+            arrowprops=dict(arrowstyle="->",  color='k',  lw=0.5),  ax=ax)
+    
+    ax.set_title(model_name.replace ('- FP','fixed') ,fontsize=10)
     if idx==0:
         ax.set_ylabel(metric_map['ilisi_system'])
     ax.set_xlabel(metric_map['nmi_opt'])
-    ax.axhline(0.025,linestyle='--',lw=1,color='#730202',dashes=(5, 5))  
     ax.set(facecolor = (0,0,0,0))
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
