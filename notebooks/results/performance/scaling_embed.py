@@ -290,6 +290,7 @@ sb.lineplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot_me,ax=ax
 sb.scatterplot(x=param_opt_val_col,y='nmi',style=scaling_col,data=res_plot,ax=ax,
            c=palette_metric['nmi'],s=s_run,alpha=0.8)
 ax.set_ylabel('Relative metric score')
+ax.set_xlabel(param_opt_val_col.replace('LW','loss weight'))
 ax.set(facecolor = (0,0,0,0))
 fig.set_facecolor((0,0,0,0))
 ax.spines['top'].set_visible(False)
