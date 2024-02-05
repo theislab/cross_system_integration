@@ -321,7 +321,7 @@ for metric in metric_map.values():
 n_rows=len(metrics)
 n_cols=len(metric_map)
 fig,axs=plt.subplots(n_rows,n_cols,figsize=(2*n_cols,len(metric_map)/1.5*n_rows),
-                     sharey='row')
+                     sharey='row',sharex='col')
 for row,(dataset_name,metrics_sub) in enumerate(metrics.items()):
     for col,metric in enumerate(metric_map.values()):
         ax=axs[row,col]
@@ -350,14 +350,18 @@ for row,(dataset_name,metrics_sub) in enumerate(metrics.items()):
         ax.spines['right'].set_visible(False)
         if row!=(n_rows-1):
             ax.set_xlabel('')
+            ax.tick_params(axis='x', which='major', length=0)
+        else:
+            ax.locator_params(axis='x', nbins=5)
         if row==0:
             ax.set_title(metric_meaning_map[metric_map_rev[metric]],fontsize=10)
         if col==0:
             ax.set_ylabel(dataset_name)
         else:
             ax.set_ylabel('')
+        ax.grid(which='major', axis='x',linestyle=(0, (5, 10)),lw=0.5)
 fig.set(facecolor = (0,0,0,0))
-plt.subplots_adjust( wspace=0.1)
+plt.subplots_adjust( wspace=0.05,hspace=0.05)
 
 plt.savefig(path_fig+'performance-score_topsettings-swarm.pdf',
             dpi=300,bbox_inches='tight')
