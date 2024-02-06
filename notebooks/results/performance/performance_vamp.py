@@ -33,6 +33,7 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from adjustText import adjust_text
 from matplotlib.patches import Ellipse
+from matplotlib.collections import PathCollection
 
 import sys
 sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
@@ -361,7 +362,7 @@ res_plot=res_plot.loc[np.random.RandomState(seed=0).permutation(res_plot.index),
 #     ['ilisi_system','nmi_opt',param_opt_val_col,'model_parsed','Average']]
 # Plot
 s_run=10
-s_avg=70
+s_avg=100
 marker_avg='X'
 colors=['darkgray', '#4b87cc', '#55a380', 'yellowgreen', 'tab:olive', 'khaki']
 ncol=res_plot.model_parsed.nunique()
@@ -372,15 +373,14 @@ assert res_plot.groupby('model_parsed')['param_opt_val'].apply(
 for idx,model_name in enumerate(res_plot['model_parsed'].cat.categories):
     ax=axs[idx]
     sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,
+                   s=s_run,palette=colors,lw=0,alpha=0.7,
+                   data=res_plot.query('model_parsed==@model_name'),ax=ax)
+    sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,
                    s=s_avg,palette=colors,marker=marker_avg,
                    data=res_plot_me.query('model_parsed==@model_name'),ax=ax,
-                   alpha=0.5, lw=0,legend=False)
-    sb.scatterplot(y='ilisi_system',x='nmi_opt',hue=param_opt_val_col,
-                   s=s_run,palette=colors,lw=0,
-                   data=res_plot.query('model_parsed==@model_name'),ax=ax)
+                   alpha=0.8, lw=0,legend=False)
     
     # Mark obe prior case
-    #ax.axhline(0.025,linestyle='--',lw=1,color='#730202',dashes=(5, 5)) 
     circle = Ellipse(res_plot_me.query(
             'model_parsed==@model_name & `N priors`==1')[['nmi_opt','ilisi_system']].values.ravel(),
         # The width/height ratio should be computed after setting axes range, but this should do for now
