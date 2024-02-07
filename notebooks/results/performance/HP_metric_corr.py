@@ -40,6 +40,7 @@ path_fig=path_data+'figures/'
 # Names
 model_map=pkl.load(open(path_names+'models.pkl','rb'))
 param_map=pkl.load(open(path_names+'params.pkl','rb'))
+param_map_rev=dict(zip(param_map.values(),param_map.keys()))
 metric_map=pkl.load(open(path_names+'metrics.pkl','rb'))
 dataset_map=pkl.load(open(path_names+'datasets.pkl','rb'))
 metric_meaning_map=pkl.load(open(path_names+'metric_meanings.pkl','rb'))
@@ -156,10 +157,13 @@ for group,res_sub in ress.query('genes_parsed=="OTO"').groupby(
     group_cols,observed=True,sort=True ):
     for metric,metric_name in metric_map.items():
         corr=dict(zip(group_cols,group))
-        corr['HP corr.']=res_sub['param_opt_val'].astype(float).corr(
+        negate=param_map_rev[corr['param_parsed']] in { 
+            'lam_graph','rel_gene_weight','pe_sim_penalty'}
+        corr['HP corr.']=((-1 if negate else 1)*res_sub['param_opt_val'].astype(float)).corr(
             res_sub[metric].astype(float), method='spearman')
         corr['metric'] = metric_name
-        corr['Optimized']=corr['model_parsed']+'\n'+corr['param_parsed']
+        corr['Optimized']=corr['model_parsed']+'\n'+corr['param_parsed'] +\
+            ('' if not negate else ' (inv.)')
         corrs.append(corr)
 corrs=pd.DataFrame(corrs)
 corrs.rename({'dataset_parsed':'Dataset'},axis=1,inplace=True)
