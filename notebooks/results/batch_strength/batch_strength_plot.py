@@ -49,8 +49,7 @@ distances={
     for dataset, fn in dataset_metric_fns.items()}
 
 # %% [markdown]
-# ## Plot one ct in all sample pair groups (delta cells of pancreas)
-# >>>>>>> 8f39c11 (dataset summaries)
+# ## Plot one cell type in all sample pair groups (delta cells of pancreas)
 
 # %%
 # Prepare df for plotting (focus on delta cells)
@@ -90,68 +89,6 @@ plot.groupby(y_col).size()
 
 # %% [markdown]
 # ## Plot distance of between vs within comparisons
-
-# %% [markdown]
-# ### Relative distance per cell type
-# Number of standard deviations that between-system comparison distibution mean is away from within-system distibution (reference used to set mean and std), computed pre cell type separately for all within-system groups.
-
-# %%
-# Compute distance between within and between system comparison pairs
-scores=[]
-for dataset, dist in distances.items():
-    for ct, dist_ct in dist.items():
-        d_s0s1=dist_ct['s0s1']
-        # This was before filtered so that groups with too many comparisons are not used - 
-        # they have length of 0
-        for d_type,d in {d_type:d for d_type,d in dist_ct.items() 
-                         if d_type!='s0s1' and len(d)>0}.items():
-            score=(d_s0s1.mean()-d.mean())/d.std()
-            scores.append(dict(
-                dataset=dataset,ct=ct,compared=d_type,score=score ))
-scores=pd.DataFrame(scores)
-
-# %%
-# Plot relative distances
-
-# Use gridspec as different datasets have different number of categories
-heights=[scores.query('dataset==@dataset').compared.nunique() for dataset in dataset_map]
-nrows=len(heights)
-fig = plt.figure(figsize=(1.4, 4.2))
-fig.set(facecolor = (0,0,0,0))
-gs = GridSpec(nrows, 1, height_ratios=heights)
-# Set one ax as ref so that ax can be shared
-ax0=None
-for idx,(dataset,dataset_name) in enumerate(dataset_map.items()):
-    ax = fig.add_subplot(gs[idx, 0], sharex=ax0)
-    if ax0 is None:
-        ax0=ax
-    data_plot=scores.query('dataset==@dataset').copy()
-    # Parse names of comparison groups
-    compared_map={
-        x: system_map[dataset][x.replace('s','').split('_')[0]
-                              ]+(f'\n({x.split("_")[1]} datasets)' if '_' in x else '')
-        for x in data_plot.compared.unique()}
-    data_plot['compared_name']=data_plot.compared.map(compared_map)
-    sb.swarmplot(x='score',y='compared_name',data=data_plot,ax=ax, c='k',s=3)
-    ax.set_ylabel(dataset_name.replace('-','-\n'))
-    ax.axvline(0,c='#8b0000',lw=1,linestyle='dashed')
-    if idx==nrows-1:
-        ax.set_xlabel('Relative distance of between-system\nto within-system sample comparisons')
-        ax.xaxis.set_label_coords(-0.15, -0.3)
-        plt.locator_params(axis='x', nbins=3)
-    else:
-        ax.xaxis.set_visible(False)
-    ax.yaxis.set_label_coords(-1.4, 0.5)
-    ax.set(facecolor = (0,0,0,0))
-    ax.spines['right'].set_visible(False)
-    if idx==0:
-        ax.spines['top'].set_visible(False)
-plt.subplots_adjust(hspace=0)
-plt.savefig(path_fig+f'batch_strength-overview-swarm.pdf',dpi=300,bbox_inches='tight')
-plt.savefig(path_fig+f'batch_strength-overview-swarm.png',dpi=300,bbox_inches='tight')
-
-# %% [markdown]
-# ### Absolute distances per cell type
 
 # %%
 # Prepare plotting df
