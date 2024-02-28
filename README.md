@@ -1,6 +1,8 @@
 # Integrating single-cell RNA-seq datasets with substantial batch effects
 
-This repository contains newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects and reproducibility code for [Hrovatin et al. (2023)](https://www.biorxiv.org/content/10.1101/2023.11.03.565463v1). 
+This repository contains newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects and reproducibility code for [Hrovatin et al. (2023)](https://doi.org/10.1101/2023.11.03.565463). 
+
+See also our [talk](https://www.youtube.com/watch?v=i-a4BjAn90E) on the M2D2 series. 
 
 ## Abstract
 
@@ -19,6 +21,12 @@ Figure 1: The challenge of integrating datasets with substantial batch effects. 
 - Environments: _envs_ directory
 
 ## Installation of the new models
+
+### Using sysVI model on your own data
+
+We suggest using the scvi-tools implementation of the sysVI model as this repository will remain for reproducibility purposes only and will not be maintained in the future. The sysVI model is expected to be merged in the scvi-tools version 1.2. Until then please use this [fork](https://github.com/Hrovatin/scvi-tools/tree/main/scvi/external/sysvi) and the following [tutorial](https://github.com/Hrovatin/scvi-tutorials/blob/main/scrna/sysVI.ipynb) - note that some of the parameters are changed from the original implementation to adhere to the scvi-tools terminology.
+
+### For reproducibility purposes
 
 Clone the git repository and run `pip install -e .` from within the cloned repository.
 
