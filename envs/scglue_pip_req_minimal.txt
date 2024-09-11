@@ -1,4 +1,5 @@
-# Do not forget to install csi package (current) after installing the following
+scglue==0.3.2
+
 anndata==0.9.1
 colorcet==3.0.1
 joblib==1.1.1
@@ -20,12 +21,8 @@ typing_extensions==4.5.0
 adjustText==0.8
 pytorch_lightning==1.6.5
 #scib-metrics==0.4.0
-#scib-metrics==0.5.1
-scib-metrics==0.3.3
+scib-metrics==0.5.1
 scvi-tools==0.17.3
 scikit-learn==1.2.2
-leidenalg==0.10.2
-jax==0.4.10
-jaxlib==0.4.10
-ml-dtypes==0.1.0
+
 
