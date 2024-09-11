@@ -1,5 +1,6 @@
 import logging
 from sacred import Experiment
+import pathlib
 import seml
 import subprocess
 
@@ -102,19 +103,27 @@ def run(eval_type:str,
         hv_genes:str=None,
         num_macrogenes:str=None,
         pe_sim_penalty:str=None,
+        language:str=None,
+        reduction:str=None,
+        k_anchor:str=None,
+        k_weight:str=None,
+        harmony_theta:str=None,
        ):
     
     params_info=locals()
     params_info['seed']=params_info['seed_num']
     del params_info['seed_num']
 
+    lang = params_info.pop('language') or 'python'
+
     logging.info('Received the following configuration:')
     logging.info(str(params_info))
     
     # Prepare args for running script
+    ignore_args = ['eval_type', 'model']
     args=[]
     for k,v in params_info.items():
-        if k!='eval_type' and k!='model' and v is not None:
+        if k not in ignore_args and v is not None:
             # Set path save based on eval type
             # Expects that dirs were created before
             if k=='path_save':
@@ -128,20 +137,33 @@ def run(eval_type:str,
     
     # Script to run - based on eval_type
     model_fn_part='_'+model if model is not None else ''
-    script=f'run_{eval_type}{model_fn_part}.py' 
+    script=f'run_{eval_type}{model_fn_part}.py'
+    if model in ['seurat', 'harmony']:
+        assert lang == 'R'
+        script = 'run_integration_seurat.R'
     logging.info('Running integration script')
     logging.info(script)
+
     
     # Send stderr to stdout and stdout pipe to output to save in log 
     # (print statements from the child script would else not be saved)
-    process_integration = subprocess.Popen('conda run -n'.split()+[conda_env, 'python',script]+args, 
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if lang == 'python':
+        process_cmd = 'conda run -n'.split() + [conda_env, 'python', script] + args
+    elif lang == 'R':
+        process_cmd = 'bash -x run_r.sh'.split() + [script] + args
+    else:
+        raise NotImplementedError()
+
+    logging.info(" ".join(process_cmd))
+    process_integration = subprocess.Popen(process_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    
     # Make sure that process has finished
     res=process_integration.communicate()
     # Save stdout from the child script
     for line in res[0].decode(encoding='utf-8').split('\n'):
         if line.startswith('PATH_SAVE='):
-            path_save=line.replace('PATH_SAVE=','').strip(' ')
+            path_save = line.replace('PATH_SAVE=','').strip(' ')
+            path_save = str(pathlib.Path(path_save))
         logging.info(line)
     # Check that child process did not fail - if this was not checked then
     # the status of the whole job would be succesfull 
@@ -159,8 +181,10 @@ def run(eval_type:str,
         '--batch_key',batch_key,
         '--testing',str(testing) if testing is not None else '0',
     ]
-    process_neigh = subprocess.Popen(['python','run_neighbors.py']+args_neigh, 
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process_cmd = ['python', 'run_neighbors.py'] + args_neigh
+
+    logging.info(" ".join(process_cmd))
+    process_neigh = subprocess.Popen(process_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     # Make sure that process has finished
     res=process_neigh.communicate()
     # Save stdout from the child script
@@ -190,8 +214,11 @@ def run(eval_type:str,
         logging.info('Computing metrics with param scaled='+scaled)
         args_metrics_sub=args_metrics.copy()
         args_metrics_sub.extend(['--scaled',scaled])
-        process_metrics = subprocess.Popen(['python','run_metrics.py']+args_metrics_sub, 
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        process_cmd = ['python', 'run_metrics.py'] + args_metrics_sub
+        logging.info(" ".join(process_cmd))
+        
+        process_metrics = subprocess.Popen(process_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         # Make sure that process has finished
         res=process_metrics.communicate()
         # Save stdout from the child script

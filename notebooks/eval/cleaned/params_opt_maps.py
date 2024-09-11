@@ -36,6 +36,9 @@ param_opt_col_map={
      'prior_group':'prior_components_group',
      'scgen_kl':'kl_weight',
      'scgen_sample_kl':'kl_weight',
+     'seurat_rpca_k_anchor':'k_anchor',
+     'seurat_cca_k_anchor':'k_anchor',
+     'harmony_theta':'harmony_theta',
 }
 
 

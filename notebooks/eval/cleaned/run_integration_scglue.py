@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: scglue
 #     language: python
@@ -20,7 +20,9 @@ import pickle as pkl
 import pandas as pd
 import numpy as np
 import argparse
+import gc
 import os
+import pathlib
 import string
 import subprocess
 
@@ -170,7 +172,7 @@ path_save=args.path_save+'scglue'+\
     ('-TEST' if TESTING else '')+\
     os.sep
 
-os.mkdir(path_save)
+pathlib.Path(path_save).mkdir(parents=True, exist_ok=False)
 print("PATH_SAVE=",path_save)
 
 # %%
@@ -232,20 +234,24 @@ if TESTING:
 # N systems
 if SINGLE_ADATA:
     total_mods = list(adata.obs[args.system_key].unique())
+    all_obs_names = list(adata.obs_names)
 else:
     total_mods = list(sorted(
         list(adata.obs[args.system_key].unique()) +
         list(adata_2.obs[args.system_key].unique())))
+    all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
 
 # %%
 # Prepare adatas
 mods_adata = {}
 if SINGLE_ADATA:
     for mod in total_mods:
-        mods_adata[mod] = adata[adata.obs[args.system_key] == mod]
+        mods_adata[mod] = adata[adata.obs[args.system_key] == mod].copy()
         mods_adata[mod].var['original_index'] = mods_adata[mod].var.index
         mods_adata[mod].var.index = mods_adata[mod].var.index + f'-{mod}'
         print(f"mod: {mod}\n", mods_adata[mod])
+    del adata
+    gc.collect()
 else:
     for adata_current in [adata, adata_2]:
         mod = adata_current.obs[args.system_key].unique()[0]
@@ -378,10 +384,6 @@ combined = ad.concat(mods_adata.values())
 
 # %%
 # Prepare embedding adata
-if SINGLE_ADATA:
-    all_obs_names = list(adata.obs_names)
-else:
-    all_obs_names = list(adata.obs_names) + list(adata_2.obs_names)
 
 embed_full = sc.AnnData(combined[all_obs_names].obsm['X_glue'], obs=combined[all_obs_names,:].obs.copy())
 cells_eval = all_obs_names if args.n_cells_eval==-1 else \

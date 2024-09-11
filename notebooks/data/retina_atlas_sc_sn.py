@@ -61,6 +61,8 @@ path_save = path_data + 'human_retina_atlas_sc_sn_hvg.h5ad'
 # %%
 # PP sc
 adata_sc=sc.read(path_sc_data)
+adata_sc.X = adata_sc.raw.X
+del adata_sc.raw
 adata_sc.obs['system'] = 0
 adata_sc
 
@@ -88,6 +90,8 @@ adata_sc
 # %%
 # PP sn
 adata_sn=sc.read(path_sn_data)
+adata_sn.X = adata_sn.raw.X
+del adata_sn.raw
 adata_sn.obs['system'] = 1
 adata_sn
 
@@ -425,5 +429,7 @@ signif
 # %%
 # Save signif
 signif.to_csv(path_data + 'human_retina_atlas_sc_sn_hvg_PcaSysBatchDist_Signif.tsv',sep='\t',index=False)
+
+# %%
 
 # %%

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -20,9 +20,12 @@
 import pickle as pkl
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_save=path_data+'names_parsed/'
 
+
+# %%
+# ! mkdir /home/moinfar/io/csi/names_parsed/
 
 # %% [markdown]
 # ## Names
@@ -38,7 +41,9 @@ model_map={
     'scvi': 'scVI',
     'scglue': 'GLUE',
     'saturn': 'SATURN',
-    'saturn_super': 'SATURN-CT'
+    'saturn_super': 'SATURN-CT',
+    'seurat': 'Seaurat',
+    'harmony': 'Harmony',
 }
 pkl.dump(model_map,open(path_save+'models.pkl','wb'))
 
@@ -75,9 +80,10 @@ pkl.dump(metric_meaning_map,open(path_save+'metric_meanings.pkl','wb'))
 # %%
 # Datasets
 dataset_map={
-    'pancreas_conditions_MIA_HPAP2':'Mouse-Human',
-    'retina_adult_organoid':'Organoid-Tissue',
-    'adipose_sc_sn_updated':'Cell-Nuclei',
+    'pancreas_conditions_MIA_HPAP2':'Pancreas Mouse-Human',
+    'retina_adult_organoid':'Retina Organoid-Tissue',
+    'adipose_sc_sn_updated':'Adipose Cell-Nuclei',
+    'retina_atlas_sc_sn':'Retina Atlas Cell-Nuclei',
 }
 pkl.dump(dataset_map,open(path_save+'datasets.pkl','wb'))
 
@@ -99,6 +105,12 @@ param_vals=[
         ('pe_sim_penalty',[0.01, 0.1, 1.0, 10.0]) ]),
     (['cycle', 'vamp_cycle'],[
         ('z_distance_cycle_weight',[2.0, 5.0, 10.0, 50.0]) ]),
+    (['seurat_cca'],[
+        ('seurat_cca_k_anchor',[2, 5, 10, 20, 50]) ]),
+    (['seurat_rpca'],[
+        ('seurat_rpca_k_anchor',[2, 5, 10, 20, 50]) ]),
+    (['harmony'],[
+        ('harmony_theta',[0.1, 1.0, 5., 10., 100.]) ]),
 ] 
 
 pkl.dump(param_vals,open(path_save+'optimized_parameter_values.pkl','wb'))
@@ -135,6 +147,9 @@ params_opt_map={
      'vamp_z_distance_cycle_weight_std_eval':'vamp_cycle',
      'vamp_kl_weight_eval':'vamp',
      'z_distance_cycle_weight_std':'cycle',
+     'seurat_ccca_k_anchor':'seurat',
+     'seurat_rpca_k_anchor':'seurat',
+     'harmony_theta':'harmony',
     }
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
 
@@ -161,6 +176,9 @@ param_names={
  'lam_align':'Alignment LW',
  'rel_gene_weight':'Graph W',
  'pe_sim_penalty':'Protein sim. LW',
+ 'pe_sim_penalty':'Protein sim. LW',
+ 'k_anchor':'K.Anchor',
+ 'theta':'Theta',
   None:'None',  
 }
 pkl.dump(param_names,open(path_save+'params.pkl','wb'))
@@ -190,7 +208,9 @@ params_opt_gene_map={
      'scvi_kl_anneal':'OTO',
      'vamp_kl_weight_eval':'OTO',
      'vamp_z_distance_cycle_weight_std_eval':'OTO',
-     'z_distance_cycle_weight_std':'OTO',
+     'seurat_ccca_k_anchor':'OTO',
+     'seurat_rpca_k_anchor':'OTO',
+     'harmony_theta':'OTO',
     }
 pkl.dump(params_opt_gene_map,open(path_save+'params_opt_genes.pkl','wb'))
 
@@ -200,6 +220,7 @@ system_map={
     'pancreas_conditions_MIA_HPAP2':{'0':'Mouse','1':'Human'},
     'retina_adult_organoid':{'0':'Organoid','1':'Tissue'},
     'adipose_sc_sn_updated':{'0':'Cell','1':'Nuclei'},
+    'retina_atlas_sc_sn':{'0':'Cell','1':'Nuclei'},
 }
 pkl.dump(system_map,open(path_save+'systems.pkl','wb'))
 
@@ -290,23 +311,24 @@ import numpy as np
 # %%
 # Model colors
 models=[m for m in model_map.values() if m!='non-integrated']
-colors =[mcolors.to_hex(color) for color in sb.color_palette("colorblind")]
+colors =[mcolors.to_hex(color) for color in sb.color_palette("colorblind")] + [mcolors.to_hex(color) for color in sb.color_palette("dark")]
 palette=dict(zip(models,colors[:len(models)]))
 pkl.dump(palette,open(path_save+'model_cmap.pkl','wb'))
 
 # %%
 # UMAP metadata colloring for individual datasets
 cmaps=defaultdict(dict)
-for fn,cols in [
-    ('adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad',
-     ['cluster','system','donor_id']),
-    ('pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
-     ['cell_type_eval','system','batch','leiden_system']),
-    ('retina_adult_organoid/combined_HVG.h5ad',
-     ['cell_type','system','sample_id'])
+for fn,dataset,cols in [
+    ('/om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad',
+     'adipose_sc_sn_updated', ['cluster','system','donor_id']),
+    ('/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
+     'pancreas_conditions_MIA_HPAP2', ['cell_type_eval','system','batch','leiden_system']),
+    ('/om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad',
+     'retina_adult_organoid', ['cell_type','system','sample_id']),
+    ('/home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg.h5ad',
+     'retina_atlas_sc_sn', ['cell_type','system','donor_id']),
 ]:
-    dataset=fn.split('/')[0]
-    adata=sc.read(path_data+fn,backed='r')
+    adata=sc.read(fn,backed='r')
     for col in cols:
         adata.obs[col]=adata.obs[col].astype(str)
         adata.obs[col]=pd.Categorical(values=adata.obs[col],
@@ -335,3 +357,7 @@ palette={
     'adipose_sc_sn_updated':'#92C2D0',
 }
 pkl.dump(palette,open(path_save+'dataset_cmap.pkl','wb'))
+
+# %%
+
+# %%

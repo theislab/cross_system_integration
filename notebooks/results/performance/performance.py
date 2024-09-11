@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 import scanpy as sc
 import pickle as pkl
+import yaml
 import math
 import glob
 import os
@@ -30,15 +31,20 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.colors as mcolors
 
+from pathlib import Path
 import sys
 sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
 from params_opt_maps import *
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 path_tab=path_data+'tables/'
+
+# %%
+Path(path_fig).mkdir(parents=True, exist_ok=True)
+Path(path_tab).mkdir(parents=True, exist_ok=True)
 
 # %%
 # Names
@@ -82,11 +88,14 @@ for dataset,dataset_name in dataset_map.items():
     for model,model_setting in top_settings.items():
         model=model_map[model]
         for run in model_setting['runs']:
-            args_run=pkl.load(open(path_integration+run+'/args.pkl','rb'))
+            if os.path.exists(path_integration+run+'/args.pkl'):
+                args_run=vars(pkl.load(open(path_integration+run+'/args.pkl','rb')))
+            else:
+                args_run=yaml.safe_load(open(path_integration+run+'/args.yml','rb'))
             metrics_data=pd.Series(
                 pkl.load(open(path_integration+run+'/scib_metrics.pkl','rb')),
                 name=model)
-            metrics_data['seed']=args_run.seed
+            metrics_data['seed']=args_run['seed']
             metrics[dataset_name].append(metrics_data)
             if run==model_setting['mid_run']:
                 if load_embed:
@@ -105,13 +114,13 @@ for dataset,dataset_name in dataset_map.items():
 # Add non-integrated embeds
 if load_embed:
     dataset_embed_fns={
-        'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG_embed.h5ad',
-        'retina_adult_organoid':'combined_HVG_embed.h5ad',
-        'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn_embed.h5ad',
+        'pancreas_conditions_MIA_HPAP2':'/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
+        'retina_adult_organoid':'/om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad',
+        'adipose_sc_sn_updated':'/om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad',
+        'retina_atlas_sc_sn':'/home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg.h5ad',
     }
     for dataset,dataset_name in dataset_map.items():
-        embeds[dataset_name][model_map['non-integrated']]=sc.read(
-            f'{path_data}{dataset}/{dataset_embed_fns[dataset]}')
+        embeds[dataset_name][model_map['non-integrated']]=sc.read(dataset_embed_fns[dataset])
 
 # %%
 # Add scGEN example embeds to retina
@@ -134,6 +143,9 @@ if load_embed:
 
 # %% [markdown]
 # ### Metric scores
+
+# %%
+model_cmap
 
 # %%
 # Plot metric scores
@@ -231,6 +243,9 @@ pvals.to_csv(path_tab+'performance-score_topsettings-pairwise_significance.tsv',
 # UMAP of representative run from top setting
 
 # %%
+dataset_map_rev[dataset_name]
+
+# %%
 # UMAP plot per data setting 
 
 # Column names of colored covariates
@@ -247,9 +262,13 @@ for dataset,dataset_name in dataset_map.items():
     # Plot every model
     for irow,model_name in enumerate([m for m in model_map.values() if m in embeds_ds]):
         embed=embeds_ds[model_name]
+        if 'X_umap' not in embed.obsm:
+            print(f"'X_umap' not in embed.obsm for {model_name}")
+            continue
+            
         for icol,(col_name,col) in enumerate(zip(
             [ct_col_name,sys_col_name,sample_col_name],
-            [args_sub.group_key,args_sub.system_key,args_sub.batch_key])):
+            [args_sub['group_key'],args_sub['system_key'],args_sub['batch_key']])):
 
             # Set cmap and col val names
             cmap=obs_col_cmap[dataset_map_rev[dataset_name]][col]
@@ -310,9 +329,9 @@ for dataset,dataset_name in dataset_map.items():
     for run in glob.glob(path_integration+'*/'):
         if os.path.exists(run+'args.pkl') and \
             os.path.exists(run+'scib_metrics.pkl'):
-            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+            args_=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
             metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
-            data=pd.concat([args,metrics])
+            data=pd.concat([args_,metrics])
             name=run.split('/')[-2]
             data.name=name
             res.append(data)

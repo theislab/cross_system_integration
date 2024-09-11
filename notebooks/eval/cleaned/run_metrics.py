@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -17,6 +17,7 @@
 import scanpy as sc
 import pickle as pkl
 import argparse
+import pathlib
 import pandas as pd
 import numpy as np
 import os
@@ -54,27 +55,21 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 # %%
 # Set args for manual testing
 if False:
-    args= parser.parse_args(args=[
-        '-p','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/',
-        '-fe','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
-        '-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
-        '-sk','system',
-        '-gk','cell_type',
-        '-bk','sample',
-        '-s','1',
-        '-co','1',
-        '-t','1',
-    ])
+    args= parser.parse_args(args="--path /home/moinfar/io/csi/eval/retina_adult_organoid/integration/seurat_r2_Le7LTop5 --system_key system --group_key cell_type --batch_key sample_id --fn_expr /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad --fn_moransi /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG_moransiGenes.pkl --testing 0 --scaled 0".split(" "))
 # Read command line args
 else:
     args = parser.parse_args()
 TESTING=args.testing    
 print(args)
 
+
+exp_path = pathlib.Path(args.path)
+
 # %%
 # Load embedding (embed - subset for eval, 
 # embed_full is loaded below - all cells from integration data)
-embed = sc.read(args.path+'embed.h5ad')
+embed = sc.read(exp_path / 'embed.h5ad')
+embed.obs[args.system_key] = embed.obs[args.system_key].astype(str)
 
 # %%
 # Prepare for scaled/unscaled setting
@@ -99,15 +94,15 @@ else:
 
 # %%
 # Dict for saving metrics
-fn_scaled='_scaled' if args.scaled else ''
-fn_metrics=args.path+f'scib_metrics{fn_scaled}.pkl'
+fn_scaled = '_scaled' if args.scaled else ''
+fn_metrics = exp_path / f'scib_metrics{fn_scaled}.pkl'
 if os.path.exists(fn_metrics):
     metrics=pkl.load(open(fn_metrics,'rb'))
 else:
     metrics={}
 
 # Dict for saving extra metric data
-fn_metrics_data=args.path+f'scib_metrics_data{fn_scaled}.pkl'
+fn_metrics_data = exp_path / f'scib_metrics_data{fn_scaled}.pkl'
 if os.path.exists(fn_metrics_data):
     metrics_data=pkl.load(open(fn_metrics_data,'rb'))
 else:
@@ -209,8 +204,8 @@ if MORANSI or  TESTING:
     # Load adata with expression and Moran's I base values and full embedding
     adata_expr=sc.read(args.fn_expr)
     moransi_base=pkl.load(open(args.fn_moransi,'rb'))
-    if os.path.exists(args.path+'embed_full.h5ad'):
-        embed_full=sc.read(args.path+'embed_full.h5ad')
+    if os.path.exists(exp_path / 'embed_full.h5ad'):
+        embed_full=sc.read(exp_path / 'embed_full.h5ad')
     else:
         embed_full=embed.copy()
         print('Full embedding equals eval embedding')

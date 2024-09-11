@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -20,6 +20,8 @@ import glob
 import pickle as pkl
 import os
 import itertools
+from pathlib import Path
+import yaml
 
 from sklearn.preprocessing import minmax_scale
 
@@ -33,7 +35,7 @@ import colorcet as cc
 from params_opt_maps import *
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_eval=path_data+'eval/'
 path_names=path_data+'names_parsed/'
 
@@ -94,7 +96,10 @@ def get_top_runs(res,param_opt_vals=param_opt_vals,params_opt_map=params_opt_map
         top_setting=dict(zip(setting_cols,setting_means.index[setting_means.argmax()]))
         runs_data=res_model.query(
             f'params_opt=="{top_setting["params_opt"]}" & param_opt_val== {top_setting["param_opt_val"]}')   
-        mid_run=runs_data.index[runs_data.overall_score==runs_data.overall_score.median()][0]
+        # This requires n_runs to be odd but some runs may fail, etc.
+        # mid_run=runs_data.index[runs_data.overall_score==runs_data.overall_score.median()][0]
+        # alternative:
+        mid_run=runs_data.index[np.argmin(np.abs(runs_data.overall_score-runs_data.overall_score.median()))]
         top_settings[model]=dict(
             params=top_setting, runs=list(runs_data.index),mid_run=mid_run)
     
@@ -112,17 +117,21 @@ params_opt_colors=sb.color_palette(cc.glasbey, n_colors=len(param_opt_col_map))
 
 # %%
 path_integration=path_eval+'pancreas_conditions_MIA_HPAP2/integration/'
+Path(path_integration.rstrip('/')+'_summary/').mkdir(parents=True, exist_ok=True)
 
 # %%
 # Load integration results - params and metrics
 res=[]
 metrics_data=[]
 for run in glob.glob(path_integration+'*/'):
-    if os.path.exists(run+'args.pkl') and \
+    if (os.path.exists(run+'args.pkl') or os.path.exists(run+'args.yml')) and \
         os.path.exists(run+'scib_metrics.pkl') and \
         os.path.exists(run+'scib_metrics_scaled.pkl') and\
         os.path.exists(run+'scib_metrics_data.pkl'):
-        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.pkl'):
+            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.yml'):
+            args=pd.Series(yaml.safe_load(open(run+'args.yml','rb')))
         metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
         metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
         metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
@@ -142,6 +151,8 @@ res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
 res['param_opt_val']=res.apply(
     lambda x: x[x['param_opt_col']] if x['param_opt_col'] is not None else 0,axis=1)
 res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
+
+# %%
 
 # %% [markdown]
 # ### Best runs
@@ -170,17 +181,21 @@ pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.p
 
 # %%
 path_integration=path_eval+'retina_adult_organoid/integration/'
+Path(path_integration.rstrip('/')+'_summary/').mkdir(parents=True, exist_ok=True)
 
 # %%
 # Load integration results - params and metrics
 res=[]
 metrics_data=[]
 for run in glob.glob(path_integration+'*/'):
-    if os.path.exists(run+'args.pkl') and \
+    if (os.path.exists(run+'args.pkl') or os.path.exists(run+'args.yml')) and \
         os.path.exists(run+'scib_metrics.pkl') and \
         os.path.exists(run+'scib_metrics_scaled.pkl') and\
         os.path.exists(run+'scib_metrics_data.pkl'):
-        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.pkl'):
+            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.yml'):
+            args=pd.Series(yaml.safe_load(open(run+'args.yml','rb')))
         metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
         metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
         metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
@@ -192,6 +207,9 @@ for run in glob.glob(path_integration+'*/'):
         metrics_data_sub['name']=name
         metrics_data.append(metrics_data_sub)
 res=pd.concat(res,axis=1).T
+
+# %%
+res
 
 # %%
 #  Parse param that was optimised
@@ -237,17 +255,21 @@ pkl.dump(example_runs,open(path_integration.rstrip('/')+'_summary/example_runs.p
 
 # %%
 path_integration=path_eval+'adipose_sc_sn_updated/integration/'
+Path(path_integration.rstrip('/')+'_summary/').mkdir(parents=True, exist_ok=True)
 
 # %%
 # Load integration results - params and metrics
 res=[]
 metrics_data=[]
 for run in glob.glob(path_integration+'*/'):
-    if os.path.exists(run+'args.pkl') and \
+    if (os.path.exists(run+'args.pkl') or os.path.exists(run+'args.yml')) and \
         os.path.exists(run+'scib_metrics.pkl') and \
         os.path.exists(run+'scib_metrics_scaled.pkl') and\
         os.path.exists(run+'scib_metrics_data.pkl'):
-        args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.pkl'):
+            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.yml'):
+            args=pd.Series(yaml.safe_load(open(run+'args.yml','rb')))
         metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
         metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
         metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
@@ -259,6 +281,9 @@ for run in glob.glob(path_integration+'*/'):
         metrics_data_sub['name']=name
         metrics_data.append(metrics_data_sub)
 res=pd.concat(res,axis=1).T
+
+# %%
+param_opt_col_map
 
 # %%
 #  Parse param that was optimised
@@ -287,3 +312,75 @@ for model,setting in top_settings.items():
 # Save
 pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
 pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
+
+# %%
+
+# %%
+
+# %% [markdown]
+# ## Retina atlas sc sn
+
+# %% [markdown]
+# Load data
+
+# %%
+path_integration=path_eval+'retina_atlas_sc_sn/integration/'
+Path(path_integration.rstrip('/')+'_summary/').mkdir(parents=True, exist_ok=True)
+
+# %%
+# Load integration results - params and metrics
+res=[]
+metrics_data=[]
+for run in glob.glob(path_integration+'*/'):
+    if (os.path.exists(run+'args.pkl') or os.path.exists(run+'args.yml')) and \
+        os.path.exists(run+'scib_metrics.pkl') and \
+        os.path.exists(run+'scib_metrics_scaled.pkl') and\
+        os.path.exists(run+'scib_metrics_data.pkl'):
+        if os.path.exists(run+'args.pkl'):
+            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+        if os.path.exists(run+'args.yml'):
+            args=pd.Series(yaml.safe_load(open(run+'args.yml','rb')))
+        metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
+        metrics_scl=pd.Series(pkl.load(open(run+'scib_metrics_scaled.pkl','rb')))
+        metrics_scl.index=metrics_scl.index.map(lambda x: x+'_scaled')
+        data=pd.concat([args,metrics,metrics_scl])
+        name=run.split('/')[-2]
+        data.name=name
+        res.append(data)
+        metrics_data_sub=pkl.load(open(run+'scib_metrics_data.pkl','rb'))
+        metrics_data_sub['name']=name
+        metrics_data.append(metrics_data_sub)
+res=pd.concat(res,axis=1).T
+
+# %%
+param_opt_col_map
+
+# %%
+#  Parse param that was optimised
+res['param_opt_col']=res.params_opt.replace(param_opt_col_map)
+res['param_opt_val']=res.apply(
+    lambda x: (x[x['param_opt_col']] if not isinstance(x[x['param_opt_col']],dict)
+              else x[x['param_opt_col']]['weight_end']) 
+    if x['param_opt_col'] is not None else 0,axis=1)
+res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
+
+# %% [markdown]
+# ### Best runs
+
+# %%
+# Top runs/settings
+top_runs,top_settings=get_top_runs(res)
+print('Top runs')
+display(top_runs)
+print('Top settings')
+for model,setting in top_settings.items():
+    print(model)
+    print(tuple(setting['params'].values()))
+    print(setting['mid_run'])
+
+# %%
+# Save
+pkl.dump(top_runs,open(path_integration.rstrip('/')+'_summary/top_runs.pkl','wb'))
+pkl.dump(top_settings,open(path_integration.rstrip('/')+'_summary/top_settings.pkl','wb'))
+
+# %%

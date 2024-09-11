@@ -1,0 +1,95 @@
+seml:
+  executable: /home/moinfar/projects/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
+  name: csi_eval
+  output_dir: /home/moinfar/io/csi/eval/retina_adult_organoid/logs # CHANGE! OUT!
+  project_root_dir:  /home/moinfar/projects/cross_system_integration/notebooks/eval/cleaned
+  conda_environment: csi
+  
+slurm:
+  max_simultaneous_jobs: 10
+  sbatch_options_template: GPU
+  sbatch_options:
+    mem: 60G
+    cpus-per-task: 4  
+    time: 0-10:00   
+    nice: 10000
+
+fixed:
+  path_save: /home/moinfar/io/csi/eval/retina_adult_organoid/ # CHANGE! OUT!
+  max_epochs: 100
+  epochs_detail_plot: 40
+  # Model params
+  system_decoders: 0
+  # Task
+  eval_type: integration
+  # Data
+  path_adata: /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad
+  fn_moransi: /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG_moransiGenes.pkl
+  group_key: cell_type
+  batch_key: sample_id
+  system_key: system
+  n_cells_eval: 100000
+  conda_env: csi
+  pca_key: X_pca_system
+       
+  
+grid:
+  seed_num:
+    type: choice
+    options:
+      - 1
+      - 2
+      - 3 
+     
+seurat_cca:
+    fixed:
+      model: seurat
+      params_opt: seurat_cca_k_anchor
+      conda_env: NA
+      reduction: cca
+      k_weight: 50  # We have to enforce this since one batch is small
+      language: R
+    grid:
+      k_anchor:
+        type: choice
+        options:
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
+
+seurat_rpca:
+    fixed:
+      model: seurat
+      params_opt: seurat_rpca_k_anchor
+      conda_env: NA
+      reduction: rpca
+      k_weight: 35  # We have to enforce this since one batch is small
+      language: R
+    grid:
+      k_anchor:
+        type: choice
+        options:
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
+
+harmony:
+    fixed:
+      model: harmony
+      params_opt: harmony_theta
+      conda_env: NA
+      reduction: harmony
+      language: R
+    grid:
+      harmony_theta:
+        type: choice
+        options:
+          - 0.1
+          - 1.0
+          - 5.0
+          - 10.0
+          - 100.0

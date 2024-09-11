@@ -25,6 +25,7 @@ import numpy as np
 seed=np.random.randint(0,1000000)
 import argparse
 import os
+import pathlib
 import string
 import subprocess
 
@@ -278,7 +279,7 @@ path_save=args.path_save+\
     ('-TEST' if TESTING else '')+\
     os.sep
 
-os.mkdir(path_save)
+pathlib.Path(path_save).mkdir(parents=True, exist_ok=False)
 print("PATH_SAVE=",path_save)
 
 # %%
@@ -367,7 +368,7 @@ elif args.prior_components_system is not None:
 else:
     pdi=None
     
-if len(pdi)!=n_prior_components:
+if pdi is not None and len(pdi) != n_prior_components:
     raise ValueError('Not sufficent number of prior components could be sampled')
 
 # %%
