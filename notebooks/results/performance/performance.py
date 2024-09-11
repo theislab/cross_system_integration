@@ -315,6 +315,9 @@ for dataset,dataset_name in dataset_map.items():
     plt.savefig(path_fig+f'performance-embed_{dataset}_topsettings-umap.png',
                 dpi=300,bbox_inches='tight')
 
+# %%
+embed.obs['cell_type'].unique().to_list()
+
 # %% [markdown]
 # ## All runs
 # Results of all runs
