@@ -18,7 +18,7 @@ Figure 1: The challenge of integrating datasets with substantial batch effects. 
 
 ### Using sysVI model on your own data
 
-We suggest using the scvi-tools implementation of the sysVI model as this repository will remain for reproducibility purposes only and will not be maintained in the future. The sysVI model is expected to be merged in the scvi-tools version 1.2. Until then please use this [fork](https://github.com/Hrovatin/scvi-tools/tree/main/scvi/external/sysvi) and the following [tutorial](https://github.com/Hrovatin/scvi-tutorials/blob/main/scrna/sysVI.ipynb) - note that some of the parameters are changed from the original implementation to adhere to the scvi-tools terminology.
+We suggest using the scvi-tools implementation of the sysVI model as this repository will remain for reproducibility purposes only and will not be maintained in the future. The sysVI model is expected to be merged in the scvi-tools version 1.2. Until then please use this [fork - branch stable](https://github.com/Hrovatin/scvi-tools/tree/stable/src/scvi/external/sysvi) and the following [tutorial](https://github.com/Hrovatin/scvi-tutorials/blob/main/scrna/sysVI.ipynb) - note that some of the parameters are changed from the original implementation to adhere to the scvi-tools terminology.
 
 ### For reproducibility purposes
 
