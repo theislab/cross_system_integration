@@ -20,6 +20,11 @@ Figure 1: The challenge of integrating datasets with substantial batch effects. 
 
 We suggest using the scvi-tools implementation of the sysVI model as this repository will remain for reproducibility purposes only and will not be maintained in the future. The sysVI model is expected to be merged in the scvi-tools version 1.2. Until then please use this [fork - branch stable](https://github.com/Hrovatin/scvi-tools/tree/stable/src/scvi/external/sysvi) and the following [tutorial - branch stable](https://github.com/Hrovatin/scvi-tutorials/blob/stable/scrna/sysVI.ipynb) - note that some of the parameters are changed from the original implementation to adhere to the scvi-tools terminology.
 
+For example, to install the suggested `scvi-tools` fork `stable` branch use:
+```
+pip install git+https://github.com/Hrovatin/scvi-tools.git
+```
+
 ### For reproducibility purposes
 
 Clone the git repository and run `pip install -e .` from within the cloned repository.
