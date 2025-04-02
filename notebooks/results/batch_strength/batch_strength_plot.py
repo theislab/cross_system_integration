@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -27,26 +27,21 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
-path_fig=path_data+'figures/'
-path_names=path_data+'names_parsed/'
+path_data='/home/moinfar/data/'
+path_fig='/home/moinfar/io/csi/figures/'
+path_names='/home/moinfar/io/csi/names_parsed/'
 
 # %%
 # Load distances 
 dataset_map=pkl.load(open(path_names+'datasets.pkl','rb'))
 system_map=pkl.load(open(path_names+'systems.pkl','rb'))
-
-# %%
-dataset_metric_fns={
-    'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG',
-    'retina_adult_organoid':'combined_HVG',
-    'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn',
-}
+dataset_path=pkl.load(open(path_names+'dataset_path.pkl','rb'))
+dataset_h5ad_path=pkl.load(open(path_names+'dataset_h5ad_path.pkl','rb'))
 
 # %%
 distances={
-    dataset:pkl.load(open(path_data+dataset+'/'+fn+'_PcaSysBatchDist.pkl','rb'))
-    for dataset, fn in dataset_metric_fns.items()}
+    dataset:pkl.load(open(dataset_path[dataset]+'/'+dataset_h5ad_path[dataset][:-5]+'_PcaSysBatchDist.pkl','rb'))
+    for dataset in dataset_path.keys()}
 
 # %% [markdown]
 # ## Plot one cell type in all sample pair groups (delta cells of pancreas)
@@ -107,7 +102,7 @@ scores=pd.DataFrame(scores)
 # Use gridspec as different datasets have different number of categories
 heights=[scores.query('dataset==@dataset').compared.nunique() for dataset in dataset_map]
 nrows=len(heights)
-fig = plt.figure(figsize=(1.4, 4.2))
+fig = plt.figure(figsize=(1.4, 1.4 * len(heights)))
 fig.set(facecolor = (0,0,0,0))
 gs = GridSpec(nrows, 1, height_ratios=heights)
 # Set one ax as ref so that ax can be shared
@@ -125,7 +120,8 @@ for idx,(dataset,dataset_name) in enumerate(dataset_map.items()):
         for x in data_plot.compared.unique()}
     data_plot['compared_name']=data_plot.compared.map(compared_map)
     sb.swarmplot(x='score',y='compared_name',data=data_plot,ax=ax, c='k',s=2)
-    ax.set_ylabel(dataset_name.replace('-','-\n'))
+    # ax.set_ylabel(dataset_name.replace('-','-\n'))
+    ax.set_ylabel("\n".join(dataset_name.rsplit(" ", 1)))
     if idx==nrows-1:
         ax.set_xlabel('Distances between samples\n(mean per cell type)')
         ax.xaxis.set_label_coords(-0.11, -0.3)
@@ -140,5 +136,7 @@ for idx,(dataset,dataset_name) in enumerate(dataset_map.items()):
 plt.subplots_adjust(hspace=0)
 plt.savefig(path_fig+f'batch_strength-overview_absolute-swarm.pdf',dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+f'batch_strength-overview_absolute-swarm.png',dpi=300,bbox_inches='tight')
+
+# %%
 
 # %%

@@ -199,6 +199,8 @@ if KNN_PURITY or TESTING:
         labels=embed_group.obs[args.group_key])
 
 # %%
+
+# %%
 # Moran's I
 if MORANSI or  TESTING:
     # Load adata with expression and Moran's I base values and full embedding
@@ -225,7 +227,7 @@ if MORANSI or  TESTING:
                      batch=group_mi['batch'])
             embed_sub=embed_full[
                 (embed_full.obs[args.group_key]==group_mi['group']).values&
-                (embed_full.obs[args.system_key]==str(group_mi['system'])).values&
+                (embed_full.obs[args.system_key].astype(str)==str(group_mi['system'])).values&
                 (embed_full.obs[args.batch_key]==group_mi['batch']).values,:].copy()
             # Check that there are enough cells for testing
             if not TESTING or embed_sub.shape[0]>50:
@@ -252,7 +254,7 @@ if MORANSI or  TESTING:
 if ILISI_BATCH_SYSTEM or TESTING:
     print('ilisi_batch_system')
     for system in sorted(embed_group.obs[args.system_key].unique()):
-        embed_sub=embed_group[embed_group.obs[args.system_key]==system,:].copy()
+        embed_sub=embed_group[embed_group.obs[args.system_key].astype(str)==str(system),:].copy()
         sc.pp.neighbors(embed_sub, use_rep='X', n_neighbors=90)
         metrics['ilisi_batch_system-'+system], metrics[
             'ilisi_batch_macro_system-'+system], metrics_data[
@@ -274,5 +276,3 @@ pkl.dump(metrics_data,open(fn_metrics_data,'wb'))
 
 # %%
 print('Finished metrics!')
-
-# %%

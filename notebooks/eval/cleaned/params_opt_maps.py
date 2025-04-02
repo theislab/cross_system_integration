@@ -39,6 +39,8 @@ param_opt_col_map={
      'seurat_rpca_k_anchor':'k_anchor',
      'seurat_cca_k_anchor':'k_anchor',
      'harmony_theta':'harmony_theta',
+     'sysvi_vamp_cyc_z_distance_cycle_weight_2': 'z_distance_cycle_weight',
+     'sysvi_vamp_cyc_z_distance_cycle_weight_2_stable': 'z_distance_cycle_weight',
 }
 
 

@@ -23,6 +23,7 @@ fixed:
   # Task
   eval_type: integration
   # Data
+  # TODO: add .h5ad
   path_adata: /home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg
   fn_moransi: /home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg_moransiGenes.pkl
   group_key: cell_type
@@ -288,5 +289,21 @@ scgen_sample:
         type: choice
         options:
           - 0.1
+
+
+harmony:
+    fixed:
+      model: harmonypy
+      params_opt: harmony_theta
+      conda_env: csi
+    grid:
+      harmony_theta:
+        type: choice
+        options:
+          - 0.1
+          - 1.0
+          - 5.0
+          - 10.0
+          - 100.0
 
 

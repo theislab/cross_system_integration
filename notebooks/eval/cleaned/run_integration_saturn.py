@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
-#     display_name: saturn
+#     display_name: sysvi
 #     language: python
-#     name: saturn
+#     name: sysvi
 # ---
 
 # %%
@@ -33,6 +33,16 @@ import seaborn as sns
 
 import torch
 import random
+
+# %%
+
+# %%
+adata=sc.read("/home/moinfar/data/skin_mouse_human/processed/skin_mm_hs_hvg-hsPart_nonortholHVG.h5ad")
+
+# %%
+adata.var
+
+# %%
 
 # %%
 parser = argparse.ArgumentParser()

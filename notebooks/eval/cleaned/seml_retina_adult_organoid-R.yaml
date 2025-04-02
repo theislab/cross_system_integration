@@ -77,7 +77,7 @@ seurat_rpca:
           - 20
           - 50
 
-harmony:
+harmonyr:
     fixed:
       model: harmony
       params_opt: harmony_theta

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -32,7 +32,7 @@ sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
 from params_opt_maps import *
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 
@@ -150,6 +150,13 @@ ress['param_opt_val_str']=pd.Categorical(
     ordered=True)
 
 # %%
+ress = ress.query('testing == False')
+ress.drop_duplicates(['model_parsed', 'param_parsed', 'genes_parsed', 'dataset_parsed', 'name', 'seed', 'params_opt', 'param_opt_val'], inplace=True)
+
+# %%
+ress = ress[~(ress['model_parsed'].str.contains('SysVI'))].copy()
+
+# %%
 # HP-metric correlations
 corrs=[]
 group_cols=['model_parsed','param_parsed','dataset_parsed']
@@ -172,7 +179,7 @@ corrs.rename({'dataset_parsed':'Dataset'},axis=1,inplace=True)
 # Plot
 palette={dataset_map[dataset]:color for dataset,color in dataset_cmap.items()}
 g=sb.catplot(x='Optimized',y='HP corr.',hue='Dataset',row='metric', data=corrs, 
-             height=1.5,aspect=3, kind='swarm',palette=palette)
+             height=2.5,aspect=3, kind='swarm',palette=palette)
 # Make pretty
 g.axes[-1][0].set_xticklabels(g.axes[-1][0].get_xticklabels(),rotation=90)
 for ax in g.axes:

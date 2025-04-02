@@ -17,6 +17,7 @@
 # # Set names and cmaps for plotting
 
 # %%
+import os
 import pickle as pkl
 
 # %%
@@ -39,11 +40,14 @@ model_map={
     'vamp_cycle':'VAMP+CYC',
     'cVAE': 'cVAE',
     'scvi': 'scVI',
+    'harmony': 'Harmony',
+    'harmonypy': 'Harmony-py',
     'scglue': 'GLUE',
+    'seurat': 'Seaurat',
     'saturn': 'SATURN',
     'saturn_super': 'SATURN-CT',
-    'seurat': 'Seaurat',
-    'harmony': 'Harmony',
+    'sysvi': 'SysVI',
+    'sysvi_stable': 'SysVI-stable',
 }
 pkl.dump(model_map,open(path_save+'models.pkl','wb'))
 
@@ -84,6 +88,8 @@ dataset_map={
     'retina_adult_organoid':'Retina Organoid-Tissue',
     'adipose_sc_sn_updated':'Adipose Cell-Nuclei',
     'retina_atlas_sc_sn':'Retina Atlas Cell-Nuclei',
+    'skin_mm_hs':'Skin Mouse-Human',
+    'skin_mm_hs_limited':'Limited Skin Mouse-Human',
 }
 pkl.dump(dataset_map,open(path_save+'datasets.pkl','wb'))
 
@@ -111,6 +117,12 @@ param_vals=[
         ('seurat_rpca_k_anchor',[2, 5, 10, 20, 50]) ]),
     (['harmony'],[
         ('harmony_theta',[0.1, 1.0, 5., 10., 100.]) ]),
+    (['harmonypy'],[
+        ('harmonypy_theta',[0.1, 1.0, 5., 10., 100.]) ]),
+    (['sysvi'],[
+        ('z_distance_cycle_weight',[2.0, 5.0, 10.0, 50.0]) ]),
+    (['sysvi_stable'],[
+        ('z_distance_cycle_weight',[2.0, 5.0, 10.0, 50.0]) ]),
 ] 
 
 pkl.dump(param_vals,open(path_save+'optimized_parameter_values.pkl','wb'))
@@ -150,6 +162,9 @@ params_opt_map={
      'seurat_ccca_k_anchor':'seurat',
      'seurat_rpca_k_anchor':'seurat',
      'harmony_theta':'harmony',
+     'harmonypy_theta':'harmonypy',
+     'sysvi_vamp_cyc_z_distance_cycle_weight_2':'sysvi',
+     'sysvi_vamp_cyc_z_distance_cycle_weight_2_stable':'sysvi_stable',
     }
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
 
@@ -179,6 +194,8 @@ param_names={
  'pe_sim_penalty':'Protein sim. LW',
  'k_anchor':'K.Anchor',
  'theta':'Theta',
+ 'harmonypy_theta': 'Theta (Harmony-py)',
+ 'harmony_theta': 'Theta (Harmony)',
   None:'None',  
 }
 pkl.dump(param_names,open(path_save+'params.pkl','wb'))
@@ -195,6 +212,7 @@ pkl.dump(param_names_additional,open(path_save+'params_additional.pkl','wb'))
 # Map params_opt to gene relationship type
 params_opt_gene_map={
      'kl_weight':'OTO',
+     'z_distance_cycle_weight_std':'OTO',
      'saturn_pe_sim_penalty':'OTO',
      'saturn_pe_sim_penalty_no':'FO',
      'saturn_pe_sim_penalty_super':'OTO',
@@ -211,6 +229,9 @@ params_opt_gene_map={
      'seurat_ccca_k_anchor':'OTO',
      'seurat_rpca_k_anchor':'OTO',
      'harmony_theta':'OTO',
+     'harmonypy_theta':'OTO',
+     'sysvi_vamp_cyc_z_distance_cycle_weight_2': 'OTO',
+     'sysvi_vamp_cyc_z_distance_cycle_weight_2_stable': 'OTO',
     }
 pkl.dump(params_opt_gene_map,open(path_save+'params_opt_genes.pkl','wb'))
 
@@ -221,6 +242,8 @@ system_map={
     'retina_adult_organoid':{'0':'Organoid','1':'Tissue'},
     'adipose_sc_sn_updated':{'0':'Cell','1':'Nuclei'},
     'retina_atlas_sc_sn':{'0':'Cell','1':'Nuclei'},
+    'skin_mm_hs':{'0':'Mouse','1':'Human'},
+    'skin_mm_hs_limited':{'0':'Mouse','1':'Human'},
 }
 pkl.dump(system_map,open(path_save+'systems.pkl','wb'))
 
@@ -316,7 +339,37 @@ cell_type_map={
         'diffuse bipolar 4 cell': 'Diffuse bipolar 4 cell',
         'diffuse bipolar 3a cell': 'Diffuse bipolar 3a cell',
         'ON-blue cone bipolar cell': 'ON-blue cone bipolar cell',
-    }
+    },
+    'skin_mm_hs': {
+        'CD3E & CPA3': 'CD3E+ and CPA3+',
+        'Chondrocyte': 'Chondrocyte',
+        'cytotoxic t cell': 'Cytotoxic T cell',
+        'Endothelial': 'Endothelial',
+        'Epidermal': 'Epidermal',
+        'Fibroblast': 'Fibroblast',
+        'helper t cell': 'Helper T cell',
+        'Immune': 'Immune',
+        'Lymphatic': 'Lymphatic',
+        'Neutrophil': 'Neutrophil',
+        'Pericyte': 'Pericyte',
+        'regulatory t cell': 'Regulatory T cell',
+        'SOX10': 'SOX10+',
+    },
+    'skin_mm_hs_limited': {
+        'CD3E & CPA3': 'CD3E+ and CPA3+',
+        'Chondrocyte': 'Chondrocyte',
+        'cytotoxic t cell': 'Cytotoxic T cell',
+        'Endothelial': 'Endothelial',
+        'Epidermal': 'Epidermal',
+        'Fibroblast': 'Fibroblast',
+        'helper t cell': 'Helper T cell',
+        'Immune': 'Immune',
+        'Lymphatic': 'Lymphatic',
+        'Neutrophil': 'Neutrophil',
+        'Pericyte': 'Pericyte',
+        'regulatory t cell': 'Regulatory T cell',
+        'SOX10': 'SOX10+',
+    },
 }
 pkl.dump(cell_type_map,open(path_save+'cell_types.pkl','wb'))
 
@@ -327,6 +380,31 @@ prior_init_map={
     'prior_components_system':{'-1':'Balanced'},
 }
 pkl.dump(prior_init_map,open(path_save+'prior_init.pkl','wb'))
+
+# %% [markdown]
+# # Paths
+
+# %%
+dataset_path = {
+    'pancreas_conditions_MIA_HPAP2': '/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2',
+    'retina_adult_organoid': '/om2/user/khrovati/data/cross_system_integration/retina_adult_organoid',
+    'adipose_sc_sn_updated': '/om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated',
+    'retina_atlas_sc_sn': '/home/moinfar/data/human_retina_atlas',
+    'skin_mm_hs': '/home/moinfar/data/skin_mouse_human/processed',
+    'skin_mm_hs_limited': '/home/moinfar/data/skin_mouse_human/processed',
+}
+pkl.dump(dataset_path,open(path_save+'dataset_path.pkl','wb'))
+
+# %%
+dataset_h5ad = {
+    'pancreas_conditions_MIA_HPAP2': 'combined_orthologuesHVG.h5ad',
+    'retina_adult_organoid': 'combined_HVG.h5ad',
+    'adipose_sc_sn_updated': 'adiposeHsSAT_sc_sn.h5ad',
+    'retina_atlas_sc_sn': 'human_retina_atlas_sc_sn_hvg.h5ad',
+    'skin_mm_hs': 'skin_mm_hs_hvg.h5ad',
+    'skin_mm_hs_limited': 'limited_data_skin_mm_hs_hvg.h5ad',
+}
+pkl.dump(dataset_h5ad,open(path_save+'dataset_h5ad_path.pkl','wb'))
 
 # %% [markdown]
 # ## Color maps
@@ -349,16 +427,15 @@ pkl.dump(palette,open(path_save+'model_cmap.pkl','wb'))
 # %%
 # UMAP metadata colloring for individual datasets
 cmaps=defaultdict(dict)
-for fn,dataset,cols in [
-    ('/om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad',
-     'adipose_sc_sn_updated', ['cluster','system','donor_id']),
-    ('/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
-     'pancreas_conditions_MIA_HPAP2', ['cell_type_eval','system','batch','leiden_system']),
-    ('/om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad',
-     'retina_adult_organoid', ['cell_type','system','sample_id']),
-    ('/home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg.h5ad',
-     'retina_atlas_sc_sn', ['cell_type','system','donor_id']),
+for dataset,cols in [
+    ('adipose_sc_sn_updated', ['cluster','system','donor_id']),
+    ('pancreas_conditions_MIA_HPAP2', ['cell_type_eval','system','batch','leiden_system']),
+    ('retina_adult_organoid', ['cell_type','system','sample_id']),
+    ('retina_atlas_sc_sn', ['cell_type','system','donor_id']),
+    ('skin_mm_hs', ['cell_type_eval', 'system', 'batch']),
+    ('skin_mm_hs_limited', ['cell_type_eval', 'system', 'batch']),
 ]:
+    fn = os.path.join(dataset_path[dataset], dataset_h5ad[dataset])
     adata=sc.read(fn,backed='r')
     for col in cols:
         adata.obs[col]=adata.obs[col].astype(str)
@@ -386,9 +463,16 @@ palette={
     'pancreas_conditions_MIA_HPAP2':'#8a9e59',
     'retina_adult_organoid':'#c97fac',
     'adipose_sc_sn_updated':'#92C2D0',
+    'retina_atlas_sc_sn':'#97d092',
+    'skin_mm_hs':'#b07c0c',
+    'skin_mm_hs_limited':'#d94214',
 }
 pkl.dump(palette,open(path_save+'dataset_cmap.pkl','wb'))
 
 # %%
+
+# %%
+# Dont forget to update this file (strange? ya!) if adding a method:
+# .../eva/cleaned/params_opt_maps.py
 
 # %%
