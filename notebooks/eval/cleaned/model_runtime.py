@@ -60,6 +60,10 @@ batch_key = 'batch'
 # %%
 config.seed=1
 
+# %%
+details_filename = pathlib.Path('/home/moinfar/io/csi/runtime/details.pkl')
+results_filename = pathlib.Path('/home/moinfar/io/csi/runtime/results.csv')
+
 # %% [markdown]
 # ## Integration
 
@@ -79,8 +83,6 @@ adata=sc.read(path_adata)
 # %%
 
 # %%
-details_filename = pathlib.Path('/home/moinfar/io/csi/runtime/details.pkl')
-results_filename = pathlib.Path('/home/moinfar/io/csi/runtime/results.csv')
 
 # %%
 if details_filename.exists():
@@ -229,6 +231,7 @@ result_df
 
 # %%
 result_df = pd.read_csv(results_filename, index_col=0)
+result_df['model'].replace({'sysVI': 'VAMP+CYC'}, inplace=True)
 result_df
 
 # %%
@@ -252,6 +255,7 @@ for run in runs:
     })
 
 runs_df = pd.json_normalize(result_list, sep='_')
+runs_df['config_model_name'].replace({'sysVI': 'VAMP+CYC'}, inplace=True)
 runs_df
 
 # %%
@@ -315,7 +319,7 @@ if x_order is None:
     x_order = list(sorted(runs_df.drop_duplicates(subset=['config_n_samples'])['config_n_samples']))
 
 runs_df['n_samples'] = runs_df['config_n_samples']
-runs_df['runtime_ps_minutes'] = runs_df['config_runtime'] * 1000 / runs_df['n_samples'] / max_epochs
+runs_df['runtime_ps_minutes'] = runs_df['config_runtime'] * 1000 / runs_df['n_samples'] / runs_df['config_max_epochs']
 
 plt.figure(figsize=(7, 5))
 barplot = sns.barplot(

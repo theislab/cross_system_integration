@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 import scanpy as sc
 import pickle as pkl
+import yaml
 import math
 import glob
 import os
@@ -65,9 +66,12 @@ for dataset,dataset_name in dataset_map.items():
     path_integration=f'{path_data}eval/{dataset}/integration/'
     res=[]
     for run in glob.glob(path_integration+'*/'):
-        if os.path.exists(run+'args.pkl') and \
+        if (os.path.exists(run+'args.pkl') or os.path.exists(run+'args.yml')) and \
             os.path.exists(run+'scib_metrics.pkl'):
-            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+            if os.path.exists(run+'args.pkl'):
+                args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+            if os.path.exists(run+'args.yml'):
+                args=pd.Series(yaml.safe_load(open(run+'args.yml','rb')))
             metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
             data=pd.concat([args,metrics])
             name=run.split('/')[-2]
@@ -90,6 +94,14 @@ for dataset,dataset_name in dataset_map.items():
     
     res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
 
+    res['params_opt']=np.where(res.index.str.contains('harmonypy'), 
+                               res['params_opt'].replace({'harmony_theta': 'harmonypy_theta'}),
+                               res['params_opt'])
+    res['param_opt_col']=np.where(res.index.str.contains('harmonypy'), 
+                                  res['param_opt_col'].replace({'harmony_theta': 'harmonypy_theta'}),
+                                  res['param_opt_col'])
+    res['harmonypy_theta'] = res['harmony_theta']
+                                  
     # Keep relevant params and name model
     params_opt_vals=set(params_opt_map.keys())
     res_sub=res.query('params_opt in @params_opt_vals').copy()
