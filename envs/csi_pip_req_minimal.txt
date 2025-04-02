@@ -28,4 +28,5 @@ leidenalg==0.10.2
 jax==0.4.10
 jaxlib==0.4.10
 ml-dtypes==0.1.0
+harmonypy==0.0.10
 
