@@ -88,6 +88,8 @@ adata_sc
 # %%
 
 # %%
+
+# %%
 # PP sn
 adata_sn=sc.read(path_sn_data)
 adata_sn.X = adata_sn.raw.X
@@ -184,7 +186,7 @@ adata.write(path_save)
 
 # %%
 adata = sc.read(path_save)
-path_save = path_data + 'embed_pca'
+path_save = path_data
 
 # %%
 # Non-integrated embedding
@@ -208,14 +210,14 @@ display(adata_embed)
 
 # %%
 # Save
-adata_embed.write(path_save + 'hrca_sc_sn_pca_embed.h5ad')
+adata_embed.write(path_save + 'human_retina_atlas_sc_sn_hvg_embed.h5ad')
 
 # %% [markdown]
 # # Integration metrics on non-integrated data
 
 # %%
 # Reload
-adata_embed=sc.read(path_save + 'hrca_sc_sn_pca_embed.h5ad')
+adata_embed=sc.read(path_save + 'human_retina_atlas_sc_sn_hvg_embed.h5ad')
 
 # %%
 # Check ranges of individual PCs
@@ -243,7 +245,7 @@ for k,v in asws.items():
     print('\n')
 
 # %%
-pkl.dump({'asw_batch':asws},open(path_save+'hrca_sc_sn_pca_embed_integrationMetrics.pkl','wb'))
+pkl.dump({'asw_batch':asws},open(path_save+'human_retina_atlas_sc_sn_hvg_embed_integrationMetrics.pkl','wb'))
 
 # %% [markdown]
 # # Moran's I for eval
@@ -387,10 +389,10 @@ for ct in cts:
 
 # %%
 # Save distances
-# pkl.dump(distances,open(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist.pkl','wb'))
+pkl.dump(distances,open(path_data + 'human_retina_atlas_sc_sn_hvg_PcaSysBatchDist.pkl','wb'))
 
 # %%
-#distances=pkl.load(open(path_save+'adiposeHsSAT_sc_sn_PcaSysBatchDist.pkl','rb'))
+distances=pkl.load(open(path_data + 'human_retina_atlas_sc_sn_hvg_PcaSysBatchDist.pkl','rb'))
 
 # %%
 # Prepare df for plotting
