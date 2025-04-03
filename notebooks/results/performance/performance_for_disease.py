@@ -241,7 +241,7 @@ setup_dicts = {
     'test_1': {
         'dataset_name': 'Retina Organoid-Tissue',
         'description': 'Compare organoid with periphery (similar) and fovea (dissimilar).',
-        'description_short': 'Organoid vs \nperiphery (+) and fovea (-).',
+        'description_short': 'Mueller cell\snOrganoid vs \nperiphery (+) and fovea (-).',
         'embed_subset': lambda embed: embed[embed.obs['cell_type'].astype(str) == 'Mueller cell'],
         'group_similar': lambda embed_subset: embed_subset[(embed_subset.obs['system'].astype(str) == '0') | (embed_subset.obs['region'].astype(str) == 'periphery')],
         'group_dissimilar': lambda embed_subset: embed_subset[(embed_subset.obs['system'].astype(str) == '0') | (embed_subset.obs['region'].astype(str) == 'fovea')],
@@ -251,7 +251,7 @@ setup_dicts = {
     'test_2': {
         'dataset_name': 'Pancreas Mouse-Human',
         'description': 'Compare mouse T2D with T2D human (similar) and normal human (dissimilar).',
-        'description_short': 'Mouse T2D vs \nhuman T2D (+) and healthy (-)',
+        'description_short': 'Beta cells\nMouse T2D vs \nhuman T2D (+) and healthy (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'beta'],
         'group_similar': lambda embed_subset: embed_subset[
             ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_Diabetes Status'].astype(str) == 'type 2 diabetes mellitus')) | 
@@ -267,7 +267,7 @@ setup_dicts = {
     'test_3': {
         'dataset_name': 'Pancreas Mouse-Human',
         'description': 'Compare T2D human with T2D mouse (similar) and normal mouse (dissimilar).',
-        'description_short': 'Human T2D vs \nmouse T2D (+) and healthy (-)',
+        'description_short': 'Beta cells\nHuman T2D vs \nmouse T2D (+) and healthy (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'beta'],
         'group_similar': lambda embed_subset: embed_subset[
             ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_Diabetes Status'].astype(str) == 'type 2 diabetes mellitus')) | 
@@ -283,7 +283,7 @@ setup_dicts = {
     'test_4': {
         'dataset_name': 'Skin Mouse-Human',
         'description': 'Compare mouse epidermolysis bullosa with human psoriasis (similar) and normal human (dissimilar).',
-        'description_short': 'Mouse disease vs \nhuman disease (+) and healthy (-)',
+        'description_short': 'Fibroblasts\nMouse disease vs \nhuman disease (+) and healthy (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'Fibroblast'],
         'group_similar': lambda embed_subset: embed_subset[
             ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'epidermolysis bullosa')) | 
@@ -299,7 +299,7 @@ setup_dicts = {
     'test_5': {
         'dataset_name': 'Skin Mouse-Human',
         'description': 'Compare human psoriasis with mouse epidermolysis bullosa (similar) and normal mouse (dissimilar).',
-        'description_short': 'Human disease vs \nmouse disease (+) and healthy (-)',
+        'description_short': 'Fibroblasts\nHuman disease vs \nmouse disease (+) and healthy (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'Fibroblast'],
         'group_similar': lambda embed_subset: embed_subset[
             ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'epidermolysis bullosa')) | 
@@ -315,7 +315,7 @@ setup_dicts = {
     'test_6': {
         'dataset_name': 'Limited Skin Mouse-Human',
         'description': 'Compare normal human with and normal mouse (similar) and mouse epidermolysis bullosa (dissimilar).',
-        'description_short': 'Human healthy vs \nmouse healthy (+) and disease (-)',
+        'description_short': 'Fibroblasts\nHuman healthy vs \nmouse healthy (+) and disease (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'Fibroblast'],
         'group_similar': lambda embed_subset: embed_subset[
             ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'normal')) | 
@@ -331,7 +331,7 @@ setup_dicts = {
     'test_7': {
         'dataset_name': 'Skin Mouse-Human',
         'description': 'Compare normal human with normal mouse (similar) and mouse epidermolysis bullosa (dissimilar).',
-        'description_short': 'Human healthy vs \nmouse healthy (+) and disease (-)',
+        'description_short': 'Fibroblasts\nHuman healthy vs \nmouse healthy (+) and disease (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'Fibroblast'],
         'group_similar': lambda embed_subset: embed_subset[
             ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'normal')) | 
@@ -344,17 +344,18 @@ setup_dicts = {
         'ignore_models': ['Non-integrated', 'Harmony'],
         'plot_cols': ['system', 'mm_disease', 'hs_disease'],
     },
-    'test_8': {
+    'test_8': None, # here there was a bug
+    'test_9': {
         'dataset_name': 'Skin Mouse-Human',
-        'description': 'Compare human psoriasis with normal mouse (similar) and mouse epidermolysis bullosa (dissimilar).',
-        'description_short': 'Human Disease vs \nmouse healthy (+) and disease (-)',
+        'description': 'Compare human psoriasis with mouse epidermolysis bullosa (similar) and normal mouse (dissimilar).',
+        'description_short': 'Fibroblasts\nHuman Disease vs \nmouse disease (+) and healthy (-)',
         'embed_subset': lambda embed: embed[embed.obs['cell_type_eval'].astype(str) == 'Fibroblast'],
         'group_similar': lambda embed_subset: embed_subset[
-            ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'normal')) | 
+            ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'epidermolysis bullosa')) | 
             ((embed_subset.obs['system'].astype(str) == '1') & (embed_subset.obs['hs_disease'].astype(str) == 'psoriasis'))
         ],
         'group_dissimilar': lambda embed_subset: embed_subset[
-            ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'epidermolysis bullosa')) | 
+            ((embed_subset.obs['system'].astype(str) == '0') & (embed_subset.obs['mm_disease'].astype(str) == 'normal')) | 
             ((embed_subset.obs['system'].astype(str) == '1') & (embed_subset.obs['hs_disease'].astype(str) == 'psoriasis'))
         ],
         'ignore_models': ['Non-integrated', 'Harmony'],
@@ -379,10 +380,10 @@ def calculate_neighbors(adata, obsm_emb_key, k=100, n_jobs=1, neighbor_computer=
 # %%
 
 # %%
-
-# %%
 for setup_name, setup_dict in setup_dicts.items():
     print(setup_name, setup_dict)
+    if setup_dict is None:
+        continue
 
     dataset_name = setup_dict['dataset_name']
     fn_embed_subset = setup_dict['embed_subset']
@@ -455,6 +456,8 @@ results_list = []
 # %%
 for setup_name, setup_dict in setup_dicts.items():
     print(setup_name, setup_dict)
+    if setup_dict is None:
+        continue
 
     dataset_name = setup_dict['dataset_name']
     fn_embed_subset = setup_dict['embed_subset']
@@ -514,11 +517,14 @@ results_df['model_parsed'] = pd.Categorical(values=results_df['model_parsed'], c
 results_df
 
 # %%
+results_df['setup_name'].unique()
+
+# %%
 results_df = results_df.query('testing == False')
 results_df.drop_duplicates(['setup_name', 'model_parsed', 'param_parsed', 'genes_parsed', 'dataset_parsed', 'name', 'seed', 'params_opt', 'param_opt_val'], inplace=True)
 
 # %%
-keep_setups = ['test_1', 'test_2', 'test_3', 'test_7', 'test_8', 'test_6']
+keep_setups = ['test_1', 'test_2', 'test_3', 'test_7', 'test_9', 'test_6']
 results_df = results_df[results_df['setup_name'].astype(str).isin(keep_setups)].copy()
 results_df['setup_name'] = pd.Categorical(values=results_df['setup_name'], categories=keep_setups, ordered=True)
 results_df['setup_name'].unique()
