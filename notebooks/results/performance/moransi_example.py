@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 import seaborn as sb
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
-path_names=path_data+'names_parsed/'
-path_embed=path_data+'eval/pancreas_conditions_MIA_HPAP2/integration_summary/moransi/'
-path_fig=path_data+'figures/'
+path_data='/home/moinfar/data/csi/'
+path_names='/home/moinfar/io/csi/'+'names_parsed/'
+path_embed='/home/moinfar/io/csi/'+'eval/pancreas_conditions_MIA_HPAP2/integration_summary/moransi/'
+path_fig='/home/moinfar/io/csi/'+'figures/'
 
 # %%
 model_map=pkl.load(open(path_names+'models.pkl','rb'))
@@ -35,7 +35,7 @@ model_map=pkl.load(open(path_names+'models.pkl','rb'))
 # %%
 # Load embeddings and sort+rename for plotting
 embeds=pkl.load(open(path_embed+'pancreas_STZG1_healthyvar_topmodels.pkl','rb'))
-embeds={parsed:embeds[name] for name,parsed in model_map.items()}
+embeds={parsed:embeds[name] for name,parsed in model_map.items() if (name in embeds) and ('sysvi' not in name)}
 
 # %%
 # gene group score columns
@@ -82,5 +82,7 @@ plt.savefig(path_fig+'moransi_example-pancreas_STZG1_healthyvar-umap.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'moransi_example-pancreas_STZG1_healthyvar-umap.png',
             dpi=300,bbox_inches='tight')
+
+# %%
 
 # %%

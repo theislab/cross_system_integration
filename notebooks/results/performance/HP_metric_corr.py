@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 import scanpy as sc
 import pickle as pkl
+import yaml
 import math
 import glob
 import os
@@ -32,7 +33,7 @@ sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
 from params_opt_maps import *
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 
@@ -65,9 +66,12 @@ for dataset,dataset_name in dataset_map.items():
     path_integration=f'{path_data}eval/{dataset}/integration/'
     res=[]
     for run in glob.glob(path_integration+'*/'):
-        if os.path.exists(run+'args.pkl') and \
+        if (os.path.exists(run+'args.pkl') or os.path.exists(run+'args.yml')) and \
             os.path.exists(run+'scib_metrics.pkl'):
-            args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+            if os.path.exists(run+'args.pkl'):
+                args=pd.Series(vars(pkl.load(open(run+'args.pkl','rb'))))
+            if os.path.exists(run+'args.yml'):
+                args=pd.Series(yaml.safe_load(open(run+'args.yml','rb')))
             metrics=pd.Series(pkl.load(open(run+'scib_metrics.pkl','rb')))
             data=pd.concat([args,metrics])
             name=run.split('/')[-2]
@@ -90,6 +94,14 @@ for dataset,dataset_name in dataset_map.items():
     
     res['params_opt']=pd.Categorical(res['params_opt'],sorted(res['params_opt'].unique()), True)
 
+    res['params_opt']=np.where(res.index.str.contains('harmonypy'), 
+                               res['params_opt'].replace({'harmony_theta': 'harmonypy_theta'}),
+                               res['params_opt'])
+    res['param_opt_col']=np.where(res.index.str.contains('harmonypy'), 
+                                  res['param_opt_col'].replace({'harmony_theta': 'harmonypy_theta'}),
+                                  res['param_opt_col'])
+    res['harmonypy_theta'] = res['harmony_theta']
+                                  
     # Keep relevant params and name model
     params_opt_vals=set(params_opt_map.keys())
     res_sub=res.query('params_opt in @params_opt_vals').copy()
@@ -150,6 +162,13 @@ ress['param_opt_val_str']=pd.Categorical(
     ordered=True)
 
 # %%
+ress = ress.query('testing == False')
+ress.drop_duplicates(['model_parsed', 'param_parsed', 'genes_parsed', 'dataset_parsed', 'name', 'seed', 'params_opt', 'param_opt_val'], inplace=True)
+
+# %%
+ress = ress[~(ress['model_parsed'].str.contains('SysVI'))].copy()
+
+# %%
 # HP-metric correlations
 corrs=[]
 group_cols=['model_parsed','param_parsed','dataset_parsed']
@@ -172,7 +191,7 @@ corrs.rename({'dataset_parsed':'Dataset'},axis=1,inplace=True)
 # Plot
 palette={dataset_map[dataset]:color for dataset,color in dataset_cmap.items()}
 g=sb.catplot(x='Optimized',y='HP corr.',hue='Dataset',row='metric', data=corrs, 
-             height=1.5,aspect=3, kind='swarm',palette=palette)
+             height=2.5,aspect=3, kind='swarm',palette=palette)
 # Make pretty
 g.axes[-1][0].set_xticklabels(g.axes[-1][0].get_xticklabels(),rotation=90)
 for ax in g.axes:

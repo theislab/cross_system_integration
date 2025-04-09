@@ -8,9 +8,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.16.3
 #   kernelspec:
-#     display_name: csi
+#     display_name: sysvi
 #     language: python
-#     name: csi
+#     name: sysvi
 # ---
 
 # %% [markdown]
@@ -25,6 +25,7 @@ import numpy as np
 seed=np.random.randint(0,1000000)
 import argparse
 import os
+import sys
 import pathlib
 import string
 import subprocess
@@ -33,8 +34,8 @@ from matplotlib.pyplot import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 
-from cross_system_integration.model._xxjointmodel import XXJointModel
-import pytorch_lightning as pl
+import scvi
+from scvi.external import SysVI
 
 # Otherwise the seed remains constant
 from scvi._settings import ScviConfig
@@ -84,24 +85,12 @@ parser.add_argument('-bk', '--batch_key', required=True, type=str,
                     help='obs col with batch info')
 parser.add_argument('-ts', '--train_size', required=False, type=float,default=0.9,
                     help='train_size for training')
-parser.add_argument('-ma', '--mixup_alpha', required=False, 
-                    type=str_to_float_zeronone,default='0',
-                    help='mixup_alpha for model. If unspecified or 0 dont use mixup_alpha, '+
-                   'else use float for mixup_alpha')
-parser.add_argument('-sd', '--system_decoders', required=False, 
-                    type=intstr_to_bool,default='0',
-                    help='system_decodersfor model. Converts 0/1 to bool')
-parser.add_argument('-ovm', '--out_var_mode', required=False, type=str, default='feature',
-                    help='out_var_mode')
 parser.add_argument('-p', '--prior', required=False, type=str, default='standard_normal',
                     help='VAE prior')
 parser.add_argument('-npc', '--n_prior_components', required=False, type=int, default=100,
                     help='n_prior_components used for vamp prior.'+ 
                     'if -1 use as many prior components as there are cell groups'+
                     '(ignoring nan groups)')
-parser.add_argument('-pdi', '--pseudoinputs_data_init', required=False, 
-                    type=intstr_to_bool,default='1',
-                    help='pseudoinputs_data_init for model. Converts 0/1 to bool')
 # N prior components system is int as system itself is 0/1
 parser.add_argument('-pcs', '--prior_components_system', required=False, type=int, default=None,
                     help='system to sample prior components from.'+
@@ -113,14 +102,9 @@ parser.add_argument('-pcg', '--prior_components_group', required=False, type=str
                    'If BALANCED sample balanced across groups (ignores nan groups)'+
                    'If unsepcified samples randomly'+
                    'Either this of prior_components_system must be None')
-parser.add_argument('-epe', '--encode_pseudoinputs_on_eval_mode', required=False, 
-                    type=intstr_to_bool,default='0',
-                    help='encode_pseudoinputs_on_eval_mode for module. Converts 0/1 to bool')
 parser.add_argument('-tp', '--trainable_priors', required=False, 
                     type=intstr_to_bool,default='1',
                     help='trainable_priors for module. Converts 0/1 to bool')
-parser.add_argument('-zdm', '--z_dist_metric', required=False, type=str, default='MSE',
-                    help='z_dist_metric for module')
 parser.add_argument('-nl', '--n_layers', required=False, type=int, default=2,
                     help='n_layers of module')
 parser.add_argument('-nh', '--n_hidden', required=False, type=int, default=256,
@@ -133,48 +117,17 @@ parser.add_argument('-edp', '--epochs_detail_plot', required=False, type=int, de
 parser.add_argument('-kw', '--kl_weight', required=False, 
                     type=str_to_weight,default=1,
                     help='kl_weight for training')
-parser.add_argument('-kcw', '--kl_cycle_weight', required=False, 
-                    type=str_to_weight,default=0,
-                    help='kl_cycle_weight for training')
 parser.add_argument('-rw', '--reconstruction_weight', required=False, 
                     type=str_to_weight,default=1,
                     help='reconstruction_weight for training')
-parser.add_argument('-rmw', '--reconstruction_mixup_weight', required=False, 
-                    type=str_to_weight,default=0,
-                    help='kl_weight for training')
-parser.add_argument('-rcw', '--reconstruction_cycle_weight', required=False, 
-                    type=str_to_weight,default=0,
-                    help='reconstruction_cycle_weight for training')
 parser.add_argument('-zdcw', '--z_distance_cycle_weight', required=False, 
                     type=str_to_weight,default=0,
                     help='z_distance_cycle_weight for training')
-parser.add_argument('-tcw', '--translation_corr_weight', required=False, 
-                    type=str_to_weight,default=0,
-                    help='translation_corr_weight for training')
-parser.add_argument('-zcw', '--z_contrastive_weight', required=False, 
-                    type=str_to_weight,default=0,
-                    help='z_contrastive_weight for training')
 
 parser.add_argument('-o', '--optimizer', required=False, type=str,default="Adam",
                     help='optimizer for training plan')
 parser.add_argument('-lr', '--lr', required=False, type=float,default=0.001,
                     help='learning rate for training plan')
-parser.add_argument('-rlrp', '--reduce_lr_on_plateau', required=False, 
-                    type=intstr_to_bool, default="0",
-                    help='reduce_lr_on_plateau for training plan')
-parser.add_argument('-lrsm', '--lr_scheduler_metric', required=False, 
-                    type=str, default='loss_train',
-                    help='lr_scheduler_metric for training plan reduce_lr_on_plateau')
-parser.add_argument('-lrp', '--lr_patience', required=False, type=int,default=5,
-                    help='lr_patience for training plan reduce_lr_on_plateau')
-parser.add_argument('-lrf', '--lr_factor', required=False, type=float,default=0.1,
-                    help='lr_factor for training plan reduce_lr_on_plateau')
-parser.add_argument('-lrm', '--lr_min', required=False, type=float,default=1e-7,
-                    help='lr_min for training plan reduce_lr_on_plateau')
-parser.add_argument('-lrtm', '--lr_threshold_mode', required=False, type=str,default='rel',
-                    help='lr_threshold_mode for training plan reduce_lr_on_plateau')
-parser.add_argument('-lrt', '--lr_threshold', required=False, type=float,default=0.1,
-                    help='lr_threshold for training plan reduce_lr_on_plateau')
 
 parser.add_argument('-swa', '--swa', required=False, 
                     type=intstr_to_bool, default="0", help='use SWA')
@@ -194,13 +147,13 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
                     help='Testing mode')
 # %%
 # Set args for manual testing
-if False:
+if "ipykernel" in sys.modules and "IPython" in sys.modules:
     args= parser.parse_args(args=[
         #'-pa','/lustre/groups/ml01/workspace/karin.hrovatin/data/cross_species_prediction/pancreas_example/combined_tabula_orthologues.h5ad',
         '-pa','/om2/user/khrovati/data/cross_species_prediction/pancreas_healthy/combined_orthologuesHVG2000.h5ad',
         #'-pa','/om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad',
         #'-fmi','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/example/moransiGenes_mock.pkl',
-        '-ps','/om2/user/khrovati/data/cross_system_integration/eval/test/integration/',
+        '-ps','/home/moinfar/io/csi/eval/test',
         '-sk','system',
         '-gk','cell_type',
         #'-gk','cell_type_eval',
@@ -260,17 +213,9 @@ def weight_to_str(x):
     return x
 
 path_save=args.path_save+\
-    'MA'+str(args.mixup_alpha)+\
-    'SD'+str(args.system_decoders)+\
-    'OVM'+str(args.out_var_mode)+\
     'KLW'+weight_to_str(args.kl_weight)+\
-    'KLCW'+weight_to_str(args.kl_cycle_weight)+\
     'RW'+weight_to_str(args.reconstruction_weight)+\
-    'RMW'+weight_to_str(args.reconstruction_mixup_weight)+\
-    'RCW'+weight_to_str(args.reconstruction_cycle_weight)+\
     'ZDCW'+weight_to_str(args.z_distance_cycle_weight)+\
-    'TCW'+weight_to_str(args.translation_corr_weight)+\
-    'ZCW'+weight_to_str(args.z_contrastive_weight)+\
     'P'+str(''.join([i[0] for  i in args.prior.split('_')]))+\
     'NPC'+str(args.n_prior_components)+\
     'NL'+str(args.n_layers)+\
@@ -319,10 +264,10 @@ print('Train')
 
 # %%
 # Setup adata
-adata_training = XXJointModel.setup_anndata(
-    adata=adata,
-    system_key=args.system_key,
-    group_key=None,
+adata_training = adata.copy()
+SysVI.setup_anndata(
+    adata=adata_training,
+    batch_key=args.system_key,
     categorical_covariate_keys=[args.batch_key],
 )
 
@@ -371,20 +316,17 @@ else:
 if pdi is not None and len(pdi) != n_prior_components:
     raise ValueError('Not sufficent number of prior components could be sampled')
 
+if pdi is not None:
+    pdi = np.asarray(pdi)
+
 # %%
 # Train
-model = XXJointModel(
+model = SysVI(
     adata=adata_training,
-    out_var_mode=args.out_var_mode,
-    mixup_alpha=args.mixup_alpha,
-    system_decoders=args.system_decoders,
     prior=args.prior, 
     n_prior_components=n_prior_components,
-    pseudoinputs_data_init=args.pseudoinputs_data_init,
     pseudoinputs_data_indices=pdi,
     trainable_priors=args.trainable_priors,
-    encode_pseudoinputs_on_eval_mode=args.encode_pseudoinputs_on_eval_mode,
-    z_dist_metric = args.z_dist_metric,
     n_layers=args.n_layers,
     n_hidden=args.n_hidden,
 )
@@ -394,35 +336,13 @@ model.train(max_epochs=max_epochs,
             check_val_every_n_epoch=1,
             val_check_interval=1.0 if args.log_on_epoch else 1,
             train_size=args.train_size,            
-            callbacks=[pl.callbacks.LearningRateMonitor(logging_interval='epoch')] +\
-                [pl.callbacks.StochasticWeightAveraging(
-                    swa_lrs=args.swa_lr, 
-                    swa_epoch_start=args.swa_epoch_start, 
-                    annealing_epochs=args.swa_annealing_epochs)] 
-                if args.swa else [],
             plan_kwargs={
                 'optimizer':args.optimizer,
                 'lr':args.lr,
-                'reduce_lr_on_plateau':args.reduce_lr_on_plateau,
-                'lr_scheduler_metric':args.lr_scheduler_metric,
-                'lr_patience':args.lr_patience,
-                'lr_factor':args.lr_factor,
-                'lr_min':args.lr_min,
-                'lr_threshold_mode':args.lr_threshold_mode,
-                'lr_threshold':args.lr_threshold,
-                'log_on_epoch':args.log_on_epoch,
-                'log_on_step':not args.log_on_epoch,
-                'loss_weights':{
-                   'kl_weight':args.kl_weight,
-                   'kl_cycle_weight':args.kl_cycle_weight,
-                   'reconstruction_weight':args.reconstruction_weight,
-                   'reconstruction_mixup_weight':args.reconstruction_mixup_weight,
-                   'reconstruction_cycle_weight':args.reconstruction_cycle_weight,
-                   'z_distance_cycle_weight':args.z_distance_cycle_weight,
-                   'translation_corr_weight':args.translation_corr_weight,
-                   'z_contrastive_weight':args.z_contrastive_weight,
-               
-           }})
+                'kl_weight':args.kl_weight,
+                'reconstruction_weight':args.reconstruction_weight,
+                'z_distance_cycle_weight':args.z_distance_cycle_weight,
+           })
 
 # %% [markdown]
 # ### Eval
@@ -440,7 +360,7 @@ pkl.dump(model.trainer.logger.history,open(path_save+'losses.pkl','wb'))
 # %%
 # Plot all loses
 steps_detail_plot = args.epochs_detail_plot*int(
-    model.trainer.logger.history['loss_validation'].shape[0]/max_epochs)
+    model.trainer.logger.history['validation_loss'].shape[0]/max_epochs)
 detail_plot=args.epochs_detail_plot if args.log_on_epoch else steps_detail_plot
 losses=[k for k in model.trainer.logger.history.keys() 
         if #'_step' not in k and '_epoch' not in k and 
@@ -482,6 +402,8 @@ for ax_i,l_train in enumerate(losses):
 fig.tight_layout()
 plt.savefig(path_save+'losses.png',dpi=300,bbox_inches='tight')
 
+# %%
+
 # %% [markdown]
 # #### Embedding
 
@@ -491,11 +413,10 @@ print('Get embedding')
 # %%
 # Compute and save whole embedding
 if args.n_cells_eval!=-1:
-    embed_full = model.embed(
+    embed_full = model.get_latent_representation(
         adata=adata_training,
         indices=None,
-        batch_size=None,
-        as_numpy=True)
+        batch_size=None)
     embed_full=sc.AnnData(embed_full,obs=adata_training.obs)
     # Make system categorical for eval as below
     embed_full.obs[args.system_key]=embed_full.obs[args.system_key].astype(str)
@@ -508,11 +429,10 @@ if args.n_cells_eval!=-1:
 cells_eval=adata_training.obs_names if args.n_cells_eval==-1 else \
     np.random.RandomState(seed=0).permutation(adata_training.obs_names)[:args.n_cells_eval]
 print('N cells for eval:',cells_eval.shape[0])
-embed = model.embed(
+embed = model.get_latent_representation(
         adata=adata_training[cells_eval,:],
         indices=None,
-        batch_size=None,
-        as_numpy=True)
+        batch_size=None)
 
 embed=sc.AnnData(embed,obs=adata_training[cells_eval,:].obs)
 # Make system categorical for metrics and plotting

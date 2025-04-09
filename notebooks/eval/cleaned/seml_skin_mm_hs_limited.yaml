@@ -1,41 +1,40 @@
 seml:
   executable: /home/moinfar/projects/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
   name: csi_eval
-  output_dir: /home/moinfar/io/csi/eval/pancreas_conditions_MIA_HPAP2/logs # CHANGE! OUT!
+  output_dir: /home/moinfar/io/csi/eval/skin_mm_hs_limited/logs  # CHANGE! OUT!
   project_root_dir:  /home/moinfar/projects/cross_system_integration/notebooks/eval/cleaned
   conda_environment: csi
   
 slurm:
   max_simultaneous_jobs: 20
-#  sbatch_options_template: CPU
+  sbatch_options_template: GPU
   sbatch_options:
-    mem: 200G         
-    cpus-per-task: 16  
-    time: 0-30:00     
+    mem: 200G          
+    cpus-per-task: 10  
+    time: 0-12:00     
     nice: 10000
 
 fixed:
-  path_save: /home/moinfar/io/csi/eval/pancreas_conditions_MIA_HPAP2/ # CHANGE! OUT!
-  max_epochs: 20
-  epochs_detail_plot: 5
+  path_save: /home/moinfar/io/csi/eval/skin_mm_hs_limited/  # CHANGE! OUT!
+  max_epochs: 50
+  epochs_detail_plot: 10
   # Model params
   system_decoders: 0
   # Task
   eval_type: integration
   # Data
-  path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
-  fn_moransi: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG_moransiGenes.pkl
-  fn_expr: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_orthologuesHVG.h5ad
+  path_adata: /home/moinfar/data/skin_mouse_human/processed/limited_data_skin_mm_hs_hvg.h5ad
+  fn_moransi: /home/moinfar/data/skin_mouse_human/processed/limited_data_skin_mm_hs_hvg_moransiGenes.pkl
   group_key: cell_type_eval
   batch_key: batch
   system_key: system
-  system_values: mouse-human
-  n_cells_eval: 100000 
+  n_cells_eval: 100000
   conda_env: csi
   pca_key: X_pca_system
-  cluster_key: leiden_system
   saturn_emb: /om2/user/khrovati/data/saturn/protein_embeddings_export/ESM2/
-  saturn_code: /om2/user/khrovati/miniconda/envs/saturn/lib/python3.9/site-packages/SATURN_fix/
+  saturn_code: /home/moinfar/projects/SATURN_fix/
+  system_values: mouse-human
+  var_name_keys: gs_mm-gs_hs
        
   
 grid:
@@ -45,6 +44,18 @@ grid:
       - 1
       - 2
       - 3 
+
+small_test:
+    fixed:
+      params_opt: kl_weight
+      max_epochs: 10
+      epochs_detail_plot: 5
+      testing: 1
+    grid:
+      kl_weight:
+        type: choice
+        options:
+          - 1
       
 klw_opt:
     fixed:
@@ -106,7 +117,7 @@ gmm_opt_eval:
           - 10
           - 100
           - 5000
-          
+
 gmm_opt_eval_fixed:
     fixed:
       params_opt: gmm_eval_fixed
@@ -154,7 +165,7 @@ gmm_opt_eval_ri_fixed:
           - 5
           - 10
           - 100
-          - 5000  
+          - 5000
 
 zdcw_opt_std:
     fixed:
@@ -167,7 +178,7 @@ zdcw_opt_std:
           - 2
           - 5 
           - 10
-          - 50    
+          - 50  
 
 vamp_eval_zdcw_opt_std:
     fixed:
@@ -259,132 +270,6 @@ scglue_lg:
           - 0.5
           - 2
 
-scglue_rgw_no:
-    fixed:
-      model: scglue
-      conda_env: scglue
-      params_opt: scglue_no_rel_gene_weight
-      max_epochs: -1
-      path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
-      path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad
-      gene_graph: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv
-    grid:
-      rel_gene_weight:
-        type: choice
-        options:
-          - 0.4
-          - 0.6 
-          - 0.8
-          - 1       
-
-scglue_la_no:
-    fixed:
-      model: scglue
-      conda_env: scglue
-      params_opt: scglue_no_lam_align
-      max_epochs: -1
-      path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
-      path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad
-      gene_graph: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv
-    grid:
-      lam_align:
-        type: choice
-        options:
-          - 0.0005
-          - 0.005
-          - 0.05
-          - 0.5
-
-scglue_lg_no:
-    fixed:
-      model: scglue
-      conda_env: scglue
-      params_opt: scglue_no_lam_graph
-      max_epochs: -1
-      path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
-      path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad
-      gene_graph: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined_nonortholHVG_geneMapping.tsv      
-    grid:
-      lam_graph:
-        type: choice
-        options:
-          - 0.005
-          - 0.1
-          - 0.5
-          - 2
-
-saturn_psp:
-    fixed:
-      model: saturn
-      conda_env: saturn
-      params_opt: saturn_pe_sim_penalty
-      max_epochs: 50
-      max_epochs_pretrain: 10
-      var_name_keys: gs_mm-gs_hs
-    grid:
-      pe_sim_penalty:
-        type: choice
-        options:
-          - 0.01
-          - 0.1
-          - 1
-          - 10
-
-saturn_psp_no:
-    fixed:
-      model: saturn
-      conda_env: saturn
-      params_opt: saturn_no_pe_sim_penalty
-      max_epochs: 50
-      max_epochs_pretrain: 10
-      path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
-      path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad   
-    grid:
-      pe_sim_penalty:
-        type: choice
-        options:
-          - 0.01
-          - 0.1
-          - 1
-          - 10
-
-saturn_psp_super:
-    fixed:
-      model: saturn
-      conda_env: saturn
-      params_opt: saturn_pe_sim_penalty_super
-      max_epochs: 50
-      max_epochs_pretrain: 10
-      var_name_keys: gs_mm-gs_hs
-      cluster_key: cell_type_eval
-    grid:
-      pe_sim_penalty:
-        type: choice
-        options:
-          - 0.01
-          - 0.1
-          - 1
-          - 10
-
-saturn_psp_no_super:
-    fixed:
-      model: saturn
-      conda_env: saturn
-      params_opt: saturn_no_pe_sim_penalty_super
-      max_epochs: 50
-      max_epochs_pretrain: 10
-      cluster_key: cell_type_eval
-      path_adata: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-mmPart_nonortholHVG.h5ad
-      path_adata_2: /om2/user/khrovati/data/cross_system_integration/pancreas_conditions_MIA_HPAP2/combined-hsPart_nonortholHVG.h5ad   
-    grid:
-      pe_sim_penalty:
-        type: choice
-        options:
-          - 0.01
-          - 0.1
-          - 1
-          - 10
-
 scgen:
     fixed:
       model: scgen
@@ -408,13 +293,104 @@ scgen_sample:
         options:
           - 0.1
 
+
+harmony:
+    fixed:
+      model: harmonypy
+      params_opt: harmony_theta
+      conda_env: csi
+    grid:
+      harmony_theta:
+        type: choice
+        options:
+          - 0.1
+          - 1.0
+          - 5.0
+          - 10.0
+          - 100.0
+
+
+saturn_psp:
+    fixed:
+      model: saturn
+      conda_env: saturn
+      params_opt: saturn_pe_sim_penalty
+      max_epochs: 50
+      max_epochs_pretrain: 10
+      cluster_key: leiden_system
+    grid:
+      pe_sim_penalty:
+        type: choice
+        options:
+          - 0.01
+          - 0.1
+          - 1
+          - 10
+
+
+saturn_psp_no:
+    fixed:
+      model: saturn
+      conda_env: saturn
+      params_opt: saturn_no_pe_sim_penalty
+      max_epochs: 50
+      max_epochs_pretrain: 10
+      path_adata: /home/moinfar/data/skin_mouse_human/processed/limited_data_skin_mm_hs_hvg-mmPart_nonortholHVG.h5ad
+      path_adata_2: /home/moinfar/data/skin_mouse_human/processed/limited_data_skin_mm_hs_hvg-hsPart_nonortholHVG.h5ad
+      cluster_key: leiden_system
+    grid:
+      pe_sim_penalty:
+        type: choice
+        options:
+          - 0.01
+          - 0.1
+          - 1
+          - 10
+
+saturn_psp_super:
+    fixed:
+      model: saturn
+      conda_env: saturn
+      params_opt: saturn_pe_sim_penalty_super
+      max_epochs: 50
+      max_epochs_pretrain: 10
+      cluster_key: cell_type_eval
+    grid:
+      pe_sim_penalty:
+        type: choice
+        options:
+          - 0.01
+          - 0.1
+          - 1
+          - 10
+
+saturn_psp_no_super:
+    fixed:
+      model: saturn
+      conda_env: saturn
+      params_opt: saturn_no_pe_sim_penalty_super
+      max_epochs: 50
+      max_epochs_pretrain: 10
+      cluster_key: cell_type_eval
+      path_adata: /home/moinfar/data/skin_mouse_human/processed/limited_data_skin_mm_hs_hvg-mmPart_nonortholHVG.h5ad
+      path_adata_2: /home/moinfar/data/skin_mouse_human/processed/limited_data_skin_mm_hs_hvg-hsPart_nonortholHVG.h5ad
+    grid:
+      pe_sim_penalty:
+        type: choice
+        options:
+          - 0.01
+          - 0.1
+          - 1
+          - 10
+
+
 seurat_cca:
     fixed:
       model: seurat
       params_opt: seurat_cca_k_anchor
       conda_env: NA
       reduction: cca
-      k_weight: 50  # We have to enforce this since one batch is small
+      # k_weight: 50  # We have to enforce this since one batch is small
       language: R
     grid:
       k_anchor:
@@ -432,7 +408,7 @@ seurat_rpca:
       params_opt: seurat_rpca_k_anchor
       conda_env: NA
       reduction: rpca
-      k_weight: 35  # We have to enforce this since one batch is small
+      # k_weight: 35  # We have to enforce this since one batch is small
       language: R
     grid:
       k_anchor:
@@ -443,38 +419,6 @@ seurat_rpca:
           - 10
           - 20
           - 50
-
-harmony:
-    fixed:
-      model: harmonypy
-      params_opt: harmony_theta
-      conda_env: csi
-    grid:
-      harmony_theta:
-        type: choice
-        options:
-          - 0.1
-          - 1.0
-          - 5.0
-          - 10.0
-          - 100.0
-
-harmonyr:
-    fixed:
-      model: harmony
-      params_opt: harmony_theta
-      conda_env: NA
-      reduction: harmony
-      language: R
-    grid:
-      harmony_theta:
-        type: choice
-        options:
-          - 0.1
-          - 1.0
-          - 5.0
-          - 10.0
-          - 100.0
 
 
 sysvi_vamp_cyc:
@@ -509,4 +453,20 @@ sysvi_vamp_cyc_stable:
           - 5 
           - 10
           - 50  
-          
+
+harmonyr:
+    fixed:
+      model: harmony
+      params_opt: harmony_theta
+      conda_env: NA
+      reduction: harmony
+      language: R
+    grid:
+      harmony_theta:
+        type: choice
+        options:
+          - 0.1
+          - 1.0
+          - 5.0
+          - 10.0
+          - 100.0

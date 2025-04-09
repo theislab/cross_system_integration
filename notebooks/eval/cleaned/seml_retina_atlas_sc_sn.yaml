@@ -1,31 +1,32 @@
 seml:
   executable: /home/moinfar/projects/cross_system_integration/notebooks/eval/cleaned/run_integration_seml.py
   name: csi_eval
-  output_dir: /home/moinfar/io/csi/eval/adipose_sc_sn_updated/logs # CHANGE! OUT!
+  output_dir: /home/moinfar/io/csi/eval/retina_atlas_sc_sn/logs  # CHANGE! OUT!
   project_root_dir:  /home/moinfar/projects/cross_system_integration/notebooks/eval/cleaned
   conda_environment: csi
   
 slurm:
-  max_simultaneous_jobs: 10
+  max_simultaneous_jobs: 20
   sbatch_options_template: GPU
   sbatch_options:
-    mem: 60G          
-    cpus-per-task: 4  
+    mem: 200G          
+    cpus-per-task: 10  
     time: 0-12:00     
     nice: 10000
 
 fixed:
-  path_save: /home/moinfar/io/csi/eval/adipose_sc_sn_updated/ # CHANGE! OUT!
-  max_epochs: 110
-  epochs_detail_plot: 40
+  path_save: /home/moinfar/io/csi/eval/retina_atlas_sc_sn/  # CHANGE! OUT!
+  max_epochs: 50
+  epochs_detail_plot: 10
   # Model params
   system_decoders: 0
   # Task
   eval_type: integration
   # Data
-  path_adata: /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn.h5ad
-  fn_moransi: /om2/user/khrovati/data/cross_system_integration/adipose_sc_sn_updated/adiposeHsSAT_sc_sn_moransiGenes.pkl
-  group_key: cluster
+  # TODO: add .h5ad
+  path_adata: /home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg
+  fn_moransi: /home/moinfar/data/human_retina_atlas/human_retina_atlas_sc_sn_hvg_moransiGenes.pkl
+  group_key: cell_type
   batch_key: donor_id
   system_key: system
   n_cells_eval: 100000
@@ -40,6 +41,18 @@ grid:
       - 1
       - 2
       - 3 
+
+# small_test:
+#     fixed:
+#       params_opt: kl_weight
+#       max_epochs: 10
+#       epochs_detail_plot: 5
+#       testing: 1
+#     grid:
+#       kl_weight:
+#         type: choice
+#         options:
+#           - 1
       
 klw_opt:
     fixed:
@@ -53,21 +66,21 @@ klw_opt:
           - 2
           - 5
 
-vamp_opt_eval:
-    fixed:
-      params_opt: vamp_eval
-      prior: vamp
-      encode_pseudoinputs_on_eval_mode: 1
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# vamp_opt_eval:
+#     fixed:
+#       params_opt: vamp_eval
+#       prior: vamp
+#       encode_pseudoinputs_on_eval_mode: 1
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
 vamp_opt_eval_fixed:
     fixed:
@@ -102,54 +115,54 @@ gmm_opt_eval:
           - 100
           - 5000
 
-gmm_opt_eval_fixed:
-    fixed:
-      params_opt: gmm_eval_fixed
-      prior: gmm
-      trainable_priors: 0
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval_fixed:
+#     fixed:
+#       params_opt: gmm_eval_fixed
+#       prior: gmm
+#       trainable_priors: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
-gmm_opt_eval_ri:
-    fixed:
-      params_opt: gmm_eval_ri
-      prior: gmm
-      pseudoinputs_data_init: 0
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval_ri:
+#     fixed:
+#       params_opt: gmm_eval_ri
+#       prior: gmm
+#       pseudoinputs_data_init: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
-gmm_opt_eval_ri_fixed:
-    fixed:
-      params_opt: gmm_eval_ri_fixed
-      prior: gmm
-      trainable_priors: 0
-      pseudoinputs_data_init: 0
-    grid:
-      n_prior_components:
-        type: choice
-        options:
-          - 1
-          - 2
-          - 5
-          - 10
-          - 100
-          - 5000
+# gmm_opt_eval_ri_fixed:
+#     fixed:
+#       params_opt: gmm_eval_ri_fixed
+#       prior: gmm
+#       trainable_priors: 0
+#       pseudoinputs_data_init: 0
+#     grid:
+#       n_prior_components:
+#         type: choice
+#         options:
+#           - 1
+#           - 2
+#           - 5
+#           - 10
+#           - 100
+#           - 5000
 
 zdcw_opt_std:
     fixed:
@@ -277,41 +290,6 @@ scgen_sample:
         options:
           - 0.1
 
-seurat_cca:
-    fixed:
-      model: seurat
-      params_opt: seurat_cca_k_anchor
-      conda_env: NA
-      reduction: cca
-      k_weight: 50  # We have to enforce this since one batch is small
-      language: R
-    grid:
-      k_anchor:
-        type: choice
-        options:
-          - 2
-          - 5
-          - 10
-          - 20
-          - 50
-
-seurat_rpca:
-    fixed:
-      model: seurat
-      params_opt: seurat_rpca_k_anchor
-      conda_env: NA
-      reduction: rpca
-      k_weight: 35  # We have to enforce this since one batch is small
-      language: R
-    grid:
-      k_anchor:
-        type: choice
-        options:
-          - 2
-          - 5
-          - 10
-          - 20
-          - 50
 
 harmony:
     fixed:
@@ -328,54 +306,4 @@ harmony:
           - 10.0
           - 100.0
 
-harmonyr:
-    fixed:
-      model: harmony
-      params_opt: harmony_theta
-      conda_env: NA
-      reduction: harmony
-      language: R
-    grid:
-      harmony_theta:
-        type: choice
-        options:
-          - 0.1
-          - 1.0
-          - 5.0
-          - 10.0
-          - 100.0
-          
 
-sysvi_vamp_cyc:
-    fixed:
-      model: sysvi
-      prior: vamp
-      n_prior_components: 5
-      params_opt: sysvi_vamp_cyc_z_distance_cycle_weight_2
-      conda_env: sysvi_master
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 2
-          - 5 
-          - 10
-          - 50  
-
-
-sysvi_vamp_cyc_stable:
-    fixed:
-      model: sysvi_stable
-      prior: vamp
-      n_prior_components: 5
-      params_opt: sysvi_vamp_cyc_z_distance_cycle_weight_2_stable
-      conda_env: sysvi
-    grid:
-      z_distance_cycle_weight:
-        type: choice
-        options:
-          - 2
-          - 5 
-          - 10
-          - 50  
-          
