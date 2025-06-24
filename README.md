@@ -1,10 +1,10 @@
-# Integrating single-cell RNA-seq datasets with substantial batch effects
+# REPRODUCIBILITY for *"Integrating single-cell RNA-seq datasets with substantial batch effects"*
 
-This repository contains newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects and reproducibility code for [Hrovatin et al. (2023)](https://doi.org/10.1101/2023.11.03.565463). 
+This repository contains **reproducibility code** for newly developed models for improving the integration of scRNA-seq datasets with substantial batch effects from [Hrovatin et al. (2023)](https://doi.org/10.1101/2023.11.03.565463). 
 
 See also our [talk](https://www.youtube.com/watch?v=i-a4BjAn90E) on the M2D2 series. 
 
-Our prefered model with the VampPrior and latent cycle-consistency loss is implemented in scvi-tools under the name sysVI (see below for details).
+Our prefered model with the VampPrior and latent cycle-consistency loss is implemented in `scvi-tools` under the name `sysVI` (see below for details). Please use the **[`scvi-tools` implementation](https://docs.scvi-tools.org/en/stable/tutorials/notebooks/scrna/sysVI.html)** as this repository is for **reproducibility purpuses** only.
 
 ## Abstract
 
