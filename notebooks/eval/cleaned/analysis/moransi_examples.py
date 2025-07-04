@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -26,9 +26,8 @@ import seaborn as sb
 import gc
 
 # %%
-path_data='/om2/user/khrovati/data/'
-path_adata=path_data+'datasets/d10_1101_2022_12_22_521557/'
-path_integration=path_data+'cross_system_integration/eval/pancreas_conditions_MIA_HPAP2/'
+path_adata='/om2/user/khrovati/data/'+'datasets/d10_1101_2022_12_22_521557/'
+path_integration='/home/moinfar/io/csi/'+'eval/pancreas_conditions_MIA_HPAP2/'
 path_save=path_integration+'integration_summary/moransi/'
 
 # %%
@@ -110,3 +109,5 @@ for embed in embeds.values():
 # %%
 # Save embeddings
 pkl.dump(embeds,open(path_save+'pancreas_STZG1_healthyvar_topmodels.pkl','wb'))
+
+# %%

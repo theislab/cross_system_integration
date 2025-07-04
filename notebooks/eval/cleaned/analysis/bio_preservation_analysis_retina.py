@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -22,6 +22,7 @@ import math
 import glob
 import os
 import gc
+from pathlib import Path
 
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ import seaborn as sb
 import matplotlib.colors as mcolors
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 path_ds='/om2/user/khrovati/data/datasets/d10_1016_j_cell_2020_08_013/'
@@ -86,7 +87,7 @@ for i,(method,embed) in enumerate(embeds.items()):
         sc.pl.umap(embed,ax=ax,show=False,frameon=False)
         sc.pl.umap(embed[embed.obs.system==system,:],color='cell_type',
                    groups=['astrocyte','retinal pigment epithelial cell'],
-                   ax=ax,show=False,title=method+' '+system,frameon=False)
+                   ax=ax,show=False,title=method+' '+str(system),frameon=False)
         if j==0:
             ax.get_legend().remove()
 
@@ -210,6 +211,7 @@ embeds_sub={model_map_rev[k]:v for k,v in embeds_sub.items()}
 
 # %%
 # Save embeds
+Path(path_save_mueller).mkdir(parents=True, exist_ok=True)
 pkl.dump(embeds_sub,open(path_save_mueller+'density_topmodels.pkl','wb'))
 
 # %%
@@ -414,6 +416,9 @@ except:
     pass
 
 # %%
+Path(path_save_amacrine).mkdir(parents=True, exist_ok=True)
+
+# %%
 # Save scGEN embeds
 pkl.dump(
     {'scgen_'+batch:embeds_sub['scgen_'+batch] for batch in ['sample','system']},
@@ -431,5 +436,11 @@ genes=['SLC18A3','PRDM13']
 adata_sub[:,adata_sub.var.query('feature_name in @genes').index].write(
     path_save_amacrine+'adata_markers.h5ad')
 
+
+# %%
+
+# %%
+
+# %%
 
 # %%

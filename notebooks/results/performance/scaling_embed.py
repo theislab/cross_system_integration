@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -31,7 +31,7 @@ import seaborn as sb
 from matplotlib.lines import Line2D
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 
@@ -164,7 +164,8 @@ ress['param_opt_val_str']=pd.Categorical(
     ordered=True)
 
 # %%
-ress.groupby(['dataset_parsed','model_parsed','param_parsed','genes_parsed'],observed=True).size()
+ress = ress.query('testing == False')
+ress.drop_duplicates(['model_parsed', 'param_parsed', 'genes_parsed', 'dataset_parsed', 'name', 'seed', 'params_opt', 'param_opt_val'], inplace=True)
 
 # %%
 params=ress.groupby(['model_parsed','param_parsed','genes_parsed'],observed=True,sort=True
@@ -325,57 +326,74 @@ for run,run_data in ress_sub.iterrows():
 # Dimension std swarm
 params=ress_sub.groupby(['model_parsed','param_parsed','genes_parsed'],observed=True,sort=True
             ).size().index.to_frame().reset_index(drop=True)
-nrow=params.shape[0]
+nrow=params.shape[0]*2
 ncol=ress_sub['dataset_parsed'].nunique()
-fig,axs=plt.subplots(nrow,ncol,figsize=(ncol*3,nrow*1.5),sharex=False,sharey=True)
+fig,axs=plt.subplots(ncol,nrow,figsize=(nrow*3, ncol*1.5),sharex=False,sharey=False)
 for icol, (dataset_name,res_ds) in enumerate(ress_sub.groupby('dataset_parsed')):
     for irow,(_,param_data) in enumerate(params.iterrows()):
-        res_sub=res_ds.query(
-                f'model_parsed=="{param_data.model_parsed}" & '+\
-                f'param_parsed=="{param_data.param_parsed}" & '+\
-                f'genes_parsed=="{param_data.genes_parsed}"')
-        res_sub=res_sub.copy()
-        res_sub['param_opt_val_str']=\
-            res_sub['param_opt_val_str'].cat.remove_unused_categories()
-        
-        # Data for plotting
-        # Dimensions ordered by std
-        plot=[]
-        for run,param_val in res_sub['param_opt_val_str'].items():
-            embed=embeds[run]
-            stds=embed.X.std(axis=0)
-            dims=np.argsort(stds)[::-1]
-            for idim,dim in enumerate(dims):
-                plot.append({
-                    'feature':idim+1,
-                    param_data.param_parsed:param_val,
-                    'std':stds[dim]
-                })
-        plot=pd.DataFrame(plot)
-        plot['feature']=pd.Categorical(
-            values=plot['feature'].astype(str),
-            categories=[str(i) for i in sorted(plot['feature'].unique())],
-            ordered=True)
-        plot[param_data.param_parsed]=pd.Categorical(
-            values=plot[param_data.param_parsed],
-            categories=res_sub['param_opt_val_str'].cat.categories,
-            ordered=True)
-        
-        # Plot
-        ax=axs[irow,icol]        
-        sb.swarmplot(x=param_data.param_parsed,y='std',data=plot, ax=ax,s=2,
-                     c='k',linewidth=0)
-        
-        # Make pretty
-        ax.set(facecolor = (0,0,0,0))
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        if icol==0:                        
-            ax.set_ylabel(param_data.model_parsed+'\nFeature std')
-        else:
-            ax.set_ylabel('',visible=False)
-        if irow==0:
-            ax.set_title(dataset_name+'\n',fontsize=10)
+        for iagg, agg in enumerate(['std', 'max-abs']):
+            res_sub=res_ds.query(
+                    f'model_parsed=="{param_data.model_parsed}" & '+\
+                    f'param_parsed=="{param_data.param_parsed}" & '+\
+                    f'genes_parsed=="{param_data.genes_parsed}"')
+            res_sub=res_sub.copy()
+            res_sub['param_opt_val_str']=\
+                res_sub['param_opt_val_str'].cat.remove_unused_categories()
+            
+            # Data for plotting
+            # Dimensions ordered by std
+            plot=[]
+            for run,param_val in res_sub['param_opt_val_str'].items():
+                embed=embeds[run]
+                agg_std=embed.X.std(axis=0)
+                agg_mean=embed.X.mean(axis=0)
+                agg_abs_mean=np.abs(embed.X).mean(axis=0)
+                agg_max=np.abs(embed.X).max(axis=0)
+                dims=np.argsort(agg_std)[::-1]
+                for idim,dim in enumerate(dims):
+                    plot.append({
+                        'feature':idim+1,
+                        param_data.param_parsed:param_val,
+                        'std':agg_std[dim],
+                        'mean':agg_mean[dim],
+                        'mean<0.1':agg_abs_mean[dim] < 0.1,
+                        'max-abs':agg_max[dim],
+                    })
+            plot=pd.DataFrame(plot)
+            plot['feature']=pd.Categorical(
+                values=plot['feature'].astype(str),
+                categories=[str(i) for i in sorted(plot['feature'].unique())],
+                ordered=True)
+            plot[param_data.param_parsed]=pd.Categorical(
+                values=plot[param_data.param_parsed],
+                categories=res_sub['param_opt_val_str'].cat.categories,
+                ordered=True)
+            plot['mean'] = plot['mean'].astype(float)
+            
+            # Plot
+            ax=axs[icol, irow * 2 + iagg]
+            # ,hue='mean', palette='vlag' -> visually ugly
+            sb.swarmplot(x=param_data.param_parsed,y=agg, hue='mean<0.1', data=plot, ax=ax,s=2,
+                         c='k',linewidth=0)
+
+            def rreplace(s, old, new, occurrence=1):
+                li = s.rsplit(old, occurrence)
+                return new.join(li)
+                            
+            # Make pretty
+            ax.set(facecolor = (0,0,0,0))
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            if icol==0:                        
+                ax.set_title(param_data.model_parsed+f'\nFeature {agg}')
+            else:
+                ax.set_title('',visible=False)
+            if irow==0 and iagg==0:
+                ax.set_ylabel(rreplace(dataset_name, ' ', '\n')+'\n',fontsize=10)
+            if icol!=0 or irow * 2 + iagg<3:
+                ax.get_legend().remove()
+            else:
+                ax.legend(title='mean(abs(dim))<0.1', frameon=False, bbox_to_anchor=(1.05,0.95))
 
 fig.set(facecolor = (0,0,0,0))
 fig.tight_layout()

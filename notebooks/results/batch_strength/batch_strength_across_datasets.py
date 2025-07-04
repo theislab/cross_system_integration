@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -26,9 +26,9 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
-path_names=path_data+'names_parsed/'
-path_fig=path_data+'figures/'
+path_data='/home/moinfar/data/'
+path_fig='/home/moinfar/io/csi/figures/'
+path_names='/home/moinfar/io/csi/names_parsed/'
 
 # %%
 # Names
@@ -56,13 +56,16 @@ metric_background_cmap['nmi']=metric_background_cmap['nmi_opt']
 # %%
 # Load results
 dataset_metric_fns={
-    'pancreas_conditions_MIA_HPAP2':'combined_orthologuesHVG',
-    'retina_adult_organoid':'combined_HVG',
-    'adipose_sc_sn_updated':'adiposeHsSAT_sc_sn',
+    'pancreas_conditions_MIA_HPAP2':('pancreas_conditions_MIA_HPAP2','combined_orthologuesHVG'),
+    'retina_adult_organoid':('retina_adult_organoid', 'combined_HVG'),
+    'adipose_sc_sn_updated':('adipose_sc_sn_updated', 'adiposeHsSAT_sc_sn'),
+    'retina_atlas_sc_sn':('human_retina_atlas', 'human_retina_atlas_sc_sn_hvg'),
+    'skin_mm_hs':('skin_mouse_human/processed', 'skin_mm_hs_hvg'),
+    'skin_mm_hs_limited':('skin_mouse_human/processed', 'limited_data_skin_mm_hs_hvg'),
 }
 res={}
-for dataset,fn_part in dataset_metric_fns.items():
-    res[dataset]=pkl.load(open(f'{path_data}{dataset}/{fn_part}_embed_integrationMetrics.pkl','rb'
+for dataset,(dataset_path,fn_part) in dataset_metric_fns.items():
+    res[dataset]=pkl.load(open(f'{path_data}{dataset_path}/{fn_part}_embed_integrationMetrics.pkl','rb'
                               ))['asw_batch']['asw_data_label'].values
 
 # %%
@@ -74,7 +77,7 @@ res[ds_name]=res['dataset'].map(dataset_map)
 
 # %%
 # Plot
-fig,ax=plt.subplots(figsize=(1,1))
+fig,ax=plt.subplots(figsize=(2,3))
 sb.swarmplot(x=score_name,y=ds_name,data=res,s=3,c='k')
 ax.set(facecolor = (0,0,0,0))
 ax.spines['top'].set_visible(False)

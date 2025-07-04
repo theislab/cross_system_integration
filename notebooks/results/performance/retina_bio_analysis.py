@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -22,13 +22,18 @@ import math
 import glob
 import os
 
+import itertools
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.colors as mcolors
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+import warnings
+warnings.filterwarnings("ignore")
+
+# %%
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 path_integration=path_data+'/eval/retina_adult_organoid/'
@@ -70,6 +75,9 @@ conditions_map={
 embeds={**pkl.load(open(path_summaries_mueller+'density_topmodels.pkl','rb')), 
        **pkl.load(open(path_summaries_mueller+'density_scgen_example.pkl','rb'))}
 adata=sc.read(path_summaries_mueller+'adata_markers.h5ad')
+
+# %%
+embeds = {k:v for k,v in embeds.items() if 'sysvi' not in k}
 
 # %%
 # Density & gene expression UMAPs across models
@@ -133,6 +141,85 @@ plt.savefig(path_fig+'retina_bio_analysis-density_expr-umap.pdf',
             dpi=300,bbox_inches='tight')
 plt.savefig(path_fig+'retina_bio_analysis-density_expr-umap.png',
             dpi=300,bbox_inches='tight')
+
+# %%
+conditions_map
+
+# %%
+# Density & gene expression UMAPs across models
+genes = ['RHCG']
+cols = list(conditions_map) + [f"{c}-{g}" for c,g in itertools.product(conditions_map.keys(), genes)]
+ncol = len(cols)
+nrow = len(embeds)
+fig, axs = plt.subplots(nrow, ncol, figsize=(2 * ncol, 2 * nrow))
+cmaps_keep = []
+
+for i, (model, model_name) in enumerate([(k, v) for k, v in model_map.items() if k in embeds]):
+    embed = embeds[model]
+    for j, col in enumerate(cols):
+        ax = axs[i, j]
+        adata.obsm['X_umap'] = embed[adata.obs_names, :].obsm['X_umap']
+        
+        if col in list(conditions_map.keys()):
+            sc.pl.umap(embed, ax=ax, show=False, frameon=False)
+            sc.pl.embedding_density(
+                embed[embed.obs.system_region == col, :], fg_dotsize=10,
+                basis='umap', key='umap_density_system_region', title='',
+                ax=ax, show=False, frameon=False
+            )
+        else:
+            condition, gene=col.split("-")
+            subset = adata[adata.obs["system_region"] == condition]
+            sc.pl.umap(
+                subset, color=gene, gene_symbols='feature_name',
+                title=f'{condition} - RHCG', ax=ax, show=False, frameon=False,
+                vmin=adata[:, adata.var.feature_name == gene].X.A.flatten().min(),
+                vmax=adata[:, adata.var.feature_name == gene].X.A.flatten().max(),
+            )
+    
+            # Adjust axis labels for these plots
+            if i == 0:
+                ax.set_title(f'{condition}', fontsize=10)
+
+        # Make pretty
+        if j == 0:
+            ax.axis('on')
+            ax.tick_params(
+                top='off', bottom='off', left='off', right='off', 
+                labelleft='on', labelbottom='off')
+            ax.set_ylabel(model_name, fontsize=10)
+            ax.set_xlabel('')
+            ax.set(frame_on=False)
+        if i == 0:
+            ax.set_title(
+                conditions_map[col] if col in conditions_map else col,
+                fontsize=10
+            )
+
+        # Edit cmaps
+        cmaps = [a for a in fig.axes if a.get_label() == '<colorbar>']
+        if i == 0 and j >= len(conditions_map) - 1:
+            cmap = cmaps[-1]
+            cmaps_keep.append(cmap)
+            cmap.set_title('Expression\n' if '-' in col else 'Cell\ndensity\n', fontsize=10)
+        else:
+            for cmap in [cmap for cmap in cmaps if cmap not in cmaps_keep]:
+                cmap.remove()
+
+# Adjust colorbars and layout
+plt.subplots_adjust(wspace=0.01, hspace=0.01)
+for idx, cmap in enumerate(cmaps_keep):
+    adjust = 0.25 if idx == 0 else 0.15
+    pos = cmap.get_position()
+    pos.x0 = pos.x0 + adjust    
+    pos.x1 = pos.x1 + adjust
+    pos.y1 = pos.y1 - 0.03  
+    pos.y0 = pos.y0 - 0.03  
+    cmap.set_position(pos)
+
+plt.show()
+
+# %%
 
 # %%
 # Plot for subset of models
