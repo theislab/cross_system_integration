@@ -108,6 +108,8 @@ def run(eval_type:str,
         k_anchor:str=None,
         k_weight:str=None,
         harmony_theta:str=None,
+        kappa:str=None,
+        scmgca_w_a:str=None,
        ):
     
     params_info=locals()

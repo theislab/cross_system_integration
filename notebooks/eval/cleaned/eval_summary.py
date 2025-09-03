@@ -175,14 +175,18 @@ res=load_integration_results(path_integration)
 res = prepare_results(res)
 
 # %%
+res['params_opt']
+
+# %%
 with open("/home/moinfar/io/csi/tmp/pancreas_metrics.pkl", "wb") as f:
     pkl.dump(res, f)
 
 # %%
 for path in path_integration + res[res.params_opt.replace(params_opt_map).astype(str).isin(['sysvi', 'sysvi_stable'])].index:
-    print(path + "/args.pkl", end=" ")
-    print(path + "/loss*", end=" ")
-    print(path + "/scib*", end=" ")
+    print(path, end=" ")
+    # print(path + "/args.pkl", end=" ")
+    # print(path + "/loss*", end=" ")
+    # print(path + "/scib*", end=" ")
 
 # %% [markdown]
 # ### Best runs
@@ -231,9 +235,10 @@ with open("/home/moinfar/io/csi/tmp/retadorg_metrics.pkl", "wb") as f:
 
 # %%
 for path in path_integration + res[res.params_opt.replace(params_opt_map).astype(str).isin(['vamp_cycle', 'sysvi', 'sysvi_stable'])].index:
-    print(path + "/args.pkl", end=" ")
-    print(path + "/loss*", end=" ")
-    print(path + "/scib*", end=" ")
+    print(path, end=" ")
+    # print(path + "/args.pkl", end=" ")
+    # print(path + "/loss*", end=" ")
+    # print(path + "/scib*", end=" ")
 
 # %% [markdown]
 # ### Best runs
@@ -288,9 +293,10 @@ with open("/home/moinfar/io/csi/tmp/adipose_metrics.pkl", "wb") as f:
 
 # %%
 for path in path_integration + res[res.params_opt.replace(params_opt_map).astype(str).isin(['vamp_cycle', 'sysvi', 'sysvi_stable'])].index:
-    print(path + "/args.pkl", end=" ")
-    print(path + "/loss*", end=" ")
-    print(path + "/scib*", end=" ")
+    print(path, end=" ")
+    # print(path + "/args.pkl", end=" ")
+    # print(path + "/loss*", end=" ")
+    # print(path + "/scib*", end=" ")
 
 # %% [markdown]
 # ### Best runs
@@ -336,6 +342,13 @@ res = prepare_results(res)
 # %%
 with open("/home/moinfar/io/csi/tmp/retatlas_metrics.pkl", "wb") as f:
     pkl.dump(res, f)
+
+# %%
+for path in path_integration + res[res.params_opt.replace(params_opt_map).astype(str).isin(['sysvi', 'sysvi_stable'])].index:
+    print(path, end=" ")
+    # print(path + "/args.pkl", end=" ")
+    # print(path + "/loss*", end=" ")
+    # print(path + "/scib*", end=" ")
 
 # %% [markdown]
 # ### Best runs
@@ -384,9 +397,10 @@ with open("/home/moinfar/io/csi/tmp/skin_metrics.pkl", "wb") as f:
 
 # %%
 for path in path_integration + res[res.params_opt.replace(params_opt_map).astype(str).isin(['vamp_cycle', 'sysvi', 'sysvi_stable'])].index:
-    print(path + "/args.pkl", end=" ")
-    print(path + "/loss*", end=" ")
-    print(path + "/scib*", end=" ")
+    print(path, end=" ")
+    # print(path + "/args.pkl", end=" ")
+    # print(path + "/loss*", end=" ")
+    # print(path + "/scib*", end=" ")
 
 # %% [markdown]
 # ### Best runs
@@ -439,9 +453,10 @@ with open("/home/moinfar/io/csi/tmp/skin_limited_metrics.pkl", "wb") as f:
 
 # %%
 for path in path_integration + res[res.params_opt.replace(params_opt_map).astype(str).isin(['vamp_cycle', 'sysvi', 'sysvi_stable'])].index:
-    print(path + "/args.pkl", end=" ")
-    print(path + "/loss*", end=" ")
-    print(path + "/scib*", end=" ")
+    print(path, end=" ")
+    # print(path + "/args.pkl", end=" ")
+    # print(path + "/loss*", end=" ")
+    # print(path + "/scib*", end=" ")
 
 # %% [markdown]
 # ### Best runs

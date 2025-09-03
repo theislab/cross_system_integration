@@ -42,6 +42,8 @@ param_opt_col_map={
      'harmonypy_theta':'harmonypy_theta',
      'sysvi_vamp_cyc_z_distance_cycle_weight_2': 'z_distance_cycle_weight',
      'sysvi_vamp_cyc_z_distance_cycle_weight_2_stable': 'z_distance_cycle_weight',
+     'adv_kappa': 'kappa',
+     'scmgca_w_a': 'scmgca_w_a',
 }
 
 
