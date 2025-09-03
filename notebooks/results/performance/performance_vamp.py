@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.16.3
 #   kernelspec:
 #     display_name: csi
 #     language: python
@@ -40,7 +40,7 @@ sys.path.append('/'.join(os.getcwd().split('/')[:-2]+['eval','cleaned','']))
 from params_opt_maps import *
 
 # %%
-path_data='/om2/user/khrovati/data/cross_system_integration/'
+path_data='/home/moinfar/io/csi/'
 path_names=path_data+'names_parsed/'
 path_fig=path_data+'figures/'
 path_tab=path_data+'tables/'

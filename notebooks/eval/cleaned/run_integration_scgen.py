@@ -22,6 +22,7 @@ import numpy as np
 seed=np.random.randint(0,1000000)
 import argparse
 import os
+import pathlib
 import string
 import subprocess
 
@@ -114,7 +115,7 @@ path_save=args.path_save+'scgen'+\
     ('-TEST' if TESTING else '')+\
     os.sep
 
-os.mkdir(path_save)
+pathlib.Path(path_save).mkdir(parents=True, exist_ok=False)
 print("PATH_SAVE=",path_save)
 
 # %%

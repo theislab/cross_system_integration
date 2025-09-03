@@ -5,3 +5,4 @@ notebooks/.ipynb_checkpoints
 .DS_Store
 .ipynb_checkpoints
 /notebooks/eval/cleaned/tests/data
+/tmp/
