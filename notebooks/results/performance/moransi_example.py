@@ -14,6 +14,10 @@
 # ---
 
 # %%
+# First, run this:
+# cross_system_integration/notebooks/eval/cleaned/analysis/moransi_examples.ipynb
+
+# %%
 import pandas as pd
 import numpy as np
 import scanpy as sc

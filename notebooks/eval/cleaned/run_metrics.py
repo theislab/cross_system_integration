@@ -14,6 +14,7 @@
 # ---
 
 # %%
+import sys
 import scanpy as sc
 import pickle as pkl
 import argparse
@@ -54,7 +55,7 @@ parser.add_argument('-t', '--testing', required=False, type=intstr_to_bool,defau
 
 # %%
 # Set args for manual testing
-if False:
+if hasattr(sys, 'ps1'):
     args= parser.parse_args(args="--path /home/moinfar/io/csi/eval/retina_adult_organoid/integration/seurat_r2_Le7LTop5 --system_key system --group_key cell_type --batch_key sample_id --fn_expr /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG.h5ad --fn_moransi /om2/user/khrovati/data/cross_system_integration/retina_adult_organoid/combined_HVG_moransiGenes.pkl --testing 0 --scaled 0".split(" "))
 # Read command line args
 else:
@@ -197,8 +198,6 @@ if KNN_PURITY or TESTING:
     knn_purity(
         distances=embed_group.obsp[neigh_prefix+'distances'],
         labels=embed_group.obs[args.group_key])
-
-# %%
 
 # %%
 # Moran's I

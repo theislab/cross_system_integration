@@ -48,6 +48,8 @@ model_map={
     'saturn_super': 'SATURN-CT',
     'sysvi': 'SysVI',
     'sysvi_stable': 'SysVI-stable',
+    'adv': 'ADV',
+    'scmgca': 'scMGCA',
 }
 pkl.dump(model_map,open(path_save+'models.pkl','wb'))
 
@@ -123,6 +125,11 @@ param_vals=[
         ('z_distance_cycle_weight',[2.0, 5.0, 10.0, 50.0]) ]),
     (['sysvi_stable'],[
         ('z_distance_cycle_weight',[2.0, 5.0, 10.0, 50.0]) ]),
+    (['adv'],[
+        ('kappa', [1., 2., 5., 10.]) ]),
+        # ('kappa', [0.01, 0.1, 1.0, 2.0, 5.0, 10., 100., 1000.]) ]),
+    (['scmgca'], [
+        ('scmgca_w_a', [0.1, 0.3, 0.6, 0.9])]),
 ] 
 
 pkl.dump(param_vals,open(path_save+'optimized_parameter_values.pkl','wb'))
@@ -165,6 +172,8 @@ params_opt_map={
      'harmonypy_theta':'harmonypy',
      'sysvi_vamp_cyc_z_distance_cycle_weight_2':'sysvi',
      'sysvi_vamp_cyc_z_distance_cycle_weight_2_stable':'sysvi_stable',
+     'adv_kappa':'adv',
+     'scmgca_w_a': 'scmgca',
     }
 pkl.dump(params_opt_map,open(path_save+'params_opt_model.pkl','wb'))
 
@@ -196,6 +205,8 @@ param_names={
  'theta':'Theta',
  'harmonypy_theta': 'Theta (Harmony-py)',
  'harmony_theta': 'Theta (Harmony)',
+ 'kappa': 'ADV Kappa',
+ 'scmgca_w_a': 'Wa',
   None:'None',  
 }
 pkl.dump(param_names,open(path_save+'params.pkl','wb'))
@@ -232,6 +243,8 @@ params_opt_gene_map={
      'harmonypy_theta':'OTO',
      'sysvi_vamp_cyc_z_distance_cycle_weight_2': 'OTO',
      'sysvi_vamp_cyc_z_distance_cycle_weight_2_stable': 'OTO',
+     'adv_kappa': 'OTO',
+     'scmgca_w_a': 'OTO',
     }
 pkl.dump(params_opt_gene_map,open(path_save+'params_opt_genes.pkl','wb'))
 

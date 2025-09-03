@@ -207,10 +207,10 @@ model_cmap
 
 # %%
 model_order = [
-    "VAMP+CYC", "CYC", "VAMP",
+    "VAMP+CYC", "CYC", "VAMP", "ADV",
     "cVAE", "scVI",
     "Harmony",
-    "Seaurat", "Harmony-py", "GLUE",
+    "Seaurat", "Harmony-py", "GLUE", "scMGCA",
     "SATURN", "SATURN-CT"
 ]
 drop_models = [
@@ -677,7 +677,7 @@ fig, axs = plt.subplots(n_rows, n_cols, figsize=(3.4 * n_cols, n_rows * 3.4),
 unique_models = top_results_df["model_parsed"].cat.categories
 cmap = cm.get_cmap("tab20", len(unique_models))
 model_cmap = {model: cmap(i) for i, model in enumerate(unique_models)}
-top_results_df['This paper'] = top_results_df['model_parsed'].isin(['CYC', 'VAMP', 'VAMP+CYC'])
+top_results_df['This paper'] = top_results_df['model_parsed'].isin(['CYC', 'VAMP', 'VAMP+CYC', 'ADV'])
 
 # Generate plots
 for row, (setup_name, subset_df) in enumerate(top_results_df.groupby('setup_name')):

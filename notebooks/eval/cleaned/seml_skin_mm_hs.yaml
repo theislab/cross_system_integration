@@ -470,3 +470,36 @@ harmonyr:
           - 5.0
           - 10.0
           - 100.0
+
+adv:
+    fixed:
+      model: adv
+      prior: standard_normal
+      params_opt: adv_kappa
+      conda_env: sysvi
+    grid:
+      kappa:
+        type: choice
+        options:
+          # - 0.01
+          # - 0.1 
+          - 1.0
+          - 2.0
+          - 5.0
+          - 10.0
+          # - 100.0
+          # - 1000.0
+
+scmgca:
+    fixed:
+      model: scmgca
+      params_opt: scmgca_w_a
+      conda_env: scmgca3
+    grid:
+      scmgca_w_a:
+        type: choice
+        options:
+          - 0.1
+          - 0.3 
+          - 0.6
+          - 0.9

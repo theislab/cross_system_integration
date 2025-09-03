@@ -125,6 +125,7 @@ for dataset,dataset_name in dataset_map.items():
     metrics[dataset_name].rename(metric_map,axis=1,inplace=True)
     # Seed to str for plotting
     metrics[dataset_name]['seed']=metrics[dataset_name]['seed'].astype(str)
+    print(metrics[dataset_name])
 
 # %%
 with open("/home/moinfar/io/csi/tmp/metrics.pkl", "wb") as f:
@@ -184,26 +185,28 @@ all_models = [
     "SysVI",
     "SysVI-stable",
     "VAMP+CYC",
-    "CYC", "VAMP",
+    "CYC", "VAMP", "ADV",
     "cVAE", "scVI",
     "Harmony",
     "Harmony", 
     "Seaurat", 
     "Harmony-py", 
     "GLUE",
-    "SATURN", "SATURN-CT"
+    "SATURN", "SATURN-CT",
+    "scMGCA"
 ]
 model_order = [
     # "SysVI",
     # "SysVI-stable",
     "VAMP+CYC",
-    "CYC", "VAMP",
+    "CYC", "VAMP", "ADV",
     "cVAE", "scVI",
     "Seaurat", 
     "Harmony", 
     "Harmony-py", 
     "GLUE",
-    "SATURN", "SATURN-CT"
+    "scMGCA",
+    "SATURN", "SATURN-CT",
 ]
 drop_models = [model_ for model_ in all_models if model_ not in model_order]
 
@@ -238,14 +241,19 @@ def add_total_score_formula(metrics_df):
 for metrics_sub in metrics.values():
     # metrics_sub['total_score'] = total_score_formula(metrics_sub)
     add_total_score_formula(metrics_sub)
-    metrics_sub['This paper'] = metrics_sub.index.isin(['CYC', 'VAMP', 'VAMP+CYC'])
+    metrics_sub['This paper'] = metrics_sub.index.isin(['CYC', 'VAMP', 'VAMP+CYC', 'ADV', 'SysVI'])
 
 # %%
+
+# %%
+metrics_copy = metrics.copy()
+metrics_copy.pop('Limited Skin Mouse-Human')
+
 xlims = {}
 for metric in list(metric_map.values()) + ['total_score']:
     mins = []
     maxs = []
-    for data in metrics.values():
+    for data in metrics_copy.values():
         mins.append(data[metric].min())
         maxs.append(data[metric].max())
     x_min = min(mins)
@@ -256,12 +264,12 @@ for metric in list(metric_map.values()) + ['total_score']:
     xlims[metric] = (x_min, x_max)
 
 # Plots
-n_rows = len(metrics)
+n_rows = len(metrics_copy)
 n_cols = len(metric_map)# + 1  # Add one column for the scatter plot
-fig, axs = plt.subplots(n_rows, n_cols, figsize=(2 * n_cols, len(metric_map) / 1.5 * n_rows),
+fig, axs = plt.subplots(n_rows, n_cols, figsize=(2 * n_cols, len(metric_map) / 1.3 * n_rows),
                         sharey=False, sharex='col')
 
-for row, (dataset_name, metrics_sub) in enumerate(metrics.items()):
+for row, (dataset_name, metrics_sub) in enumerate(metrics_copy.items()):
     for col, metric in enumerate(list(metric_map.values())):
         ax = axs[row, col]
         means = metrics_sub.groupby('model')[metric].mean().reset_index()
@@ -319,7 +327,7 @@ for metric in list(metric_map.values()) + ['total_score']:
 # Plots
 n_rows = len(metrics)
 n_cols = len(metric_map) + 1  # Add one column for the scatter plot
-fig, axs = plt.subplots(n_rows, n_cols, figsize=(2 * n_cols, len(metric_map) / 1.5 * n_rows),
+fig, axs = plt.subplots(n_rows, n_cols, figsize=(2 * n_cols, len(metric_map) / 1.3 * n_rows),
                         sharey=False, sharex='col')
 
 for row, (dataset_name, metrics_sub) in enumerate(metrics.items()):
@@ -763,9 +771,5 @@ plt.savefig(path_fig+'performance-score_all-swarm.pdf',
 plt.savefig(path_fig+'performance-score_all-swarm.png',
             dpi=300,bbox_inches='tight')
 
-
-# %%
-
-# %%
 
 # %%
