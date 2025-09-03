@@ -41,71 +41,71 @@ grid:
       - 2
       - 3 
       
-# seurat_cca:
-#     fixed:
-#       model: seurat
-#       params_opt: seurat_cca_k_anchor
-#       conda_env: NA
-#       reduction: cca
-#       k_weight: 50  # We have to enforce this since one batch is small
-#       language: R
-#     grid:
-#       k_anchor:
-#         type: choice
-#         options:
-#           - 2
-#           - 5
-#           - 10
-#           - 20
-#           - 50
+seurat_cca:
+    fixed:
+      model: seurat
+      params_opt: seurat_cca_k_anchor
+      conda_env: NA
+      reduction: cca
+      k_weight: 50  # We have to enforce this since one batch is small
+      language: R
+    grid:
+      k_anchor:
+        type: choice
+        options:
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
 
-# seurat_rpca:
-#     fixed:
-#       model: seurat
-#       params_opt: seurat_rpca_k_anchor
-#       conda_env: NA
-#       reduction: rpca
-#       k_weight: 35  # We have to enforce this since one batch is small
-#       language: R
-#     grid:
-#       k_anchor:
-#         type: choice
-#         options:
-#           - 2
-#           - 5
-#           - 10
-#           - 20
-#           - 50
+seurat_rpca:
+    fixed:
+      model: seurat
+      params_opt: seurat_rpca_k_anchor
+      conda_env: NA
+      reduction: rpca
+      k_weight: 35  # We have to enforce this since one batch is small
+      language: R
+    grid:
+      k_anchor:
+        type: choice
+        options:
+          - 2
+          - 5
+          - 10
+          - 20
+          - 50
 
-# harmony:
-#     fixed:
-#       model: harmonypy
-#       params_opt: harmony_theta
-#       conda_env: csi
-#     grid:
-#       harmony_theta:
-#         type: choice
-#         options:
-#           - 0.1
-#           - 1.0
-#           - 5.0
-#           - 10.0
-#           - 100.0
+harmony:
+    fixed:
+      model: harmonypy
+      params_opt: harmony_theta
+      conda_env: csi
+    grid:
+      harmony_theta:
+        type: choice
+        options:
+          - 0.1
+          - 1.0
+          - 5.0
+          - 10.0
+          - 100.0
 
-# adv:
-#     fixed:
-#       model: adv
-#       prior: standard_normal
-#       params_opt: adv_kappa
-#       conda_env: sysvi
-#     grid:
-#       kappa:
-#         type: choice
-#         options:
-#           - 0.01
-#           - 0.1 
-#           - 1.0
-#           - 10.0
+adv:
+    fixed:
+      model: adv
+      prior: standard_normal
+      params_opt: adv_kappa
+      conda_env: sysvi
+    grid:
+      kappa:
+        type: choice
+        options:
+          - 0.01
+          - 0.1 
+          - 1.0
+          - 10.0
 
 scmgca:
     fixed:
